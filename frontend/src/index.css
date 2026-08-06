@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-ink: #e8eef8;
+  --color-muted: #93a4bd;
+  --color-money: #34d399;
+  --color-expense: #f87171;
+  --color-invest: #38bdf8;
+  --color-reserve: #fbbf24;
+  --color-crypto: #c084fc;
+  --color-neon: #5eead4;
+}
+
+:root {
+  color-scheme: dark;
+  --bg-0: #07111f;
+  --bg-1: #0b1a2e;
+  --bg-2: #10233a;
+  --glass: rgba(16, 28, 48, 0.55);
+  --glass-border: rgba(148, 183, 255, 0.14);
+  --glow-a: rgba(56, 189, 248, 0.22);
+  --glow-b: rgba(167, 139, 250, 0.2);
+  --glow-c: rgba(52, 211, 153, 0.12);
+  --text: #e8eef8;
+  --text-soft: #93a4bd;
+  --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+html.light {
+  color-scheme: light;
+  --bg-0: #f3f7fb;
+  --bg-1: #e8f0f8;
+  --bg-2: #dce8f4;
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-border: rgba(30, 64, 120, 0.1);
+  --glow-a: rgba(14, 165, 233, 0.16);
+  --glow-b: rgba(124, 58, 237, 0.1);
+  --glow-c: rgba(16, 185, 129, 0.1);
+  --text: #0f1c2e;
+  --text-soft: #5b6b82;
+  --shadow: 0 18px 40px rgba(15, 35, 70, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, var(--glow-b), transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, var(--glow-a), transparent 50%),
+    radial-gradient(800px 500px at 50% 100%, var(--glow-c), transparent 55%),
+    linear-gradient(165deg, var(--bg-0), var(--bg-1) 45%, var(--bg-2));
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(94, 234, 212, 0.35);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 183, 255, 0.25);
+  border-radius: 999px;
+}
+
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+}
+
+.glass-soft {
+  background: color-mix(in oklab, var(--glass) 80%, transparent);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.display {
+  font-family: var(--font-display);
+  letter-spacing: -0.03em;
+}
+
+.money {
+  color: var(--color-money);
+}
+.expense {
+  color: var(--color-expense);
+}
+.invest {
+  color: var(--color-invest);
+}
+.reserve {
+  color: var(--color-reserve);
+}
+.crypto {
+  color: var(--color-crypto);
+}
+
+.ambient-orb {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(40px);
+  pointer-events: none;
+  opacity: 0.55;
+  animation: floaty 12s ease-in-out infinite;
+}
+
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-18px) scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.gradient-text {
+  background: linear-gradient(120deg, #5eead4, #60a5fa 40%, #c084fc 75%, #fbbf24);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 8s linear infinite;
+}
