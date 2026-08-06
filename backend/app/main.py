@@ -9,17 +9,18 @@ from app.core.database import AsyncSessionLocal, init_db
 from app.services.seed import seed_if_empty
 
 
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    await init_db()
-    async with AsyncSessionLocal() as session:
-        await seed_if_empty(session)
-        await session.commit()
-    yield
-
-
-def create_app() -> FastAPI:
+def create_app(*, testing: bool = False) -> FastAPI:
     settings = get_settings()
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        if not testing:
+            await init_db()
+            async with AsyncSessionLocal() as session:
+                await seed_if_empty(session)
+                await session.commit()
+        yield
+
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,

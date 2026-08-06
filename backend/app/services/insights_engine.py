@@ -9,6 +9,13 @@ from app.models.subscription import Subscription
 from app.models.transaction import Transaction
 
 
+_ALLOCATION = {"investment", "savings", "debt", "transfer"}
+
+
+def _is_spend(t: Transaction) -> bool:
+    return t.amount < 0 and t.transaction_type not in _ALLOCATION
+
+
 def generate_insights(
     transactions: list[Transaction],
     subscriptions: list[Subscription],
@@ -18,9 +25,9 @@ def generate_insights(
     month_start = today.replace(day=1)
     prev_start = (month_start - timedelta(days=1)).replace(day=1)
 
-    this_month = [t for t in transactions if t.occurred_on >= month_start and t.amount < 0]
+    this_month = [t for t in transactions if t.occurred_on >= month_start and _is_spend(t)]
     prev_month = [
-        t for t in transactions if prev_start <= t.occurred_on < month_start and t.amount < 0
+        t for t in transactions if prev_start <= t.occurred_on < month_start and _is_spend(t)
     ]
 
     insights: list[dict] = []

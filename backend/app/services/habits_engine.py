@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, timedelta
-from statistics import pstdev
+from statistics import median, pstdev
 
 from app.models.transaction import Transaction
 from app.schemas.habits import HabitScore, HabitsProfile
+
+ALLOCATION_TYPES = {"investment", "savings", "debt", "transfer"}
 
 
 def _clamp(v: float, lo: float = 0, hi: float = 100) -> float:
@@ -18,8 +20,8 @@ def compute_habits(transactions: list[Transaction], monthly_income: float) -> Ha
     today = date.today()
     window_start = today - timedelta(days=90)
     recent = [t for t in transactions if t.occurred_on >= window_start]
-    expenses = [t for t in recent if t.amount < 0]
-    incomes = [t for t in recent if t.amount > 0]
+    expenses = [t for t in recent if t.amount < 0 and t.transaction_type not in ALLOCATION_TYPES]
+    incomes = [t for t in recent if t.amount > 0 and t.transaction_type == "income"]
 
     total_expense = sum(abs(t.amount) for t in expenses)
     total_income = sum(t.amount for t in incomes) or monthly_income * 3
@@ -43,14 +45,21 @@ def compute_habits(transactions: list[Transaction], monthly_income: float) -> Ha
     else:
         regularity = 50.0
 
-    # Impulsiveness: share of large one-off discretionary purchases (gadgets, restaurants) vs total
+    # Impulsiveness (higher score = calmer):
+    # 1) share of discretionary categories (soft weight)
+    # 2) frequency of above-median spikes
     impulsive_categories = {"gadgets", "restaurants", "cafe"}
     impulsive_sum = sum(abs(t.amount) for t in expenses if t.category in impulsive_categories)
-    impulsiveness_raw = impulsive_sum / max(total_expense, 1) * 100
-    impulsiveness = _clamp(100 - impulsiveness_raw * 1.4)  # higher score = less impulsive
+    category_share = impulsive_sum / max(total_expense, 1)  # 0..1
+    amounts = sorted(abs(t.amount) for t in expenses) or [0.0]
+    med = median(amounts) if amounts else 0.0
+    spikes = sum(1 for a in amounts if med > 0 and a >= med * 3)
+    spike_rate = spikes / max(len(amounts), 1)
+    # 40% discretionary + 20% spike rate ⇒ score ~52; soft, not punitive
+    impulsiveness = _clamp(100 - category_share * 60 - spike_rate * 80)
 
     # Risk: share of capital-like moves into crypto/investment relative to total flow (too much = risky)
-    invest_sum = sum(abs(t.amount) for t in recent if t.transaction_type in ("investment",))
+    invest_sum = sum(abs(t.amount) for t in recent if t.transaction_type == "investment")
     risk_ratio = invest_sum / max(total_income, 1)
     risk_score = _clamp(100 - abs(risk_ratio - 0.15) * 200)  # ideal ~15% of income
 

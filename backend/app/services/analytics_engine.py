@@ -32,6 +32,9 @@ CATEGORY_COLORS = {
     "other": "#94a3b8",
 }
 
+# Capital allocation types — not lifestyle consumption
+ALLOCATION_TYPES = {"investment", "savings", "debt", "transfer"}
+
 
 def build_analytics(
     transactions: list[Transaction],
@@ -43,15 +46,25 @@ def build_analytics(
 
     by_day: dict[date, dict[str, float]] = defaultdict(lambda: {"income": 0.0, "expense": 0.0})
     by_cat: dict[str, float] = defaultdict(float)
+    invest_flow = 0.0
+    savings_flow = 0.0
+
+    month_start = today.replace(day=1)
 
     for tx in transactions:
         if tx.occurred_on < start:
             continue
         if tx.amount >= 0 and tx.transaction_type == "income":
             by_day[tx.occurred_on]["income"] += tx.amount
-        elif tx.amount < 0:
+        elif tx.amount < 0 and tx.transaction_type not in ALLOCATION_TYPES:
             by_day[tx.occurred_on]["expense"] += abs(tx.amount)
             by_cat[tx.category or "other"] += abs(tx.amount)
+
+        if tx.occurred_on >= month_start and tx.amount < 0:
+            if tx.transaction_type == "investment":
+                invest_flow += abs(tx.amount)
+            elif tx.transaction_type == "savings":
+                savings_flow += abs(tx.amount)
 
     timeseries: list[TimeSeriesPoint] = []
     for i in range(days):
@@ -77,35 +90,61 @@ def build_analytics(
             )
         )
 
-    income_month = sum(t.income for t in timeseries[-30:])
-    expense_month = sum(t.expense for t in timeseries[-30:])
-    invest = sum(a.balance for a in accounts if a.account_type == "investment")
-    savings = sum(a.balance for a in accounts if a.account_type in ("savings", "reserve"))
-    free = max(income_month - expense_month - invest * 0.05, 0)
+    # Calendar-month flows for sankey (conserved: expense+invest+savings+free == income)
+    income_month = sum(
+        t.amount for t in transactions
+        if t.occurred_on >= month_start and t.amount > 0 and t.transaction_type == "income"
+    )
+    expense_month = sum(
+        abs(t.amount) for t in transactions
+        if t.occurred_on >= month_start and t.amount < 0 and t.transaction_type not in ALLOCATION_TYPES
+    )
+    # Fallback to last-30 rolling if no calendar-month income yet
+    if income_month <= 0:
+        income_month = sum(t.income for t in timeseries[-30:])
+    if expense_month <= 0 and not any(t.expense for t in timeseries[-30:]):
+        expense_month = sum(t.expense for t in timeseries[-30:])
+
+    invest_bal = sum(a.balance for a in accounts if a.account_type == "investment")
+    savings_bal = sum(a.balance for a in accounts if a.account_type in ("savings", "reserve"))
+
+    # Prefer real flows this month; otherwise estimate a modest allocation
+    invest_out = invest_flow if invest_flow > 0 else min(invest_bal * 0.02, max(income_month * 0.1, 0))
+    remaining_after_expense = max(income_month - expense_month, 0)
+    invest_out = min(invest_out, remaining_after_expense)
+    after_invest = max(remaining_after_expense - invest_out, 0)
+    savings_out = savings_flow if savings_flow > 0 else min(savings_bal * 0.05, after_invest * 0.35)
+    savings_out = min(savings_out, after_invest)
+    free = max(after_invest - savings_out, 0)
+
+    # Numerical safety: force exact conservation
+    allocated = expense_month + invest_out + savings_out + free
+    if income_month > 0 and abs(allocated - income_month) > 0.01:
+        free = max(income_month - expense_month - invest_out - savings_out, 0)
 
     cashflow = CashFlowDiagram(
         nodes=[
             CashFlowNode(id="income", label="Доход", amount=round(income_month, 2), color="#4ade80"),
             CashFlowNode(id="distribute", label="Распределение", amount=round(income_month, 2), color="#60a5fa"),
             CashFlowNode(id="expense", label="Расходы", amount=round(expense_month, 2), color="#f87171"),
-            CashFlowNode(id="invest", label="Инвестиции", amount=round(invest * 0.05, 2), color="#38bdf8"),
-            CashFlowNode(id="savings", label="Накопления", amount=round(min(savings * 0.1, free * 0.4), 2), color="#fbbf24"),
+            CashFlowNode(id="invest", label="Инвестиции", amount=round(invest_out, 2), color="#38bdf8"),
+            CashFlowNode(id="savings", label="Накопления", amount=round(savings_out, 2), color="#fbbf24"),
             CashFlowNode(id="free", label="Свободный остаток", amount=round(free, 2), color="#a78bfa"),
         ],
         links=[
             CashFlowLink(source="income", target="distribute", value=round(income_month, 2)),
             CashFlowLink(source="distribute", target="expense", value=round(expense_month, 2)),
-            CashFlowLink(source="distribute", target="invest", value=round(invest * 0.05, 2)),
-            CashFlowLink(source="distribute", target="savings", value=round(min(savings * 0.1, free * 0.4), 2)),
+            CashFlowLink(source="distribute", target="invest", value=round(invest_out, 2)),
+            CashFlowLink(source="distribute", target="savings", value=round(savings_out, 2)),
             CashFlowLink(source="distribute", target="free", value=round(free, 2)),
         ],
     )
 
     radar = [
-        {"axis": "Сбережения", "value": min(100, savings / max(income_month, 1) * 50)},
-        {"axis": "Инвестиции", "value": min(100, invest / max(income_month * 6, 1) * 100)},
+        {"axis": "Сбережения", "value": min(100, savings_bal / max(income_month, 1) * 50)},
+        {"axis": "Инвестиции", "value": min(100, invest_bal / max(income_month * 6, 1) * 100)},
         {"axis": "Контроль", "value": max(0, 100 - expense_month / max(income_month, 1) * 100)},
-        {"axis": "Подушка", "value": min(100, savings / max(expense_month * 3, 1) * 100)},
+        {"axis": "Подушка", "value": min(100, savings_bal / max(expense_month * 3, 1) * 100)},
         {"axis": "Рост", "value": min(100, (income_month - expense_month) / max(income_month, 1) * 200)},
         {"axis": "Дисциплина", "value": min(100, len(transactions) / 30 * 40)},
     ]
@@ -113,8 +152,8 @@ def build_analytics(
     waterfall = [
         {"name": "Доход", "value": round(income_month, 2), "measure": "absolute"},
         {"name": "Расходы", "value": -round(expense_month, 2), "measure": "relative"},
-        {"name": "Инвестиции", "value": -round(invest * 0.05, 2), "measure": "relative"},
-        {"name": "Итог", "value": round(income_month - expense_month, 2), "measure": "total"},
+        {"name": "Инвестиции", "value": -round(invest_out, 2), "measure": "relative"},
+        {"name": "Итог", "value": round(income_month - expense_month - invest_out, 2), "measure": "total"},
     ]
 
     return AnalyticsBundle(

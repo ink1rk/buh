@@ -14,11 +14,12 @@ AMOUNT_RE = re.compile(
 
 INCOME_KEYWORDS = (
     "зарплата", "зп", "аванс", "премия", "доход", "вернули", "возврат",
-    "фриланс", "кешбек", "кэшбек", "дивиденд", "перевод мне", "+",
+    "фриланс", "кешбек", "кэшбек", "дивиденд", "перевод мне", "получил",
 )
 EXPENSE_KEYWORDS = (
-    "купил", "купила", "потратил", "кофе", "пятерочка", "магнит", "ресторан",
-    "такси", "uber", "яндекс", "обед", "ужин", "подписка", "-",
+    "купил", "купила", "потратил", "потратила", "кофе", "пятерочка", "магнит",
+    "ресторан", "такси", "uber", "яндекс", "обед", "ужин", "подписка",
+    "оплатил", "заплатил", "ноутбук", "iphone", "macbook",
 )
 DEBT_I_OWE = ("долг ", "должен ", "занял у", "взял в долг")
 DEBT_OWED = ("мне должен", "должен мне", "одолжил", "дал в долг")
@@ -81,6 +82,9 @@ def parse_quick_input(text: str) -> tuple[TransactionCreate, float, str]:
     signed = -abs_amount
     explanation = "Распознан расход"
 
+    starts_plus = clean.startswith("+")
+    starts_minus = clean.startswith("-") or amount < 0
+
     if any(k in lower for k in DEBT_OWED) or "мне должен" in lower:
         tx_type = "debt"
         signed = abs_amount
@@ -101,12 +105,17 @@ def parse_quick_input(text: str) -> tuple[TransactionCreate, float, str]:
         signed = -abs_amount
         category = "savings"
         explanation = "Пополнение накоплений"
-    elif amount > 0 or any(k in lower for k in INCOME_KEYWORDS):
+    elif starts_plus or any(k in lower for k in INCOME_KEYWORDS) or category == "salary":
         tx_type = "income"
         signed = abs_amount
         category = category if category != "other" else "salary"
         explanation = "Доход"
-    elif amount < 0 or any(k in lower for k in EXPENSE_KEYWORDS):
+    elif starts_minus or any(k in lower for k in EXPENSE_KEYWORDS):
+        tx_type = "expense"
+        signed = -abs_amount
+        explanation = "Расход"
+    else:
+        # Bare amount without cues → treat as expense (safer for a finance CFO)
         tx_type = "expense"
         signed = -abs_amount
         explanation = "Расход"

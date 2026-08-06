@@ -25,11 +25,18 @@ from app.services.purchase_analyzer import analyze_purchase
 router = APIRouter(prefix="/ai", tags=["ai"])
 
 
+_SPEND_TYPES = {"expense", ""}
+
+
 async def _context(db: AsyncSession) -> dict:
     balances = await compute_balances(db)
     txs = list((await db.execute(select(Transaction))).scalars())
     month_start = date.today().replace(day=1)
-    expenses = [t for t in txs if t.occurred_on >= month_start and t.amount < 0]
+    # Top category = lifestyle spending only (never investments/savings/debt)
+    expenses = [
+        t for t in txs
+        if t.occurred_on >= month_start and t.amount < 0 and t.transaction_type in _SPEND_TYPES
+    ]
     by_cat: dict[str, float] = {}
     for t in expenses:
         by_cat[t.category] = by_cat.get(t.category, 0) + abs(t.amount)
@@ -64,18 +71,26 @@ async def chat(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/purchase/analyze")
 async def purchase_analyze(payload: PurchaseAnalyzeRequest, db: AsyncSession = Depends(get_db)):
+    from app.services.net_worth_service import build_net_worth
+
     balances = await compute_balances(db)
     profile = await get_or_create_profile(db)
+    nw = await build_net_worth(db)
     hourly = (profile.monthly_income or 180000) / 160
-    monthly_savings = max(balances.income_month - balances.expense_month, profile.monthly_income * 0.15)
+    monthly_savings = max(
+        balances.income_month - balances.expense_month,
+        (profile.monthly_income or 0) * 0.15,
+        1.0,
+    )
     goals = list((await db.execute(select(Goal).where(Goal.is_active.is_(True)).order_by(Goal.priority))).scalars())
     remaining = (goals[0].target_amount - goals[0].current_amount) if goals else None
     memories = await memory_store.recall(db, payload.item, limit=3)
     related_memory = memories[0] if memories else ""
+    # Capital % must use Net Worth, not just liquid balances
     return analyze_purchase(
         payload.item,
         payload.price,
-        balances.total,
+        nw.current,
         hourly,
         monthly_savings,
         remaining,

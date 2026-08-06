@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.models.account import Account
 from app.models.calendar import CalendarEvent
+from app.models.debt import Debt
 from app.models.goal import Goal
 from app.models.subscription import Subscription
 from app.models.transaction import Transaction
@@ -95,14 +96,24 @@ async def compute_balances(db: AsyncSession) -> DashboardBalances:
     for a in accounts:
         by_type[a.account_type] = by_type.get(a.account_type, 0) + a.balance
 
+    # Income: only real inflows. Expense: consumption only — investments/savings/debt
+    # moves are capital allocation, not lifestyle burn (critical for health score).
     income = sum(t.amount for t in txs if t.amount > 0 and t.transaction_type == "income")
-    expense = sum(abs(t.amount) for t in txs if t.amount < 0)
+    expense = sum(
+        abs(t.amount)
+        for t in txs
+        if t.amount < 0 and t.transaction_type in ("expense", "")
+    )
 
     liquid = sum(
         a.balance
         for a in accounts
         if a.account_type in ("cash", "card", "bank", "savings", "reserve", "investment", "crypto")
     )
+
+    debt_rows = list((await db.execute(select(Debt).where(Debt.is_active.is_(True)))).scalars())
+    debts_owed = sum(d.remaining for d in debt_rows if d.direction == "owed_to_me")
+    debts_owing = sum(d.remaining for d in debt_rows if d.direction == "i_owe")
 
     return DashboardBalances(
         total=round(liquid, 2),
@@ -113,8 +124,8 @@ async def compute_balances(db: AsyncSession) -> DashboardBalances:
         crypto=round(by_type.get("crypto", 0), 2),
         savings=round(by_type.get("savings", 0), 2),
         reserve=round(by_type.get("reserve", 0), 2),
-        debts_owed=round(by_type.get("debt_owed", 0), 2),
-        debts_owing=round(by_type.get("debt", 0), 2),
+        debts_owed=round(debts_owed, 2),
+        debts_owing=round(debts_owing, 2),
         income_month=round(income, 2),
         expense_month=round(expense, 2),
         accounts=[AccountOut.model_validate(a) for a in sorted(accounts, key=lambda x: x.sort_order)],
