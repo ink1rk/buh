@@ -33,6 +33,17 @@ OPENAI_API_KEY=sk-... sudo bash deploy/install-ubuntu.sh
 
 **Backend:** FastAPI · SQLAlchemy · Alembic · SQLite · Pydantic · OpenAI-compatible LLM · ChromaDB (опционально) · OCR/Vision
 
+## Тесты
+
+```bash
+cd backend
+source .venv/bin/activate
+pip install -r requirements.txt
+PYTHONPATH=. pytest -v
+```
+
+CI: GitHub Actions гоняет backend pytest + frontend build на каждый push.
+
 ## Локальная разработка
 
 ### Backend
