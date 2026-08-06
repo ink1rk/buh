@@ -85,19 +85,19 @@ def build_analytics(
 
     cashflow = CashFlowDiagram(
         nodes=[
-            CashFlowNode("income", "Доход", round(income_month, 2), "#4ade80"),
-            CashFlowNode("distribute", "Распределение", round(income_month, 2), "#60a5fa"),
-            CashFlowNode("expense", "Расходы", round(expense_month, 2), "#f87171"),
-            CashFlowNode("invest", "Инвестиции", round(invest * 0.05, 2), "#38bdf8"),
-            CashFlowNode("savings", "Накопления", round(min(savings * 0.1, free * 0.4), 2), "#fbbf24"),
-            CashFlowNode("free", "Свободный остаток", round(free, 2), "#a78bfa"),
+            CashFlowNode(id="income", label="Доход", amount=round(income_month, 2), color="#4ade80"),
+            CashFlowNode(id="distribute", label="Распределение", amount=round(income_month, 2), color="#60a5fa"),
+            CashFlowNode(id="expense", label="Расходы", amount=round(expense_month, 2), color="#f87171"),
+            CashFlowNode(id="invest", label="Инвестиции", amount=round(invest * 0.05, 2), color="#38bdf8"),
+            CashFlowNode(id="savings", label="Накопления", amount=round(min(savings * 0.1, free * 0.4), 2), color="#fbbf24"),
+            CashFlowNode(id="free", label="Свободный остаток", amount=round(free, 2), color="#a78bfa"),
         ],
         links=[
-            CashFlowLink("income", "distribute", round(income_month, 2)),
-            CashFlowLink("distribute", "expense", round(expense_month, 2)),
-            CashFlowLink("distribute", "invest", round(invest * 0.05, 2)),
-            CashFlowLink("distribute", "savings", round(min(savings * 0.1, free * 0.4), 2)),
-            CashFlowLink("distribute", "free", round(free, 2)),
+            CashFlowLink(source="income", target="distribute", value=round(income_month, 2)),
+            CashFlowLink(source="distribute", target="expense", value=round(expense_month, 2)),
+            CashFlowLink(source="distribute", target="invest", value=round(invest * 0.05, 2)),
+            CashFlowLink(source="distribute", target="savings", value=round(min(savings * 0.1, free * 0.4), 2)),
+            CashFlowLink(source="distribute", target="free", value=round(free, 2)),
         ],
     )
 

@@ -57,14 +57,14 @@ def compute_health(data: HealthInputs) -> FinancialHealth:
     discipline_score = _clamp(data.discipline_score * 100)
 
     factors = [
-        HealthFactor("Подушка безопасности", emergency_score, 0.18, f"Покрытие: {months_cover:.1f} мес. расходов (цель — 6)."),
-        HealthFactor("Долги", debt_score, 0.14, f"Долговая нагрузка: {debt_ratio * 100:.1f}% годового дохода."),
-        HealthFactor("Сбережения", savings_score, 0.14, f"Норма сбережений: {data.savings_rate * 100:.0f}%."),
-        HealthFactor("Контроль расходов", expense_score, 0.12, f"Расходы = {expense_ratio * 100:.0f}% дохода."),
-        HealthFactor("Регулярность инвестиций", invest_score, 0.12, "Как часто вы инвестируете последние 6 месяцев."),
-        HealthFactor("Стабильность доходов", stability_score, 0.10, "Предсказуемость денежных поступлений."),
-        HealthFactor("Обязательства / доход", dti_score, 0.10, "Отношение обязательств к годовому доходу."),
-        HealthFactor("Финансовая дисциплина", discipline_score, 0.10, "Регулярность учёта и следование плану."),
+        HealthFactor(name="Подушка безопасности", score=emergency_score, weight=0.18, explanation=f"Покрытие: {months_cover:.1f} мес. расходов (цель — 6)."),
+        HealthFactor(name="Долги", score=debt_score, weight=0.14, explanation=f"Долговая нагрузка: {debt_ratio * 100:.1f}% годового дохода."),
+        HealthFactor(name="Сбережения", score=savings_score, weight=0.14, explanation=f"Норма сбережений: {data.savings_rate * 100:.0f}%."),
+        HealthFactor(name="Контроль расходов", score=expense_score, weight=0.12, explanation=f"Расходы = {expense_ratio * 100:.0f}% дохода."),
+        HealthFactor(name="Регулярность инвестиций", score=invest_score, weight=0.12, explanation="Как часто вы инвестируете последние 6 месяцев."),
+        HealthFactor(name="Стабильность доходов", score=stability_score, weight=0.10, explanation="Предсказуемость денежных поступлений."),
+        HealthFactor(name="Обязательства / доход", score=dti_score, weight=0.10, explanation="Отношение обязательств к годовому доходу."),
+        HealthFactor(name="Финансовая дисциплина", score=discipline_score, weight=0.10, explanation="Регулярность учёта и следование плану."),
     ]
 
     score = int(round(sum(f.score * f.weight for f in factors)))
