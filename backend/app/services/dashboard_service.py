@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.models.account import Account
+from app.models.calendar import CalendarEvent
 from app.models.goal import Goal
 from app.models.subscription import Subscription
 from app.models.transaction import Transaction
@@ -20,13 +21,17 @@ from app.schemas.dashboard import (
     DashboardOut,
     DailyWidgetOut,
     Greeting,
+    LivingScreenLine,
     MotivationalQuote,
     RitualEvening,
     RitualMorning,
 )
+from app.services.coach_engine import ensure_today_challenge
 from app.services.content_bank import quote_for_date, widget_for_date
 from app.services.health_score import HealthInputs, compute_health
 from app.services.insights_engine import generate_insights
+from app.services.net_worth_service import build_net_worth
+from app.services.proactive_engine import detect_behavior_patterns, generate_proactive_alerts
 
 
 def _period_greeting(now: datetime, name: str) -> Greeting:
@@ -157,9 +162,64 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         )
     )
 
-    insights = generate_insights(txs, subs, profile.monthly_income)
+    behavior_patterns = detect_behavior_patterns(txs)
+    insights = behavior_patterns + generate_insights(txs, subs, profile.monthly_income)
     goals = list((await db.execute(select(Goal).where(Goal.is_active.is_(True)).order_by(Goal.priority))).scalars())
     focus = f"Усиль цель «{goals[0].title}»" if goals else "Заведите первую финансовую цель"
+
+    events = list((await db.execute(select(CalendarEvent))).scalars())
+    net_worth = await build_net_worth(db)
+
+    # streak: consecutive days (walking backwards from today) with at least one logged transaction
+    logged_days = {t.occurred_on for t in txs}
+    streak = 0
+    cursor = date.today()
+    while cursor in logged_days:
+        streak += 1
+        cursor -= timedelta(days=1)
+
+    proactive_alerts = generate_proactive_alerts(
+        txs, subs, events, profile.monthly_income, profile.monthly_income * 0.75 if profile.monthly_income else balances.expense_month
+    )
+
+    challenge_row = await ensure_today_challenge(db)
+    daily_challenge = {
+        "id": challenge_row.id,
+        "title": challenge_row.title,
+        "body": challenge_row.body,
+        "category": challenge_row.category,
+        "is_completed": challenge_row.is_completed,
+    }
+
+    avg_goal_probability = round(sum(g.probability for g in goals) / len(goals) * 100, 0) if goals else None
+
+    living_screen: list[LivingScreenLine] = [
+        LivingScreenLine(icon="sun", text=_period_greeting(now, profile.name).greeting, tone="neutral"),
+    ]
+    nw_pct = (net_worth.delta.month / max(abs(net_worth.current - net_worth.delta.month), 1)) * 100
+    living_screen.append(
+        LivingScreenLine(
+            icon="trending-up" if net_worth.delta.month >= 0 else "trending-down",
+            text=f"Чистый капитал {'вырос' if net_worth.delta.month >= 0 else 'снизился'} на {abs(nw_pct):.1f}% за месяц",
+            tone="positive" if net_worth.delta.month >= 0 else "warning",
+        )
+    )
+    if goals:
+        top_goal = goals[0]
+        remaining = max(top_goal.target_amount - top_goal.current_amount, 0)
+        living_screen.append(
+            LivingScreenLine(icon="target", text=f"До «{top_goal.title}» осталось накопить {remaining:,.0f} ₽".replace(",", " "), tone="neutral")
+        )
+    if streak >= 3:
+        living_screen.append(LivingScreenLine(icon="flame", text=f"Уже {streak} дней подряд ведёшь учёт", tone="positive"))
+    living_screen.append(LivingScreenLine(icon="lightbulb", text=widget.title + ": " + widget.body[:80], tone="neutral"))
+    upcoming = [e for e in events if date.today() <= e.event_date <= date.today() + timedelta(days=3) and e.amount > 0]
+    if upcoming:
+        e = upcoming[0]
+        living_screen.append(LivingScreenLine(icon="alert-triangle", text=f"Через {(e.event_date - date.today()).days} дн. платёж «{e.title}» на {e.amount:,.0f} ₽".replace(",", " "), tone="warning"))
+    if avg_goal_probability is not None:
+        living_screen.append(LivingScreenLine(icon="bar-chart", text=f"Вероятность достижения целей — {avg_goal_probability:.0f}%", tone="neutral"))
+    living_screen.append(LivingScreenLine(icon="heart", text="Отличная работа. Продолжай в том же духе.", tone="positive"))
 
     return DashboardOut(
         greeting=_period_greeting(now, profile.name),
@@ -169,6 +229,14 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         balances=balances,
         insights=insights,
         focus_of_day=focus,
+        net_worth=net_worth.current,
+        net_worth_delta_today=net_worth.delta.today,
+        net_worth_delta_month=net_worth.delta.month,
+        net_worth_delta_year=net_worth.delta.year,
+        streak_days=streak,
+        living_screen=living_screen,
+        daily_challenge=daily_challenge,
+        proactive_alerts=proactive_alerts,
     )
 
 

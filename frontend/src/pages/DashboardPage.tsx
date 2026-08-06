@@ -1,6 +1,23 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Quote, Sparkles, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  BarChart,
+  Bot,
+  Flame,
+  Gauge,
+  Lightbulb,
+  Quote,
+  Repeat,
+  Sparkles,
+  Sun,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Trophy,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { api } from '@/lib/api'
 import type { DashboardData } from '@/types'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -9,13 +26,44 @@ import { StatTile } from '@/components/ui/StatTile'
 import { formatMoney } from '@/lib/utils'
 import { useUIStore } from '@/store/uiStore'
 
+const LIVING_ICONS: Record<string, LucideIcon> = {
+  sun: Sun,
+  'trending-up': TrendingUp,
+  'trending-down': TrendingDown,
+  target: Target,
+  flame: Flame,
+  lightbulb: Lightbulb,
+  'alert-triangle': AlertTriangle,
+  'bar-chart': BarChart,
+  heart: Sparkles,
+}
+
+const ALERT_ICONS: Record<string, LucideIcon> = {
+  gauge: Gauge,
+  'trending-up': TrendingUp,
+  repeat: Repeat,
+  sun: Sun,
+}
+
+const toneBorder: Record<string, string> = {
+  positive: 'border-emerald-400/25',
+  warning: 'border-amber-400/25',
+  neutral: 'border-white/10',
+}
+
 export function DashboardPage() {
+  const qc = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => api.get<DashboardData>('/dashboard'),
   })
   const healthOpen = useUIStore((s) => s.healthOpen)
   const setHealthOpen = useUIStore((s) => s.setHealthOpen)
+
+  const completeChallenge = useMutation({
+    mutationFn: (id: number) => api.post(`/coach/${id}/complete`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dashboard'] }),
+  })
 
   if (isLoading || !data) {
     return (
@@ -62,6 +110,62 @@ export function DashboardPage() {
         </div>
       </GlassCard>
 
+      {/* Net Worth ticker — the single most important number */}
+      <GlassCard delay={0.06} className="relative overflow-hidden">
+        <div className="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-soft)]">Чистый капитал (Net Worth)</div>
+            <div className="gradient-text display mt-1 text-4xl font-bold md:text-5xl">
+              {formatMoney(data.net_worth)}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 text-sm">
+            {[
+              ['Сегодня', data.net_worth_delta_today],
+              ['За месяц', data.net_worth_delta_month],
+              ['За год', data.net_worth_delta_year],
+            ].map(([label, value]) => (
+              <div key={label as string} className="rounded-2xl bg-white/5 px-3 py-2">
+                <div className="text-[var(--text-soft)]">{label}</div>
+                <div className={(value as number) >= 0 ? 'money font-semibold' : 'expense font-semibold'}>
+                  {(value as number) >= 0 ? '+' : ''}
+                  {formatMoney(value as number)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </GlassCard>
+
+      {/* Proactive AI — the app speaks first */}
+      {data.proactive_alerts.length > 0 && (
+        <section>
+          <h2 className="display mb-3 flex items-center gap-2 text-2xl font-semibold">
+            <Bot className="h-5 w-5 text-[var(--color-neon)]" />
+            ИИ заметил
+          </h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {data.proactive_alerts.map((a, i) => {
+              const Icon = ALERT_ICONS[a.icon] || Sparkles
+              return (
+                <GlassCard key={a.title + i} delay={0.04 * i} className={`!p-4 border ${toneBorder[a.tone]}`}>
+                  <div className="flex items-start gap-3">
+                    <span className="rounded-xl bg-white/5 p-2">
+                      <Icon className="h-4 w-4 text-[var(--color-neon)]" />
+                    </span>
+                    <div>
+                      <div className="text-sm font-semibold">{a.title}</div>
+                      <p className="mt-1 text-sm text-[var(--text-soft)]">{a.body}</p>
+                    </div>
+                  </div>
+                </GlassCard>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <GlassCard delay={0.1}>
           <div className="mb-4 flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-[var(--text-soft)]">
@@ -89,6 +193,63 @@ export function DashboardPage() {
           <p className="mt-3 max-w-xs text-center text-sm text-[var(--text-soft)]">{data.health.summary}</p>
         </GlassCard>
       </div>
+
+      {/* Living home screen — a new narrative every day, not static cards */}
+      <GlassCard delay={0.18}>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="display text-xl font-semibold">Сегодня</h2>
+          {data.streak_days >= 1 && (
+            <span className="flex items-center gap-1 rounded-full bg-orange-400/10 px-3 py-1 text-xs text-orange-200">
+              <Flame className="h-3.5 w-3.5" /> {data.streak_days} дн. подряд
+            </span>
+          )}
+        </div>
+        <ul className="space-y-2.5">
+          {data.living_screen.map((line, i) => {
+            const Icon = LIVING_ICONS[line.icon] || Sparkles
+            const color =
+              line.tone === 'positive' ? 'text-emerald-300' : line.tone === 'warning' ? 'text-amber-300' : 'text-[var(--color-neon)]'
+            return (
+              <motion.li
+                key={i}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="flex items-start gap-3 text-sm"
+              >
+                <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${color}`} />
+                <span>{line.text}</span>
+              </motion.li>
+            )
+          })}
+        </ul>
+      </GlassCard>
+
+      {/* AI Coach — one small daily challenge */}
+      {data.daily_challenge && (
+        <GlassCard delay={0.2} className="flex flex-wrap items-center justify-between gap-4 !p-5">
+          <div className="flex items-start gap-3">
+            <span className="rounded-2xl bg-[var(--color-neon)]/15 p-2.5">
+              <Trophy className="h-5 w-5 text-[var(--color-neon)]" />
+            </span>
+            <div>
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--text-soft)]">Задача от AI Coach</div>
+              <div className="display text-lg font-semibold">{data.daily_challenge.title}</div>
+              <p className="mt-1 max-w-xl text-sm text-[var(--text-soft)]">{data.daily_challenge.body}</p>
+            </div>
+          </div>
+          {data.daily_challenge.id && (
+            <button
+              type="button"
+              onClick={() => completeChallenge.mutate(data.daily_challenge!.id!)}
+              disabled={data.daily_challenge.is_completed || completeChallenge.isPending}
+              className="shrink-0 rounded-full bg-[var(--color-neon)] px-4 py-2 text-sm font-medium text-[var(--bg-0)] disabled:opacity-50"
+            >
+              {data.daily_challenge.is_completed ? 'Выполнено' : 'Отметить выполненным'}
+            </button>
+          )}
+        </GlassCard>
+      )}
 
       <section>
         <h2 className="display mb-3 text-2xl font-semibold">Капитал</h2>

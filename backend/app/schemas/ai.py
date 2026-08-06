@@ -32,18 +32,31 @@ class PurchaseAnalyzeResponse(BaseModel):
     work_hours: float
     life_days: float
     months_of_savings: float
+    coffee_equivalent: int
     goal_impact: str
     alternatives: list[str]
     wait_advice: str
     recommendation: str
     score: int  # 0-100 buy readiness
     postpone_available: bool = True
+    challenge_questions: list[str] = Field(default_factory=list)
+    twin_opinion: str = ""
+    related_memory: str = ""
 
 
 class PostponePurchaseRequest(BaseModel):
     item: str
     price: float
     hours: int = 24
+
+
+class FraudAlert(BaseModel):
+    transaction_id: int
+    title: str
+    reason: str
+    severity: str
+    amount: float
+    merchant: str
 
 
 class OCRResult(BaseModel):

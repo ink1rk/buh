@@ -12,14 +12,14 @@ class Settings(BaseSettings):
     debug: bool = True
     api_prefix: str = "/api/v1"
 
-    # Paths
+    # Paths — on Ubuntu/Docker set DATA_DIR=/app/database
     data_dir: Path = Path(__file__).resolve().parents[3] / "database"
     database_url: str = ""
     chroma_path: Path | None = None
 
     # Security
     secret_key: str = "change-me-in-production-use-openssl-rand"
-    encryption_key: str = ""  # optional Fernet key for field-level encryption
+    encryption_key: str = ""
 
     # AI
     openai_api_key: str = ""
@@ -32,21 +32,27 @@ class Settings(BaseSettings):
     default_currency: str = "RUB"
     timezone: str = "Europe/Moscow"
 
-    # CORS
+    # CORS — in production nginx same-origin, * is fine behind proxy
     cors_origins: list[str] = [
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
+        "http://localhost",
+        "http://127.0.0.1",
     ]
 
     def model_post_init(self, __context: object) -> None:
+        self.data_dir = Path(self.data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         if not self.database_url:
             db_path = self.data_dir / "finance.db"
+            # 4 slashes for absolute path on Linux
             self.database_url = f"sqlite+aiosqlite:///{db_path}"
         if self.chroma_path is None:
             self.chroma_path = self.data_dir / "chroma"
-            self.chroma_path.mkdir(parents=True, exist_ok=True)
+        else:
+            self.chroma_path = Path(self.chroma_path)
+        self.chroma_path.mkdir(parents=True, exist_ok=True)
 
 
 @lru_cache

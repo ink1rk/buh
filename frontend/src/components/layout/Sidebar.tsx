@@ -14,12 +14,17 @@ import {
   Sparkles,
   Wallet,
   GitBranch,
+  Gem,
+  Activity,
+  UserRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store/uiStore'
 
 const links = [
   { to: '/', label: 'Штаб', icon: LayoutDashboard },
+  { to: '/networth', label: 'Капитал', icon: Gem },
+  { to: '/timeline', label: 'Лента', icon: Activity },
   { to: '/goals', label: 'Цели', icon: Target },
   { to: '/analytics', label: 'Аналитика', icon: ChartNoAxesCombined },
   { to: '/cashflow', label: 'Поток', icon: Wallet },
@@ -27,6 +32,7 @@ const links = [
   { to: '/debts', label: 'Долги', icon: Landmark },
   { to: '/subscriptions', label: 'Подписки', icon: Repeat },
   { to: '/investments', label: 'Инвестиции', icon: LineChart },
+  { to: '/profile', label: 'Профиль', icon: UserRound },
   { to: '/achievements', label: 'Достижения', icon: Trophy },
   { to: '/purchase', label: 'Покупка AI', icon: Sparkles },
   { to: '/scenarios', label: 'Сценарии', icon: GitBranch },

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
-import { Hourglass, Sparkles } from 'lucide-react'
+import { Bot, Hourglass, MessageCircleQuestion, Sparkles } from 'lucide-react'
 import { api } from '@/lib/api'
 import type { PurchaseAnalysis } from '@/types'
 import { GlassCard } from '@/components/ui/GlassCard'
@@ -68,12 +68,12 @@ export function PurchasePage() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
               ['% капитала', `${result.capital_pct}%`],
               ['Рабочих часов', `${result.work_hours} ч`],
               ['Дней жизни', `${result.life_days} дн`],
-              ['Месяцев накоплений', `${result.months_of_savings}`],
+              ['≈ чашек кофе', `${result.coffee_equivalent}`],
             ].map(([k, v]) => (
               <div key={k} className="rounded-2xl bg-white/5 p-3">
                 <div className="text-xs text-[var(--text-soft)]">{k}</div>
@@ -85,6 +85,29 @@ export function PurchasePage() {
           <p className="mt-4 text-sm">{result.recommendation}</p>
           <p className="mt-2 text-sm text-[var(--text-soft)]">{result.goal_impact}</p>
           <p className="mt-2 text-sm text-amber-200">{result.wait_advice}</p>
+
+          {/* AI argues back — a real CFO doesn't just say yes */}
+          <div className="mt-5 rounded-[20px] border border-violet-400/25 bg-violet-400/5 p-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-violet-200">
+              <MessageCircleQuestion className="h-4 w-4" />
+              ИИ спорит с вами
+            </div>
+            <ul className="space-y-1.5 text-sm text-[var(--text-soft)]">
+              {result.challenge_questions.map((q) => (
+                <li key={q}>• {q}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="mt-3 flex items-start gap-3 rounded-[20px] bg-white/5 p-4">
+            <span className="rounded-xl bg-[var(--color-neon)]/15 p-2">
+              <Bot className="h-4 w-4 text-[var(--color-neon)]" />
+            </span>
+            <div>
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--text-soft)]">Financial Twin</div>
+              <p className="mt-1 text-sm">{result.twin_opinion}</p>
+            </div>
+          </div>
 
           <ul className="mt-4 space-y-2">
             {result.alternatives.map((a) => (

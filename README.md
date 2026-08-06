@@ -4,13 +4,36 @@
 
 Вдохновение: Apple, Arc, Linear, Raycast, Revolut, Copilot Money.
 
+## Установка на Ubuntu Server (виртуалка)
+
+Самый простой способ:
+
+```bash
+sudo apt-get update && sudo apt-get install -y git
+git clone https://github.com/ink1rk/buh.git
+cd buh
+sudo bash deploy/install-ubuntu.sh
+```
+
+После установки откройте `http://IP_СЕРВЕРА` в браузере.
+
+Подробности: [deploy/UBUNTU.md](deploy/UBUNTU.md)
+
+```bash
+# другой порт
+APP_PORT=8080 sudo bash deploy/install-ubuntu.sh
+
+# с OpenAI
+OPENAI_API_KEY=sk-... sudo bash deploy/install-ubuntu.sh
+```
+
 ## Стек
 
 **Frontend:** React · TypeScript · TailwindCSS · Framer Motion · Plotly · TanStack Query · Zustand · React Router
 
 **Backend:** FastAPI · SQLAlchemy · Alembic · SQLite · Pydantic · OpenAI-compatible LLM · ChromaDB (опционально) · OCR/Vision
 
-## Быстрый старт
+## Локальная разработка
 
 ### Backend
 
@@ -19,7 +42,7 @@ cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # опционально: OPENAI_API_KEY
+cp .env.example .env
 PYTHONPATH=. uvicorn app.main:app --reload --port 8000
 ```
 
@@ -35,47 +58,40 @@ npm run dev
 
 UI: http://127.0.0.1:5173
 
-### Docker
+### Docker (dev)
 
 ```bash
 docker compose up --build
 ```
 
+### Docker (production, как на Ubuntu)
+
+```bash
+cp .env.production.example .env
+docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+```
+
 ## Возможности
 
-- Dashboard с приветствием, мыслью дня, Widget of the Day, Financial Health Score
-- Spotlight быстрый ввод (`⌘K`): `+50000 зарплата`, `-1200 пятерочка`, долги, инвестиции
-- AI-чат справа (локальный интеллект + OpenAI при наличии ключа)
-- Цели, долги, подписки, календарь, инвестиции-советник
-- Аналитика Plotly: timeseries, heatmap, treemap, radar, sankey, forecast
-- Сценарии «что если», AI Purchase Analyzer, OCR чеков
-- Gamification, AI Memory (SQLite + ChromaDB), экспорт CSV/Excel/JSON
+- Живой dashboard: Net Worth, proactive AI, AI Coach, streak
+- Financial Health Score + психолог паттернов
+- Spotlight быстрый ввод (`⌘K`)
+- AI Timeline, карта капитала, contribution graph
+- Habits / Risks / Happiness Index
+- AI спорит с покупками + Financial Twin
+- Forecast, scenarios, OCR, gamification
 - Dark / Light / Auto тема, glassmorphism UI
 
 ## Архитектура
 
 ```
-backend/app/
-  api/           # HTTP routes
-  ai/            # advisor + memory
-  ocr/           # receipt vision
-  investment/    # portfolio advice
-  services/      # domain engines
-  models/        # SQLAlchemy
-  schemas/       # Pydantic
-frontend/src/
-  components/    # UI, layout, AI, OCR
-  pages/         # screens
-  store/         # Zustand
-  lib/           # api + utils
-database/        # SQLite + chroma
+backend/app/   — API, AI, OCR, analytics, capital, coach…
+frontend/src/  — UI screens & design system
+deploy/        — Ubuntu Server installer + nginx
+database/      — SQLite (локально) / Docker volume (prod)
 ```
 
 ## Безопасность
 
-Данные хранятся локально в SQLite (`database/finance.db`).  
-Опционально: `ENCRYPTION_KEY` для полевого шифрования, бэкапы через экспорт.
-
-## Demo
-
-При первом запуске backend сидирует профиль **Кирилл** с реалистичными счетами, целями, транзакциями и insights.
+Данные локально в SQLite. На сервере — Docker volume `finance_data`.  
+Экспорт: CSV / Excel / JSON через UI или `/api/v1/export/*`.

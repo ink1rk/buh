@@ -1,8 +1,11 @@
 from app.models.account import Account
 from app.models.achievement import Achievement, UserAchievement
 from app.models.calendar import CalendarEvent
+from app.models.capital import Asset, NetWorthSnapshot
+from app.models.coach import DailyChallenge
 from app.models.debt import Debt
 from app.models.goal import Goal
+from app.models.happiness import PurchaseRating
 from app.models.insight import Insight
 from app.models.investment import InvestmentHolding
 from app.models.memory import AIMemory
@@ -16,8 +19,12 @@ __all__ = [
     "Achievement",
     "UserAchievement",
     "CalendarEvent",
+    "Asset",
+    "NetWorthSnapshot",
+    "DailyChallenge",
     "Debt",
     "Goal",
+    "PurchaseRating",
     "Insight",
     "InvestmentHolding",
     "AIMemory",

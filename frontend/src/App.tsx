@@ -13,6 +13,9 @@ import { AchievementsPage } from '@/pages/AchievementsPage'
 import { PurchasePage } from '@/pages/PurchasePage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ScenariosPage } from '@/pages/ScenariosPage'
+import { NetWorthPage } from '@/pages/NetWorthPage'
+import { TimelinePage } from '@/pages/TimelinePage'
+import { ProfilePage } from '@/pages/ProfilePage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,6 +33,9 @@ export default function App() {
         <Routes>
           <Route element={<AppShell />}>
             <Route index element={<DashboardPage />} />
+            <Route path="networth" element={<NetWorthPage />} />
+            <Route path="timeline" element={<TimelinePage />} />
+            <Route path="profile" element={<ProfilePage />} />
             <Route path="goals" element={<GoalsPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="cashflow" element={<CashflowPage />} />

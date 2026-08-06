@@ -12,8 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.account import Account
 from app.models.achievement import Achievement, UserAchievement
 from app.models.calendar import CalendarEvent
+from app.models.capital import Asset, NetWorthSnapshot
 from app.models.debt import Debt
 from app.models.goal import Goal
+from app.models.happiness import PurchaseRating
 from app.models.insight import Insight
 from app.models.investment import InvestmentHolding
 from app.models.memory import AIMemory
@@ -201,6 +203,83 @@ async def seed_if_empty(db: AsyncSession) -> bool:
             shown_on=today,
             meta_json=json.dumps({"growth_pct": 40}),
         )
+    )
+
+    assets = [
+        Asset(name="Автомобиль Kia Rio", asset_type="car", value=850000, icon="car", color="#60a5fa"),
+        Asset(name="Золотые слитки", asset_type="gold", value=95000, icon="gem", color="#fbbf24"),
+        Asset(name="MacBook + техника", asset_type="tech", value=210000, icon="laptop", color="#818cf8"),
+    ]
+    db.add_all(assets)
+
+    # Build 120 days of net worth history so charts and the GitHub-style
+    # contribution graph have something meaningful on first run. The walk is
+    # calibrated to land near today's real computed net worth (accounts +
+    # assets - debts, ~2 397 300 ₽) so the "today" delta looks sane once the
+    # live snapshot overwrites the last day.
+    target_net_worth = 2397300.0
+    start_net_worth = target_net_worth * 0.82
+    snap_rng = Random(7)
+    days_span = 120
+    for i in range(days_span, -1, -1):
+        d = today - timedelta(days=i)
+        progress = (days_span - i) / days_span
+        trend = start_net_worth + (target_net_worth - start_net_worth) * progress
+        noise = snap_rng.uniform(-6000, 6000)
+        day_income = 220000 if d.day in (9, 10, 11) else 0
+        day_expense = round(snap_rng.uniform(300, 4200), 2)
+        net_worth_value = round(trend + noise, 2)
+        if day_income - day_expense > 0:
+            rating = "good"
+        elif day_expense > 3200:
+            rating = "overspend"
+        else:
+            rating = "neutral"
+        db.add(
+            NetWorthSnapshot(
+                snapshot_date=d,
+                net_worth=net_worth_value,
+                total_liquid=round(net_worth_value * 0.4, 2),
+                total_assets=1155000,
+                total_investments=round(net_worth_value * 0.3, 2),
+                total_debts=3000,
+                day_income=day_income,
+                day_expense=day_expense,
+                day_rating=rating,
+            )
+        )
+
+    db.add_all(
+        [
+            PurchaseRating(
+                item="iPhone 15",
+                price=95000,
+                category="gadgets",
+                initial_rating=5,
+                followup_rating=5,
+                follow_up_on=today - timedelta(days=10),
+                followed_up=True,
+                notes="Пользуется каждый день",
+            ),
+            PurchaseRating(
+                item="Робот-пылесос",
+                price=32000,
+                category="gadgets",
+                initial_rating=4,
+                followup_rating=2,
+                follow_up_on=today - timedelta(days=5),
+                followed_up=True,
+                notes="Почти не использует",
+            ),
+            PurchaseRating(
+                item="Кроссовки",
+                price=12000,
+                category="clothing",
+                initial_rating=4,
+                follow_up_on=today + timedelta(days=25),
+                followed_up=False,
+            ),
+        ]
     )
 
     await db.flush()

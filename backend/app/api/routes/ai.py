@@ -14,10 +14,12 @@ from app.models.transaction import Transaction
 from app.schemas.ai import (
     ChatRequest,
     ChatResponse,
+    FraudAlert,
     PostponePurchaseRequest,
     PurchaseAnalyzeRequest,
 )
 from app.services.dashboard_service import compute_balances, get_or_create_profile
+from app.services.fraud_engine import detect_anomalies
 from app.services.purchase_analyzer import analyze_purchase
 
 router = APIRouter(prefix="/ai", tags=["ai"])
@@ -68,6 +70,8 @@ async def purchase_analyze(payload: PurchaseAnalyzeRequest, db: AsyncSession = D
     monthly_savings = max(balances.income_month - balances.expense_month, profile.monthly_income * 0.15)
     goals = list((await db.execute(select(Goal).where(Goal.is_active.is_(True)).order_by(Goal.priority))).scalars())
     remaining = (goals[0].target_amount - goals[0].current_amount) if goals else None
+    memories = await memory_store.recall(db, payload.item, limit=3)
+    related_memory = memories[0] if memories else ""
     return analyze_purchase(
         payload.item,
         payload.price,
@@ -75,7 +79,14 @@ async def purchase_analyze(payload: PurchaseAnalyzeRequest, db: AsyncSession = D
         hourly,
         monthly_savings,
         remaining,
+        related_memory=related_memory,
     )
+
+
+@router.get("/fraud/alerts", response_model=list[FraudAlert])
+async def fraud_alerts(db: AsyncSession = Depends(get_db)):
+    txs = list((await db.execute(select(Transaction))).scalars())
+    return detect_anomalies(txs)
 
 
 @router.post("/purchase/postpone")
