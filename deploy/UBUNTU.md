@@ -10,7 +10,7 @@
 # 1. Склонировать репозиторий
 sudo apt-get update && sudo apt-get install -y git
 git clone https://github.com/ink1rk/buh.git
-cd buh
+cd buh   # ветка main
 
 # 2. Установить одной командой
 sudo bash deploy/install-ubuntu.sh

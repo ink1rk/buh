@@ -11,7 +11,7 @@
 ```bash
 sudo apt-get update && sudo apt-get install -y git
 git clone https://github.com/ink1rk/buh.git
-cd buh
+cd buh   # main
 sudo bash deploy/install-ubuntu.sh
 ```
 

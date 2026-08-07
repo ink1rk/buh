@@ -11,8 +11,7 @@ APP_NAME="personal-finance-ai"
 REPO_URL="${REPO_URL:-https://github.com/ink1rk/buh.git}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/personal-finance-ai}"
 APP_PORT="${APP_PORT:-80}"
-# Prefer feature branch until merged; override with BRANCH=main
-BRANCH="${BRANCH:-cursor/personal-finance-ai-af1b}"
+BRANCH="${BRANCH:-main}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
