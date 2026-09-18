@@ -99,6 +99,18 @@ COMPANY = "Группа компаний «ЭКСОН»"
 CONFIDENTIAL = "Для внутреннего использования"
 
 
+def _elide(canv, text, font, size, avail):
+    """Обрезает строку по доступной ширине, добавляя многоточие."""
+    if avail <= 0 or not text:
+        return ""
+    if canv.stringWidth(text, font, size) <= avail:
+        return text
+    out = text
+    while out and canv.stringWidth(out + "…", font, size) > avail:
+        out = out[:-1]
+    return out.rstrip(" ,·—-") + "…"
+
+
 class PolicyDoc(BaseDocTemplate):
     def __init__(self, path: str, **kw):
         self.left = 20 * mm
@@ -168,9 +180,13 @@ class PolicyDoc(BaseDocTemplate):
         canv.setFillColor(GREY)
         left_margin = doc.leftMargin
         right_margin = pw - doc.rightMargin
-        canv.drawString(left_margin, ph - 12 * mm, f"{DOC_CODE} · {DOC_TITLE}")
-        section = (self._section_for_page(canv.getPageNumber()) or "")[:74]
-        canv.drawRightString(right_margin, ph - 12 * mm, section)
+        left_text = f"{DOC_CODE} · {DOC_TITLE}"
+        canv.drawString(left_margin, ph - 12 * mm, left_text)
+        avail = (right_margin - left_margin
+                 - canv.stringWidth(left_text, BODY, 7.2) - 8 * mm)
+        section = self._section_for_page(canv.getPageNumber()) or ""
+        canv.drawRightString(right_margin, ph - 12 * mm,
+                             _elide(canv, section, BODY, 7.2, avail))
         canv.setStrokeColor(LINE)
         canv.setLineWidth(0.6)
         canv.line(left_margin, ph - 13.6 * mm, right_margin, ph - 13.6 * mm)
