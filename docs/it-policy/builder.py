@@ -281,15 +281,52 @@ class Builder:
         self.appendix_idx = -1
         self.content_width = A4[0] - self.doc.left - self.doc.right
         self.wide_width = landscape(A4)[0] - 30 * mm
+        self.frame_height = A4[1] - self.doc.top - self.doc.bottom
+        self.wide_height = landscape(A4)[1] - 28 * mm
+        self.wide_mode = False
+        self._pending_heads = []
 
     # -- служебное ---------------------------------------------------------------------
     def add(self, flowable):
+        if self._pending_heads:
+            heads, self._pending_heads = self._pending_heads, []
+            width = self.wide_width if self.wide_mode else self.content_width
+            height = self.wide_height if self.wide_mode else self.frame_height
+            need = sum(self._flow_height(h, width, height) for h in heads)
+            need += self._flow_height(flowable, width, height)
+            # блок выше страницы всё равно придётся разрывать — требуем разумный минимум
+            self.story.append(CondPageBreak(min(need, height * 0.8)))
+            self.story.extend(heads)
         self.story.append(flowable)
+
+    def _flow_height(self, flowable, width, height):
+        """Высота блока с учётом отбивок сверху и снизу.
+
+        Контейнеры вроде KeepTogether из wrap() возвращают нулевую высоту,
+        поэтому их содержимое измеряется поэлементно.
+        """
+        content = getattr(flowable, "_content", None)
+        if content:
+            return sum(self._flow_height(f, width, height) for f in content)
+        try:
+            h = flowable.wrap(width, height)[1]
+        except Exception:
+            return 0
+        style = getattr(flowable, "style", None)
+        h += getattr(style, "spaceBefore", 0) + getattr(style, "spaceAfter", 0)
+        return h + getattr(flowable, "spaceBefore", 0) + getattr(flowable, "spaceAfter", 0)
+
+    def _flush_heads(self):
+        """Выводит отложенные заголовки как есть — перед разрывом страницы."""
+        if self._pending_heads:
+            self.story.extend(self._pending_heads)
+            self._pending_heads = []
 
     def spacer(self, h=6):
         self.add(Spacer(1, h))
 
     def page_break(self):
+        self._flush_heads()
         for fl in reversed(self.story):
             if isinstance(fl, NextPageTemplate):
                 continue
@@ -302,16 +339,18 @@ class Builder:
         self.add(CondPageBreak(height))
 
     def next_template(self, name):
-        self.add(NextPageTemplate(name))
+        self._flush_heads()
+        self.wide_mode = name == "wide"
+        self.story.append(NextPageTemplate(name))
 
     def wide_start(self):
         """Переход на альбомную страницу."""
-        self.add(NextPageTemplate("wide"))
-        self.add(PageBreak())
+        self.next_template("wide")
+        self.page_break()
 
     def wide_end(self):
-        self.add(NextPageTemplate("body"))
-        self.add(PageBreak())
+        self.next_template("body")
+        self.page_break()
 
     # -- заголовки ---------------------------------------------------------------------
     def h1(self, title, lead=None, new_page=True):
@@ -327,7 +366,7 @@ class Builder:
 
     def appendix(self, title, lead=None, wide=False):
         if wide:
-            self.add(NextPageTemplate("wide"))
+            self.next_template("wide")
         self.page_break()
         self.appendix_idx += 1
         letter = self.appendix_letters[self.appendix_idx]
@@ -343,12 +382,10 @@ class Builder:
         prefix = f"{self.chapter}.{self.sub}."
         if self.appendix_mode:
             prefix = ""
-        self.keep_next(100)
-        self.add(Paragraph(f"{prefix} {title}".strip(), self.s["h2"]))
+        self._pending_heads.append(Paragraph(f"{prefix} {title}".strip(), self.s["h2"]))
 
     def h3(self, title):
-        self.keep_next(66)
-        self.add(Paragraph(title, self.s["h3"]))
+        self._pending_heads.append(Paragraph(title, self.s["h3"]))
 
     # -- текст -------------------------------------------------------------------------
     def p(self, text, style="body"):
@@ -400,7 +437,7 @@ class Builder:
                 if fontsize != 7.6:
                     st = ParagraphStyle(f"{st.name}-{fontsize}", parent=st,
                                         fontSize=fontsize, leading=fontsize * 1.34)
-                out.append(Paragraph(text, st))
+                out.append(Paragraph(text.replace("\n", "<br/>"), st))
             data.append(out)
 
         cmds = [
@@ -605,6 +642,7 @@ class Builder:
         self.add(toc)
 
     def build(self):
+        self._flush_heads()
         self.doc.multiBuild(self.story)
         return self.doc.filename
 
