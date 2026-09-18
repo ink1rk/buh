@@ -267,38 +267,43 @@ def maturity_radar() -> str:
 # 3. Линии поддержки
 # --------------------------------------------------------------------------------------
 def support_lines() -> str:
-    fig, ax = _blank_axes(9.6, 4.4)
-
-    _box(ax, 1, 40, 17, 22,
-         "Пользователь\n\n> 600 сотрудников\n11 площадок\n+ удалённые",
-         fill=GREY_L, edge=GREY, fontsize=8, wrap=24)
-    _box(ax, 21, 40, 17, 22,
-         "Единая точка входа\n\nhelp@exon-group.ru\n→ Итилиум\n\n100 % обращений",
-         fill=BLUE_L, edge=BLUE, fontsize=8, wrap=24, weight="normal")
-    _box(ax, 41, 40, 17, 22,
-         "1-я линия\n\nРуководитель +\n2 специалиста\n\nПриём, классификация,\nмассовые операции",
-         fill=TEAL_L, edge=TEAL, fontsize=7.8, wrap=26)
-    _box(ax, 61, 40, 17, 22,
-         "2-я линия\n\n2 системных админ. +\nсетевой инженер\n\nСерверы, сеть, AD,\nпочта, СХД, backup",
-         fill=TEAL_L, edge=TEAL, fontsize=7.8, wrap=26)
-    _box(ax, 81, 40, 17, 22,
-         "3-я линия\n\nВендоры и подрядчики\n\nПривлекает 2-я линия\nпо согласованию с\nруководителем ОТИ",
-         fill=AMBER_L, edge=AMBER, fontsize=7.8, wrap=26)
-
-    for x in (18, 38, 58, 78):
-        _arrow(ax, (x, 51), (x + 3, 51), color=NAVY, lw=1.4, mut=11)
-
-    _box(ax, 21, 12, 57, 14,
-         "Смежные подразделения: отдел ИБ (инциденты и доступы), отдел 1С (прикладной уровень), "
-         "сервис-менеджер (склад и учёт техники) — задачи передаются заявкой в Итилиуме, а не «в обход»",
-         fill="#FBFCFD", edge=GREY, fontsize=7.6, wrap=74, ls="dashed")
-    _arrow(ax, (49.5, 40), (49.5, 26), color=GREY, lw=1.0, ls="dashed")
-    _arrow(ax, (69.5, 40), (69.5, 26), color=GREY, lw=1.0, ls="dashed")
-
-    ax.text(49.5, 70, "Маршрут обращения и линии поддержки", ha="center", fontsize=10,
+    fig, ax = _blank_axes(9.8, 4.8)
+    ax.text(50, 96, "Маршрут обращения и линии поддержки", ha="center", fontsize=10.5,
             color=NAVY, weight="bold")
-    ax.text(49.5, 65, "Обращение передаётся на следующую линию только с результатами диагностики предыдущей",
+    ax.text(50, 90, "Обращение передаётся на следующую линию только с результатами "
+                    "диагностики предыдущей",
             ha="center", fontsize=7.8, color=GREY, style="italic")
+
+    blocks = [
+        ("Пользователь", "более 600 сотрудников\n11 площадок\n+ удалённые сотрудники",
+         GREY, GREY_L),
+        ("Единая точка входа", "help@exon-group.ru\n→ Итилиум\n100 % обращений", BLUE, BLUE_L),
+        ("1-я линия", "руководитель\n+ 2 специалиста\nприём, классификация,\n"
+                      "типовые операции", TEAL, TEAL_L),
+        ("2-я линия", "2 системных админ.\n+ сетевой инженер\nсерверы, сеть, AD,\n"
+                      "почта, СХД, backup", TEAL, TEAL_L),
+        ("3-я линия", "вендоры и подрядчики\nпривлекает 2-я линия\nпо согласованию\n"
+                      "с руководителем ОТИ", AMBER, AMBER_L),
+    ]
+    w, gap = 18.4, 1.6
+    for i, (title, body, edge, fill) in enumerate(blocks):
+        x = 1 + i * (w + gap)
+        _box(ax, x, 44, w, 38, "", fill=fill, edge=edge, radius=1.4)
+        ax.text(x + w / 2, 76, title, ha="center", fontsize=8.6, color=edge, weight="bold")
+        ax.text(x + w / 2, 60, body, ha="center", va="center", fontsize=6.8, color=INK,
+                linespacing=1.5)
+        if i < len(blocks) - 1:
+            _arrow(ax, (x + w, 63), (x + w + gap, 63), color=NAVY, lw=1.4, mut=11)
+
+    _box(ax, 21, 10, 57, 22, "", fill="#FBFCFD", edge=GREY, ls="dashed", radius=1.4)
+    ax.text(49.5, 26, "Смежные подразделения", ha="center", fontsize=7.8, color=NAVY,
+            weight="bold")
+    ax.text(49.5, 17, "отдел ИБ (инциденты и доступы) · отдел 1С (прикладной уровень) ·\n"
+                      "сервис-менеджер (склад и учёт техники)\n"
+                      "Задачи передаются заявкой в Итилиуме, а не «в обход»",
+            ha="center", va="center", fontsize=6.9, color=INK, linespacing=1.45)
+    _arrow(ax, (40, 44), (40, 32), color=GREY, lw=1.0, ls="dashed")
+    _arrow(ax, (60, 44), (60, 32), color=GREY, lw=1.0, ls="dashed")
     return _save(fig, "support_lines")
 
 
@@ -413,8 +418,8 @@ def service_lifecycle() -> str:
         _box(ax, x, 34, w, 34, "", fill=fill, edge=edge, radius=1.4)
         ax.text(x + w / 2, 58, title, ha="center", va="center", fontsize=8.3,
                 color=edge, weight="bold", linespacing=1.25)
-        ax.text(x + w / 2, 43, desc, ha="center", va="center", fontsize=6.9,
-                color=INK, linespacing=1.3)
+        ax.text(x + w / 2, 43, desc, ha="center", va="center", fontsize=6.5,
+                color=INK, linespacing=1.35)
         if i < len(stages) - 1:
             _arrow(ax, (x + w, 51), (x + w + gap, 51), color=NAVY, lw=1.3, mut=10)
 
@@ -516,7 +521,8 @@ def priority_matrix() -> str:
         ax.spines[side].set_visible(False)
     ax.tick_params(length=0)
     legend = "P1 — критический · P2 — высокий · P3 — обычный · P4 — низкий"
-    ax.text(2, -0.62, legend, ha="center", fontsize=7.8, color=GREY)
+    ax.text(0.5, -0.24, legend, ha="center", va="top", fontsize=7.8, color=GREY,
+            transform=ax.transAxes)
     return _save(fig, "priority_matrix")
 
 
@@ -536,15 +542,15 @@ def escalation_ladder() -> str:
     w = 18.2
     for i, (lvl, who, when, fill, edge) in enumerate(steps):
         x = 1 + i * (w + 1.5)
-        y = 20 + i * 9
+        y = 18 + i * 8.5
         _box(ax, x, y, w, 44, "", fill=fill, edge=edge, radius=1.4)
         ax.text(x + w / 2, y + 37, lvl, ha="center", fontsize=7.4, color=edge, weight="bold")
-        ax.text(x + w / 2, y + 27, _fill(who, 22), ha="center", va="center",
-                fontsize=8.0, color=INK, weight="bold", linespacing=1.25)
-        ax.text(x + w / 2, y + 11, when, ha="center", va="center", fontsize=6.8,
-                color=GREY, linespacing=1.3)
+        ax.text(x + w / 2, y + 27, _fill(who, 17), ha="center", va="center",
+                fontsize=7.6, color=INK, weight="bold", linespacing=1.25)
+        ax.text(x + w / 2, y + 11, _fill(when, 24), ha="center", va="center", fontsize=6.5,
+                color=GREY, linespacing=1.35)
         if i < len(steps) - 1:
-            _arrow(ax, (x + w, y + 26), (x + w + 1.5, y + 30), color=NAVY, lw=1.2, mut=9)
+            _arrow(ax, (x + w, y + 26), (x + w + 1.5, y + 29), color=NAVY, lw=1.2, mut=9)
     ax.text(50, 6, "Эскалация — штатный рабочий инструмент, а не жалоба. Неэскалированная просроченная заявка "
                    "считается нарушением дисциплины исполнения",
             ha="center", fontsize=7.4, color=GREY, style="italic")
@@ -610,38 +616,41 @@ def change_flow() -> str:
 # 11. Окна обслуживания
 # --------------------------------------------------------------------------------------
 def maintenance_windows() -> str:
-    fig, ax = plt.subplots(figsize=(9.4, 3.6))
+    fig, ax = plt.subplots(figsize=(9.4, 3.8))
     days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
     ax.set_xlim(0, 24)
-    ax.set_ylim(-0.5, 6.5)
+    ax.set_ylim(-0.7, 6.7)
 
-    business = [(9, 18)] * 5
-    for i, (s, e) in enumerate(business):
-        ax.add_patch(Rectangle((s, 5 - i - 0.35), e - s, 0.7, facecolor=RED_L,
-                               edgecolor=RED, lw=0.8))
+    bh = 0.62
     for i in range(5):
-        ax.add_patch(Rectangle((20, 5 - i - 0.35), 4, 0.7, facecolor=BLUE_L,
-                               edgecolor=BLUE, lw=0.8))
-        ax.add_patch(Rectangle((0, 5 - i - 0.35), 6, 0.7, facecolor=BLUE_L,
-                               edgecolor=BLUE, lw=0.8))
-    ax.add_patch(Rectangle((0, 0.65), 24, 0.7, facecolor=TEAL_L, edgecolor=TEAL, lw=0.8))
-    ax.add_patch(Rectangle((0, -0.35), 24, 0.7, facecolor=TEAL_L, edgecolor=TEAL, lw=0.8))
+        y = 6 - i - bh / 2
+        ax.add_patch(Rectangle((0, y), 6, bh, facecolor=BLUE_L, edgecolor=BLUE, lw=0.8))
+        ax.add_patch(Rectangle((9, y), 9, bh, facecolor=RED_L, edgecolor=RED, lw=0.8))
+        ax.add_patch(Rectangle((20, y), 4, bh, facecolor=BLUE_L, edgecolor=BLUE, lw=0.8))
+    for i in (5, 6):
+        y = 6 - i - bh / 2
+        ax.add_patch(Rectangle((0, y), 24, bh, facecolor=TEAL_L, edgecolor=TEAL, lw=0.8))
 
-    ax.text(13.5, 4.65, "рабочее время — изменения запрещены (кроме аварийных)",
-            fontsize=7.2, color=RED, va="center")
-    ax.text(22, 3.65, "стандартное\nокно", fontsize=6.8, color=BLUE, va="center", ha="center",
-            linespacing=1.2)
-    ax.text(3, 3.65, "стандартное\nокно", fontsize=6.8, color=BLUE, va="center", ha="center",
-            linespacing=1.2)
-    ax.text(12, 1.0, "расширенное окно для существенных изменений (по согласованию)",
-            fontsize=7.2, color=TEAL, va="center", ha="center")
-
-    ax.set_yticks(range(6, -1, -1)[1:] if False else [5, 4, 3, 2, 1, 0])
-    ax.set_yticklabels(["Пн", "Вт", "Ср", "Чт", "Пт", "Сб / Вс"], fontsize=8)
+    ax.set_yticks(list(range(6, -1, -1)))
+    ax.set_yticklabels(days, fontsize=8)
     ax.set_xticks(range(0, 25, 2))
     ax.set_xticklabels([f"{h:02d}:00" for h in range(0, 25, 2)], fontsize=7)
     ax.set_title("Типовые окна проведения работ (утверждается приказом, уточняется по площадкам)",
                  fontsize=9.2, color=NAVY, pad=10)
+    ax.set_xlabel("Интервалы 06:00–09:00 и 18:00–20:00 — работы только по отдельному согласованию "
+                  "с владельцем сервиса",
+                  fontsize=7.2, color=GREY, labelpad=8)
+    handles = [
+        Rectangle((0, 0), 1, 1, facecolor=BLUE_L, edgecolor=BLUE, lw=0.8,
+                  label="стандартное окно: 20:00–06:00 по будням"),
+        Rectangle((0, 0), 1, 1, facecolor=TEAL_L, edgecolor=TEAL, lw=0.8,
+                  label="расширенное окно: выходные, для существенных изменений"),
+        Rectangle((0, 0), 1, 1, facecolor=RED_L, edgecolor=RED, lw=0.8,
+                  label="рабочее время: изменения запрещены, кроме аварийных"),
+    ]
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=3,
+              frameon=False, fontsize=7.0, handlelength=1.4, handleheight=0.9,
+              columnspacing=1.4, labelcolor=GREY)
     for side in ("top", "right", "left"):
         ax.spines[side].set_visible(False)
     ax.spines["bottom"].set_color("#C9D3DC")
@@ -667,7 +676,8 @@ def change_metrics() -> str:
     ax1.set_xticks(x)
     ax1.set_xticklabels(months, fontsize=8)
     ax1.set_title("Пример отчёта: изменения по месяцам", fontsize=9.2, color=NAVY)
-    ax1.legend(fontsize=7, frameon=False)
+    ax1.legend(fontsize=7, frameon=False, loc="upper left")
+    ax1.set_ylim(0, max(planned) * 1.28)
     ax1.set_ylabel("количество", fontsize=7.6)
     _grid_style(ax1)
 
@@ -795,7 +805,7 @@ def rpo_rto() -> str:
         ax.text(i - 0.2, a + 0.3, str(a), ha="center", fontsize=7.4, color=INK)
         ax.text(i + 0.2, b + 0.3, str(b), ha="center", fontsize=7.4, color=INK)
     ax.set_xticks(x)
-    ax.set_xticklabels(systems, fontsize=7.0)
+    ax.set_xticklabels(systems, fontsize=6.4)
     ax.set_ylabel("часы", fontsize=8)
     ax.set_ylim(0, max(rpo + rto) + 3)
     ax.set_title("Целевые RPO / RTO по критичным системам (проект значений для утверждения)",
@@ -809,41 +819,41 @@ def rpo_rto() -> str:
 # 17. Схема резервного копирования
 # --------------------------------------------------------------------------------------
 def backup_scheme() -> str:
-    fig, ax = _blank_axes(9.6, 4.2)
+    fig, ax = _blank_axes(9.6, 4.6)
     ax.text(50, 97, "Целевая схема резервного копирования (принцип 3-2-1)", ha="center",
             fontsize=10, color=NAVY, weight="bold")
 
-    _box(ax, 2, 58, 26, 30, "", fill=BLUE_L, edge=BLUE, radius=1.6)
+    _box(ax, 2, 48, 26, 40, "", fill=BLUE_L, edge=BLUE, radius=1.6)
     ax.text(15, 84, "Продуктивный контур", ha="center", fontsize=8.4, color=BLUE, weight="bold")
-    for i, s in enumerate(["БД 1С", "AD / DNS / DHCP", "Exchange", "Файловые хранилища",
-                           "Конфигурации сетевого оборудования"]):
-        ax.text(15, 78 - i * 4.4, _fill(s, 30), ha="center", va="center", fontsize=6.8, color=INK)
+    ax.text(15, 78.5, "Базы данных 1С\nAD / DNS / DHCP\nExchange\nФайловые хранилища\n"
+                      "Конфигурации сетевого\nоборудования",
+            ha="center", va="top", fontsize=6.6, color=INK, linespacing=1.4)
 
-    _box(ax, 36, 58, 26, 30, "", fill=TEAL_L, edge=TEAL, radius=1.6)
+    _box(ax, 36, 48, 26, 40, "", fill=TEAL_L, edge=TEAL, radius=1.6)
     ax.text(49, 84, "Копия 1 — основная", ha="center", fontsize=8.4, color=TEAL, weight="bold")
-    ax.text(49, 72, "Дисковое хранилище\nрезервных копий\nна основной площадке\n\n"
-                    "Ежедневно, хранение\nпо регламенту",
-            ha="center", va="center", fontsize=6.9, color=INK, linespacing=1.35)
+    ax.text(49, 78.5, "Дисковое хранилище\nрезервных копий\nна основной площадке\n\n"
+                      "Ежедневно, хранение\nпо регламенту",
+            ha="center", va="top", fontsize=6.6, color=INK, linespacing=1.4)
 
-    _box(ax, 70, 58, 28, 30, "", fill=GREEN_L, edge=GREEN, radius=1.6)
+    _box(ax, 70, 48, 28, 40, "", fill=GREEN_L, edge=GREEN, radius=1.6)
     ax.text(84, 84, "Копия 2 — вне площадки", ha="center", fontsize=8.4, color=GREEN, weight="bold")
-    ax.text(84, 72, "Отдельная площадка\nили изолированное\nхранилище (immutable),\n\n"
-                    "недоступное из\nпродуктивного домена",
-            ha="center", va="center", fontsize=6.9, color=INK, linespacing=1.35)
+    ax.text(84, 78.5, "Отдельная площадка\nили изолированное\nхранилище (immutable),\n\n"
+                      "недоступное из\nпродуктивного домена",
+            ha="center", va="top", fontsize=6.6, color=INK, linespacing=1.4)
 
-    _arrow(ax, (28, 73), (36, 73), color=NAVY, lw=1.4, mut=11)
-    _arrow(ax, (62, 73), (70, 73), color=NAVY, lw=1.4, mut=11)
+    _arrow(ax, (28, 68), (36, 68), color=NAVY, lw=1.4, mut=11)
+    _arrow(ax, (62, 68), (70, 68), color=NAVY, lw=1.4, mut=11)
 
-    _box(ax, 2, 32, 46, 20,
+    _box(ax, 2, 27, 46, 17,
          "Контроль: ежедневная проверка результатов заданий,\nежедневный отчёт по неуспешным задачам,\n"
          "ежемесячный сводный отчёт руководителю ОТИ",
          fill=WHITE, edge=BLUE, fontsize=7.4, wrap=54, radius=1.4)
-    _box(ax, 52, 32, 46, 20,
+    _box(ax, 52, 27, 46, 17,
          "Тестовое восстановление: по классу A — ежеквартально,\nB — раз в полгода. Результат оформляется актом "
          "(приложение H)",
          fill=WHITE, edge=GREEN, fontsize=7.4, wrap=54, radius=1.4)
 
-    _box(ax, 2, 8, 96, 18,
+    _box(ax, 2, 6, 96, 16,
          "Ответственность: 2-я линия ОТИ — настройка, выполнение, контроль заданий и восстановление; "
          "отдел ИБ — требования к защите и изоляции копий, контроль соблюдения, участие в тестовом восстановлении. "
          "Резервные копии критичных систем не хранятся только в одном контуре и только на одном носителе.",
@@ -923,19 +933,20 @@ def incident_flow() -> str:
     ax.text(50, 97, "Управление инцидентами, включая крупные (major)", ha="center",
             fontsize=10, color=NAVY, weight="bold")
     steps = [
-        ("Обнаружение", "мониторинг,\nпользователь, дежурный", BLUE_L, BLUE),
-        ("Регистрация", "заявка в Итилиуме,\nsev-уровень", BLUE_L, BLUE),
+        ("Обнаружение", "мониторинг,\nпользователь,\nдежурный", BLUE_L, BLUE),
+        ("Регистрация", "заявка\nв Итилиуме,\nsev-уровень", BLUE_L, BLUE),
         ("Локализация", "поиск причины,\nоценка влияния", TEAL_L, TEAL),
         ("Восстановление", "приоритет —\nвернуть сервис", AMBER_L, AMBER),
         ("Закрытие", "подтверждение\nвосстановления", GREEN_L, GREEN),
-        ("Разбор", "постмортем,\nкорректирующие меры", GREEN_L, GREEN),
+        ("Разбор", "постмортем,\nкорректирующие\nмеры", GREEN_L, GREEN),
     ]
-    w, gap = 14.4, 2.6
+    w, gap = 14.4, 2.2
     for i, (t, d, fill, edge) in enumerate(steps):
-        x = 1.5 + i * (w + gap)
+        x = 0.4 + i * (w + gap)
         _box(ax, x, 52, w, 26, "", fill=fill, edge=edge, radius=1.3)
-        ax.text(x + w / 2, 70, t, ha="center", fontsize=8.2, color=edge, weight="bold")
-        ax.text(x + w / 2, 60, d, ha="center", va="center", fontsize=6.8, color=INK, linespacing=1.3)
+        ax.text(x + w / 2, 71, t, ha="center", fontsize=8.0, color=edge, weight="bold")
+        ax.text(x + w / 2, 62, d, ha="center", va="center", fontsize=6.5, color=INK,
+                linespacing=1.4)
         if i < len(steps) - 1:
             _arrow(ax, (x + w, 65), (x + w + gap, 65), color=NAVY, lw=1.3, mut=10)
 
@@ -980,9 +991,9 @@ def duty_schedule() -> str:
     ax.set_yticklabels(people, fontsize=7.6)
     ax.invert_yaxis()
     ax.set_xticks(range(9))
-    ax.set_xticklabels(["1", "2", "3", "4", "5", "6", "7", "8", ""], fontsize=7.6)
+    ax.set_xticklabels(["1", "2", "3", "4", "5", "6", "7", "8", "9"], fontsize=7.6)
     ax.set_xlabel("дни праздничного периода", fontsize=8)
-    ax.set_xlim(0, 8)
+    ax.set_xlim(-0.1, 8.1)
     ax.set_title("Пример графика дежурств на праздничный период (форма — приложение J)",
                  fontsize=9.2, color=NAVY)
     handles = [
@@ -1013,13 +1024,13 @@ def contractor_access() -> str:
         ("5. Сопровождение", "Работы — под контролем куратора\nот ОТИ", GREEN_L, GREEN),
         ("6. Отзыв и приёмка", "Доступ отзывается сразу после работ,\nрезультат принимает владелец процесса", GREEN_L, GREEN),
     ]
-    w, gap = 15.0, 1.9
+    w, gap = 15.0, 1.5
     for i, (t, d, fill, edge) in enumerate(steps):
-        x = 1 + i * (w + gap)
+        x = 0.5 + i * (w + gap)
         _box(ax, x, 36, w, 40, "", fill=fill, edge=edge, radius=1.3)
-        ax.text(x + w / 2, 68, t, ha="center", fontsize=7.8, color=edge, weight="bold")
-        ax.text(x + w / 2, 51, textwrap.fill(d.replace("\n", " "), 24), ha="center", va="center",
-                fontsize=6.7, color=INK, linespacing=1.3)
+        ax.text(x + w / 2, 68, t, ha="center", fontsize=7.4, color=edge, weight="bold")
+        ax.text(x + w / 2, 51, textwrap.fill(d.replace("\n", " "), 20), ha="center", va="center",
+                fontsize=6.4, color=INK, linespacing=1.4)
         if i < len(steps) - 1:
             _arrow(ax, (x + w, 56), (x + w + gap, 56), color=NAVY, lw=1.2, mut=9)
     _box(ax, 1, 8, 98, 20,
@@ -1055,12 +1066,12 @@ def procurement_flow() -> str:
         ax.text(x + w / 2, 48, d, ha="center", va="center", fontsize=6.8, color=INK, linespacing=1.32)
         if i < len(steps) - 1:
             _arrow(ax, (x + w, 55), (x + w + gap, 55), color=NAVY, lw=1.2, mut=9)
-    _box(ax, 1, 6, 48, 22,
+    _box(ax, 1, 4, 48, 26,
          "Технические требования к ИТ-оборудованию и ПО определяет только ОТИ. Самостоятельная закупка ИТ-решений "
          "подразделениями не допускается: такое оборудование не принимается на поддержку, не подключается к сети "
          "и не включается в учёт до приведения в соответствие стандарту.",
          fill="#FFF6F6", edge=RED, fontsize=7.2, wrap=64, radius=1.3)
-    _box(ax, 51, 6, 48, 22,
+    _box(ax, 51, 4, 48, 26,
          "Бюджет отдела технической инфраструктуры формирует руководитель ОТИ и согласует с ИТ-директором. "
          "В рамках утверждённого бюджета и стандарта руководитель ОТИ принимает решения самостоятельно; "
          "внеплановые расходы согласуются с ИТ-директором отдельно.",
@@ -1073,15 +1084,15 @@ def procurement_flow() -> str:
 # --------------------------------------------------------------------------------------
 def budget_structure() -> str:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9.4, 3.5), gridspec_kw={"width_ratios": [1.2, 1]})
-    cats = ["Рабочие места\nи периферия", "Серверы и СХД", "Сеть и каналы\nсвязи",
-            "Лицензии и\nподписки", "Сервис и\nподрядчики", "Резерв\n(5–10 %)"]
+    cats = ["Рабочие\nместа", "Серверы\nи СХД", "Сеть\nи каналы",
+            "Лицензии,\nподписки", "Сервис,\nподрядчики", "Резерв\n(5–10 %)"]
     capex = [30, 28, 18, 4, 2, 6]
     opex = [6, 4, 22, 26, 20, 4]
     x = np.arange(len(cats))
     ax1.bar(x, capex, width=0.58, label="CAPEX", color=NAVY)
     ax1.bar(x, opex, width=0.58, bottom=capex, label="OPEX", color=TEAL)
     ax1.set_xticks(x)
-    ax1.set_xticklabels(cats, fontsize=6.8)
+    ax1.set_xticklabels(cats, fontsize=6.4)
     ax1.set_ylabel("условные единицы", fontsize=7.6)
     ax1.set_title("Структура бюджета ОТИ: пример формы планирования", fontsize=9.0, color=NAVY)
     ax1.legend(fontsize=7.4, frameon=False)
@@ -1105,16 +1116,18 @@ def budget_structure() -> str:
 # 25. Структура хранения документации
 # --------------------------------------------------------------------------------------
 def documentation_tree() -> str:
-    fig, ax = _blank_axes(9.4, 4.6)
-    ax.text(50, 97, "Структура хранения технической документации", ha="center", fontsize=10,
+    fig, ax = _blank_axes(9.8, 5.2)
+    ax.text(50, 97, "Структура хранения технической документации", ha="center", fontsize=10.5,
             color=NAVY, weight="bold")
-    _box(ax, 3, 82, 40, 10, "\\\\<файловый сервер>\\IT-Docs$ (сетевой диск, доступ по ролям)",
-         fill=NAVY, edge=NAVY, fg=WHITE, fontsize=7.6, wrap=54, radius=1.2)
+    _box(ax, 2, 87, 46, 7.5,
+         "\\\\<файловый сервер>\\IT-Docs$   ·   сетевой диск, доступ по ролям",
+         fill=NAVY, edge=NAVY, fg=WHITE, fontsize=7.2, wrap=70, radius=1.0)
+
     folders = [
         ("01_Политики_и_регламенты", "действующие редакции, архив версий"),
         ("02_Каталог_сервисов", "паспорта сервисов, реестр, классы критичности"),
-        ("03_Сеть", "схемы L1/L2/L3, IP-план, реестр VLAN, конфигурации"),
-        ("04_Серверы_и_виртуализация", "реестр VM, схемы кластеров, паспорта серверов"),
+        ("03_Сеть", "схемы L1/L2/L3, IP-план, реестр VLAN"),
+        ("04_Серверы_и_виртуализация", "реестр ВМ, схемы кластеров"),
         ("05_Резервное_копирование", "регламенты, расписания, акты восстановления"),
         ("06_Мониторинг", "перечень объектов, пороги, состав оповещений"),
         ("07_Доступы", "матрица доступа, реестр административных УЗ"),
@@ -1122,23 +1135,29 @@ def documentation_tree() -> str:
         ("09_Инструкции_и_runbook", "пошаговые инструкции по типовым операциям"),
         ("10_Подрядчики_и_договоры", "реестр, контакты, условия поддержки"),
         ("11_Инциденты_и_постмортемы", "разборы, корректирующие меры"),
-        ("12_Отчётность", "периодические отчёты, аудиты соблюдения политики"),
+        ("12_Отчётность", "периодические отчёты, аудиты соблюдения"),
     ]
     for i, (name, desc) in enumerate(folders):
-        y = 74 - i * 5.9
-        ax.plot([6, 9], [y + 2.4, y + 2.4], color=BLUE, lw=1.0)
-        ax.plot([6, 6], [82, y + 2.4], color=BLUE, lw=1.0)
-        _box(ax, 9, y, 33, 4.9, name, fill=BLUE_L, edge=BLUE, fontsize=6.9, wrap=44, radius=0.8, lw=0.8)
-        ax.text(43.5, y + 2.4, desc, ha="left", va="center", fontsize=6.9, color=GREY)
+        y = 76 - i * 6.4
+        ax.plot([5, 8], [y + 2.3, y + 2.3], color=BLUE, lw=0.9)
+        ax.plot([5, 5], [87, y + 2.3], color=BLUE, lw=0.9)
+        _box(ax, 8, y, 27, 4.7, name, fill=BLUE_L, edge=BLUE, fontsize=6.7, wrap=44,
+             radius=0.8, lw=0.8)
+        ax.text(36.5, y + 2.3, desc, ha="left", va="center", fontsize=6.4, color=GREY)
 
-    _box(ax, 72, 56, 27, 26,
-         "Бумажная копия\n\nКлючевые документы (политика, схемы, DRP, матрица доступа, "
-         "пароли аварийного доступа) — в отделе ИБ, в актуальной редакции",
-         fill=RED_L, edge=RED, fontsize=7.0, wrap=32, radius=1.3)
-    _box(ax, 72, 26, 27, 26,
-         "Правило\n\nНе задокументировано —\nне сделано.\n\nСрок документирования —\nодновременно с работами, "
-         "не позднее 3 рабочих дней",
-         fill=AMBER_L, edge=AMBER, fontsize=7.0, wrap=32, radius=1.3)
+    _box(ax, 70, 47, 28, 35, "", fill=RED_L, edge=RED, radius=1.4)
+    ax.text(84, 79, "Бумажная копия", ha="center", va="top", fontsize=8.2, color=RED,
+            weight="bold")
+    ax.text(84, 73.5, "Ключевые документы:\nПолитика, схемы критичной\nинфраструктуры, DRP,\n"
+                      "матрица доступа, пароли\nаварийного доступа —\nв отделе ИБ, "
+                      "в актуальной редакции",
+            ha="center", va="top", fontsize=6.4, color=INK, linespacing=1.4)
+
+    _box(ax, 70, 8, 28, 35, "", fill=AMBER_L, edge=AMBER, radius=1.4)
+    ax.text(84, 40, "Правило", ha="center", va="top", fontsize=8.2, color=AMBER, weight="bold")
+    ax.text(84, 34.5, "Не задокументировано —\nне сделано.\n\nСрок документирования —\n"
+                      "одновременно с работами,\nно не позднее\n3 рабочих дней",
+            ha="center", va="top", fontsize=6.4, color=INK, linespacing=1.4)
     return _save(fig, "documentation_tree")
 
 
@@ -1161,8 +1180,8 @@ def reporting_cadence() -> str:
         x = 1 + i * (w + gap)
         _box(ax, x, 22, w, 56, "", fill=fill, edge=edge, radius=1.4)
         ax.text(x + w / 2, 70, t, ha="center", fontsize=8.6, color=edge, weight="bold")
-        ax.text(x + w / 2, 46, textwrap.fill(d.replace("\n", " "), 28), ha="center", va="center",
-                fontsize=6.9, color=INK, linespacing=1.4)
+        ax.text(x + w / 2, 46, textwrap.fill(d.replace("\n", " "), 24), ha="center", va="center",
+                fontsize=6.6, color=INK, linespacing=1.45)
         if i < len(items) - 1:
             _arrow(ax, (x + w, 50), (x + w + gap, 50), color=NAVY, lw=1.1, mut=8)
     ax.text(50, 12, "Отчётность за действия: каждое действие в инфраструктуре имеет след — заявку, RFC, запись "
@@ -1305,6 +1324,7 @@ def substitution_matrix() -> str:
     ax.set_yticks(np.arange(-0.5, len(areas), 1), minor=True)
     ax.grid(which="minor", color=WHITE, lw=2)
     ax.tick_params(which="both", length=0)
+    ax.tick_params(axis="y", pad=7)
     ax.set_title("Матрица замещения по областям: О — основной ответственный, Р — резерв\n"
                  "(заполняется руководителем ОТИ, обязательна для каждой области)",
                  fontsize=8.8, color=NAVY, pad=10)
@@ -1317,14 +1337,14 @@ def substitution_matrix() -> str:
 def workload_split() -> str:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9.4, 3.3), gridspec_kw={"width_ratios": [1, 1.1]})
     labels = ["Поддержка\nи обращения", "Плановая\nэксплуатация", "Проекты\nи развитие",
-              "Документирование\nи отчётность", "Резерв на\nинциденты"]
+              "Документы\nи отчёты", "Резерв на\nинциденты"]
     current = [52, 24, 10, 4, 10]
     target = [38, 24, 22, 8, 8]
     x = np.arange(len(labels))
     ax1.bar(x - 0.2, current, width=0.38, color=GREY, label="Сейчас (оценка)")
     ax1.bar(x + 0.2, target, width=0.38, color=BLUE, label="Цель после внедрения политики")
     ax1.set_xticks(x)
-    ax1.set_xticklabels(labels, fontsize=6.8)
+    ax1.set_xticklabels(labels, fontsize=6.4)
     ax1.set_ylabel("% рабочего времени отдела", fontsize=7.6)
     ax1.set_title("Структура трудозатрат ОТИ", fontsize=9.0, color=NAVY)
     ax1.legend(fontsize=7.0, frameon=False)
@@ -1417,8 +1437,8 @@ def authority_map() -> str:
 def security_split() -> str:
     fig, ax = plt.subplots(figsize=(9.2, 4.2))
     domains = ["Сегментация\nсети", "Межсетевые\nэкраны", "Патч-\nменеджмент",
-               "Антивирус /\nEDR", "MFA и пароли", "Журналирование\nи SIEM",
-               "Управление\nдоступом", "Инциденты ИБ", "Резервные\nкопии",
+               "Антивирус /\nEDR", "MFA\nи пароли", "Журналы\nи SIEM",
+               "Управление\nдоступом", "Инциденты\nИБ", "Резервные\nкопии",
                "Оценка\nуязвимостей"]
     oti = [70, 65, 85, 60, 55, 50, 60, 30, 80, 40]
     ib = [30, 35, 15, 40, 45, 50, 40, 70, 20, 60]
@@ -1430,7 +1450,7 @@ def security_split() -> str:
         ax.text(i, v + ib[i] / 2, f"{ib[i]}", ha="center", va="center", fontsize=7.2,
                 color=WHITE, weight="bold")
     ax.set_xticks(x)
-    ax.set_xticklabels(domains, fontsize=6.9)
+    ax.set_xticklabels(domains, fontsize=6.5)
     ax.set_ylim(0, 118)
     ax.set_ylabel("условная доля участия, %", fontsize=7.8)
     ax.set_title("Разделение ответственности между ОТИ и отделом ИБ по доменам защиты\n"
@@ -1456,23 +1476,23 @@ def access_cycle() -> str:
         ("Пересмотр", "ревизия прав:\nкласс A — раз в квартал", AMBER, AMBER_L),
         ("Отзыв", "перемещение, увольнение,\nокончание работ", RED, RED_L),
     ]
-    w, gap = 15.0, 1.9
+    w, gap = 15.0, 1.5
     for i, (t, d, edge, fill) in enumerate(steps):
-        x = 1 + i * (w + gap)
-        _box(ax, x, 40, w, 38, "", fill=fill, edge=edge, radius=1.3)
-        ax.text(x + w / 2, 70, t, ha="center", fontsize=8.2, color=edge, weight="bold")
-        ax.text(x + w / 2, 54, textwrap.fill(d.replace("\n", " "), 24), ha="center", va="center",
-                fontsize=6.8, color=INK, linespacing=1.3)
+        x = 0.5 + i * (w + gap)
+        _box(ax, x, 42, w, 36, "", fill=fill, edge=edge, radius=1.3)
+        ax.text(x + w / 2, 70, t, ha="center", fontsize=7.8, color=edge, weight="bold")
+        ax.text(x + w / 2, 56, textwrap.fill(d.replace("\n", " "), 19), ha="center", va="center",
+                fontsize=6.3, color=INK, linespacing=1.4)
         if i < len(steps) - 1:
-            _arrow(ax, (x + w, 59), (x + w + gap, 59), color=NAVY, lw=1.2, mut=9)
+            _arrow(ax, (x + w, 60), (x + w + gap, 60), color=NAVY, lw=1.2, mut=9)
 
-    _box(ax, 1, 8, 48, 26,
+    _box(ax, 1, 6, 48, 30,
          "Типы учётных записей: пользовательская · административная (персональная, только для "
          "администрирования) · сервисная (для служб, без интерактивного входа) · техническая (оборудование) · "
          "аварийная break-glass. Работа под административной учётной записью в повседневных задачах "
          "(почта, интернет, документы) запрещена.",
-         fill="#F7FAFC", edge=BLUE, fontsize=7.2, wrap=64, radius=1.3)
-    _box(ax, 51, 8, 48, 26,
+         fill="#F7FAFC", edge=BLUE, fontsize=7.0, wrap=64, radius=1.3)
+    _box(ax, 51, 6, 48, 30,
          "Аварийная (break-glass) учётная запись: единственный общий административный аккаунт, "
          "пароль хранится в отделе ИБ в запечатанном виде. Использование — только при невозможности "
          "штатного доступа, с уведомлением ИБ и руководителя ОТИ и обязательной сменой пароля "

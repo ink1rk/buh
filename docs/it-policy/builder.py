@@ -142,7 +142,8 @@ class PolicyDoc(BaseDocTemplate):
                          pagesize=landscape(A4)),
         ])
         self.current_section = ""
-        self._toc_entries = []
+        self._section_by_page = {}
+        self._prev_section_by_page = {}
 
     # -- оформление страниц ------------------------------------------------------------
     def _cover_decor(self, canv, doc):
@@ -168,7 +169,7 @@ class PolicyDoc(BaseDocTemplate):
         left_margin = doc.leftMargin
         right_margin = pw - doc.rightMargin
         canv.drawString(left_margin, ph - 12 * mm, f"{DOC_CODE} · {DOC_TITLE}")
-        section = (self.current_section or "")[:74]
+        section = (self._section_for_page(canv.getPageNumber()) or "")[:74]
         canv.drawRightString(right_margin, ph - 12 * mm, section)
         canv.setStrokeColor(LINE)
         canv.setLineWidth(0.6)
@@ -189,12 +190,23 @@ class PolicyDoc(BaseDocTemplate):
         self._header_footer(canv, doc, landscape(A4))
 
     # -- оглавление --------------------------------------------------------------------
+    def handle_documentBegin(self):
+        self._prev_section_by_page = self._section_by_page
+        self._section_by_page = {}
+        super().handle_documentBegin()
+
+    def _section_for_page(self, page_no):
+        mapping = self._prev_section_by_page or self._section_by_page
+        candidates = [p for p in mapping if p <= page_no]
+        return mapping[max(candidates)] if candidates else ""
+
     def afterFlowable(self, flowable):
         if isinstance(flowable, Paragraph):
             style = flowable.style.name
             text = flowable.getPlainText()
             if style == "H1":
                 self.current_section = text
+                self._section_by_page.setdefault(self.page, text)
                 self.notify("TOCEntry", (0, text, self.page))
             elif style == "H2":
                 self.notify("TOCEntry", (1, text, self.page))
@@ -263,6 +275,7 @@ class Builder:
         self.sub = 0
         self.table_no = 0
         self.figure_no = 0
+        self.form_no = 0
         self.appendix_mode = False
         self.appendix_letters = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
         self.appendix_idx = -1
@@ -277,6 +290,12 @@ class Builder:
         self.add(Spacer(1, h))
 
     def page_break(self):
+        for fl in reversed(self.story):
+            if isinstance(fl, NextPageTemplate):
+                continue
+            if isinstance(fl, PageBreak):
+                return
+            break
         self.add(PageBreak())
 
     def keep_next(self, height=60):
@@ -306,12 +325,14 @@ class Builder:
         if lead:
             self.add(Paragraph(lead, self.s["h1sub"]))
 
-    def appendix(self, title, lead=None):
+    def appendix(self, title, lead=None, wide=False):
+        if wide:
+            self.add(NextPageTemplate("wide"))
         self.page_break()
         self.appendix_idx += 1
         letter = self.appendix_letters[self.appendix_idx]
         self.sub = 0
-        self.add(_ChapterRule(self.content_width, color=TEAL))
+        self.add(_ChapterRule(self.wide_width if wide else self.content_width, color=TEAL))
         self.add(Paragraph(f"Приложение {letter}. {title}", self.s["h1"]))
         if lead:
             self.add(Paragraph(lead, self.s["h1sub"]))
@@ -322,11 +343,11 @@ class Builder:
         prefix = f"{self.chapter}.{self.sub}."
         if self.appendix_mode:
             prefix = ""
-        self.keep_next(56)
+        self.keep_next(100)
         self.add(Paragraph(f"{prefix} {title}".strip(), self.s["h2"]))
 
     def h3(self, title):
-        self.keep_next(44)
+        self.keep_next(66)
         self.add(Paragraph(title, self.s["h3"]))
 
     # -- текст -------------------------------------------------------------------------
@@ -408,13 +429,13 @@ class Builder:
 
         t = Table(data, colWidths=col_widths, repeatRows=1 if header else 0, hAlign="LEFT")
         t.setStyle(TableStyle(cmds))
-        self.table_no += 1
         block = [t]
         if caption:
+            self.table_no += 1
             block.append(Paragraph(f"Таблица {self.table_no}. {caption}", self.s["caption"]))
         else:
             block.append(Spacer(1, 8))
-        if keep and len(rows) <= 12:
+        if keep and len(rows) <= 8:
             self.add(KeepTogether(block))
         else:
             for b in block:
@@ -467,19 +488,17 @@ class Builder:
         self.add(KeepTogether([t, Spacer(1, 8)]))
 
     # -- формы для заполнения ----------------------------------------------------------
-    def form(self, fields, widths=(34, 66), rowheight=15, caption=None, wide=False):
+    def form(self, fields, widths=(34, 66), rowheight=17, caption=None, wide=False):
         """Форма «ярлык — пустое поле». fields: [(label, hint|None), ...]"""
         total = self.wide_width if wide else self.content_width
         w = [total * widths[0] / 100.0, total * widths[1] / 100.0]
         data = []
-        heights = []
         for label, hint in fields:
             left = [Paragraph(label, self.s["form_label"])]
             if hint:
                 left.append(Paragraph(hint, self.s["form_hint"]))
-            data.append([left, ""])
-            heights.append(rowheight if not hint else rowheight + 6)
-        t = Table(data, colWidths=w, rowHeights=heights, hAlign="LEFT")
+            data.append([left, Spacer(1, rowheight - 5)])
+        t = Table(data, colWidths=w, hAlign="LEFT")
         t.setStyle(TableStyle([
             ("GRID", (0, 0), (-1, -1), 0.45, LINE),
             ("BACKGROUND", (0, 0), (0, -1), GREY_L),
@@ -489,10 +508,11 @@ class Builder:
             ("TOPPADDING", (0, 0), (-1, -1), 2.5),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
         ]))
-        self.table_no += 1
         block = [t]
+        if caption:
+            self.form_no += 1
         block.append(Paragraph(
-            f"Форма {self.table_no}. {caption}" if caption else "", self.s["caption"]))
+            f"Форма {self.form_no}. {caption}" if caption else "", self.s["caption"]))
         self.add(KeepTogether(block) if len(fields) <= 14 else block[0])
         if len(fields) > 14:
             self.add(block[1])
@@ -522,10 +542,10 @@ class Builder:
             ("TOPPADDING", (0, 0), (-1, -1), 3),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]))
-        self.table_no += 1
         block = [t]
         if caption:
-            block.append(Paragraph(f"Форма {self.table_no}. {caption}", self.s["caption"]))
+            self.form_no += 1
+            block.append(Paragraph(f"Форма {self.form_no}. {caption}", self.s["caption"]))
         else:
             block.append(Spacer(1, 8))
         if n_rows <= 10:
@@ -554,10 +574,10 @@ class Builder:
             ("TOPPADDING", (0, 0), (-1, -1), 3.6),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 3.8),
         ] + [("BACKGROUND", (0, r), (-1, r), GREY_L) for r in range(2, len(data), 2)]))
-        self.table_no += 1
         block = [t]
         if caption:
-            block.append(Paragraph(f"Форма {self.table_no}. {caption}", self.s["caption"]))
+            self.form_no += 1
+            block.append(Paragraph(f"Форма {self.form_no}. {caption}", self.s["caption"]))
         else:
             block.append(Spacer(1, 8))
         if len(items) <= 10:
