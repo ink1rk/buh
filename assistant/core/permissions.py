@@ -37,6 +37,8 @@ ACTION_RISK = {
     "edit.telegram.message": RiskLevel.MEDIUM,
     "delete.telegram.message": RiskLevel.MEDIUM,
     "send.email": RiskLevel.MEDIUM,
+    # Встречу владелец правит сам и видит сразу, а чужого она не касается.
+    "create.calendar.event": RiskLevel.LOW,
     "create.calendar.event": RiskLevel.MEDIUM,
     "call.taxi": RiskLevel.HIGH,
     "purchase.ozon": RiskLevel.HIGH,

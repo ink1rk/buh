@@ -125,6 +125,50 @@ def api_mail_check():
     return get_core().mail.poll_once()
 
 
+@router.get("/calendar")
+def api_calendar(days: int = 7, limit: int = 50):
+    """Что впереди: ближайшие встречи из кэша, без похода в сеть."""
+    from .config import config
+
+    core = get_core()
+    events = core.calendar.upcoming(limit=limit, within_hours=days * 24)
+    return {"enabled": config.calendar.enabled,
+            "accounts": [{"name": a.name, "address": a.address}
+                         for a in config.calendar.accounts],
+            "horizon_days": config.calendar.horizon_days,
+            "events": [e.as_dict() for e in events],
+            "today": [e.as_dict() for e in core.calendar.today()],
+            "last": core.calendar.last}
+
+
+@router.post("/calendar/refresh")
+def api_calendar_refresh():
+    from .config import config
+
+    if not config.calendar.enabled:
+        return {"error": "календарь не настроен"}
+    return get_core().calendar.refresh()
+
+
+@router.post("/calendar/event")
+def api_calendar_event(body: dict = Body(...)):
+    """Записать встречу. Занятое время не запрещаем, но говорим о нём."""
+    core = get_core()
+    action = core.actions.request(
+        "create.calendar.event",
+        {"summary": body.get("summary"), "start": body.get("start"),
+         "end": body.get("end"), "minutes": body.get("minutes"),
+         "location": body.get("location", ""),
+         "description": body.get("description", ""),
+         "calendar": body.get("calendar")},
+        source="api", requested_by="user:owner",
+        context={"user_confirmed": True})
+    if action.status == "SUCCESS":
+        core.calendar.refresh()
+    return {"status": action.status, "action_id": action.id,
+            "result": action.result, "error": action.error}
+
+
 @router.post("/mail/sender")
 def api_mail_sender(body: dict = Body(...)):
     """Отбор роботов не безошибочен — владелец правит его сам, и правка живёт."""

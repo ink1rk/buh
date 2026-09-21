@@ -176,6 +176,9 @@ class E:
     EMAIL_RECEIVED = "email.message.received"
     EMAIL_SENT = "email.message.sent"
     EMAIL_SKIPPED = "email.message.skipped"
+    # calendar
+    CALENDAR_REMINDER = "calendar.reminder"
+    CALENDAR_EVENT_CREATED = "calendar.event.created"
     # core pipeline
     INTENT_DETECTED = "intent.detected"
     RESPONSE_GENERATED = "response.generated"

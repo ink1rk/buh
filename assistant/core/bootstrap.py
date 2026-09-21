@@ -12,6 +12,7 @@ import time
 from agents.communication import CommunicationAgent
 from agents.personal import PersonalAgent
 from domain.enrichment import Enricher
+from providers.calendar import CalendarActionProvider
 from providers.email import EmailActionProvider
 from providers.telegram import TelegramActionProvider
 
@@ -21,10 +22,12 @@ from .agents import AgentRegistry
 from .config import config
 from .context import ContextResolver
 from .events import EventBus
-from .integrations import (DatabaseIntegration, EmailIntegration,
-                           FinanceIntegration, GatewayLLMIntegration,
-                           IntegrationRegistry, LocalLLMIntegration,
-                           TelegramBotIntegration, TelegramUserIntegration)
+from .calendarwatch import CalendarWatcher
+from .integrations import (CalendarIntegration, DatabaseIntegration,
+                           EmailIntegration, FinanceIntegration,
+                           GatewayLLMIntegration, IntegrationRegistry,
+                           LocalLLMIntegration, TelegramBotIntegration,
+                           TelegramUserIntegration)
 from .llm import GatewayProvider, LLMRegistry, LocalProvider
 from .mailwatch import MailWatcher
 from .notifications import NotificationEngine
@@ -45,7 +48,8 @@ class Core:
         self.notifications = NotificationEngine(self.bus)
         self.actions = ActionEngine(self.bus, self.permissions,
                                     providers=[TelegramActionProvider(),
-                                               EmailActionProvider()],
+                                               EmailActionProvider(),
+                                               CalendarActionProvider()],
                                     notifier=self.notifications)
         self.resolver = ContextResolver(permissions=self.permissions)
         self.enricher = Enricher(self.llm, self.bus)
@@ -62,13 +66,16 @@ class Core:
         self.integrations = IntegrationRegistry(self.bus, [
             DatabaseIntegration(), LocalLLMIntegration(local),
             GatewayLLMIntegration(gateway), TelegramBotIntegration(),
-            TelegramUserIntegration(), EmailIntegration(), FinanceIntegration()])
+            TelegramUserIntegration(), EmailIntegration(),
+            CalendarIntegration(), FinanceIntegration()])
 
         self.mail = MailWatcher(self)
+        self.calendar = CalendarWatcher(self)
         self._stop = threading.Event()
         if start_workers:
             self._start_workers()
             self.mail.start()
+            self.calendar.start()
 
     def attach_skills(self, skills):
         """Legacy skills arrive after import; register the generalist then."""
@@ -110,6 +117,7 @@ class Core:
     def stop(self):
         self._stop.set()
         self.mail.stop()
+        self.calendar.stop()
         self.bus.stop()
 
 

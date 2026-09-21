@@ -190,12 +190,19 @@ class CalendarConfig:
     # Сколько ближайших встреч подмешивать в контекст ответа.
     context_events: int = _int("CALENDAR_CONTEXT_EVENTS", 5)
     refresh_seconds: int = _int("CALENDAR_REFRESH_SECONDS", 600)
-    # За сколько предупреждать о встрече.
+    # За сколько минут предупреждать о встрече.
     remind_minutes: tuple = field(
-        default_factory=lambda: tuple(sorted(
-            {int(x) for x in _list("CALENDAR_REMIND_MINUTES", ("60", "10")) if
-             x.isdigit()}, reverse=True)))
+        default_factory=lambda: _list("CALENDAR_REMIND_MINUTES", ("60", "10")))
     timeout: int = _int("CALDAV_TIMEOUT", 30)
+
+    def __post_init__(self):
+        # Пороги приходят строками и из окружения, и из кода. Сравнивать их с
+        # минутами до встречи можно только числами, и только по убыванию —
+        # иначе сработает дальний порог, а про близкий уже не напомним.
+        clean = sorted({int(x) for x in self.remind_minutes
+                        if str(x).strip().lstrip("-").isdigit() and int(x) > 0},
+                       reverse=True)
+        object.__setattr__(self, "remind_minutes", tuple(clean))
 
     @property
     def enabled(self):

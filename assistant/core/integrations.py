@@ -150,6 +150,35 @@ class TelegramUserIntegration(HttpIntegration):
             return Status.ERROR, str(e)
 
 
+class CalendarIntegration(Integration):
+    """Календари владельца: доступны ли и какие именно."""
+
+    name = "calendar"
+    type = "caldav"
+    required = False
+
+    def configured(self):
+        return config.calendar.enabled
+
+    def health_check(self):
+        if not self.configured():
+            return Status.NOT_CONFIGURED, "календари не настроены"
+        from providers.calendar import clients
+
+        alive, broken = [], []
+        for client in clients():
+            try:
+                alive.extend(f"{client.account.name}: {name}"
+                             for name in client.check())
+            except Exception as e:
+                broken.append(f"{client.account.name}: {e}")
+        if broken and not alive:
+            return Status.ERROR, "; ".join(broken)
+        if broken:
+            return Status.DEGRADED, "; ".join(broken)
+        return Status.CONNECTED, ", ".join(alive)
+
+
 class EmailIntegration(Integration):
     """Все настроенные ящики разом: один сломанный — уже повод сказать."""
 
