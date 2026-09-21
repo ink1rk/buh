@@ -54,6 +54,10 @@ def get_whisper():
     return _whisper
 
 
+class UnreadableAudio(Exception):
+    """Запись не удалось декодировать — не повод ронять запрос."""
+
+
 def stt_bytes(data: bytes) -> str:
     with tempfile.NamedTemporaryFile(suffix=".audio", delete=False) as f:
         f.write(data)
@@ -61,6 +65,8 @@ def stt_bytes(data: bytes) -> str:
     try:
         segments, _ = get_whisper().transcribe(path, language="ru", vad_filter=True)
         return "".join(s.text for s in segments).strip()
+    except Exception as e:
+        raise UnreadableAudio(str(e)) from e
     finally:
         os.unlink(path)
 
@@ -895,7 +901,10 @@ def api_briefing(raw: bool = False, fmt: str = "html", evening: bool = False):
 @app.post("/stt")
 async def stt(file: UploadFile = File(...)):
     data = await file.read()
-    return {"text": stt_bytes(data)}
+    try:
+        return {"text": stt_bytes(data)}
+    except UnreadableAudio as e:
+        return {"text": "", "error": str(e)}
 
 
 @app.get("/trading")
@@ -918,7 +927,14 @@ def api_channel(q: str = None, limit: int = 8, hours: int = 48):
 async def api_voice(file: UploadFile = File(...), session: str = "default", brain: str = "auto"):
     """Speech in, text out: the assistant never answers with audio."""
     data = await file.read()
-    text_in = stt_bytes(data)
+    try:
+        text_in = stt_bytes(data)
+    except UnreadableAudio:
+        return {"text_in": "", "reply": "Не разобрала запись — пришли ещё раз.",
+                "error": "unreadable_audio"}
+    if not text_in:
+        return {"text_in": "", "reply": "Тишина — я ничего не услышала.",
+                "error": "empty_audio"}
     res = chat(ChatIn(text=text_in, session=session, brain=brain, channel="voice"))
     return {"text_in": text_in, "reply": res["reply"], "brain": res.get("brain"),
             "intent": res.get("intent")}
