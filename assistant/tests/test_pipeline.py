@@ -222,6 +222,13 @@ def test_contact_question_returns_a_profile(core):
     assert "Сергей Иванов" in result["reply"]
 
 
+def test_capitalised_question_does_not_read_as_a_name(core):
+    """«Кто такой Сергей Тестов?» — имя, а не вопросительное слово «Кто»."""
+    contacts_mod.upsert_from_telegram("994", "Сергей Тестов")
+    result = pipeline.handle_message(core, "Кто такой Сергей Тестов?", session="tg:1")
+    assert "Сергей Тестов" in result["reply"]
+
+
 def test_ambiguous_contact_question_asks_back(core):
     contacts_mod.upsert_from_telegram("996", "Сергей Иванов")
     contacts_mod.upsert_from_telegram("995", "Сергей Петров")

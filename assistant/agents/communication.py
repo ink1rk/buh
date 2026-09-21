@@ -168,12 +168,22 @@ class CommunicationAgent(Agent):
                            data={"contact": contact.as_dict()})
 
 
+# Вопросительные слова тоже пишутся с заглавной и всплывали как «имя».
+QUESTION_WORDS = {"кто", "что", "кому", "кого", "чей", "какой", "какая", "какие",
+                  "когда", "куда", "где", "почему", "зачем", "сколько", "джарвис"}
+
+# Префикс ищем без учёта регистра, само имя — только с заглавной буквы.
+NAME_AFTER = re.compile(
+    r"(?i:\b(?:кто так(?:ой|ая)|про|об?|с|напиши|ответь|для))\s+"
+    r"([А-ЯЁA-Z][\w-]+(?:\s+[А-ЯЁA-Z][\w-]+)?)")
+
+
 def _extract_name(text):
-    match = re.search(r"(?:кто так(?:ой|ая)|про|о|об|с|напиши|ответь|для)\s+([А-ЯЁA-Z][\w-]+)",
-                      text or "")
+    match = NAME_AFTER.search(text or "")
     if match:
         return match.group(1)
-    words = re.findall(r"\b[А-ЯЁ][\w-]{2,}\b", text or "")
+    words = [word for word in re.findall(r"\b[А-ЯЁA-Z][\w-]{2,}\b", text or "")
+             if word.lower() not in QUESTION_WORDS]
     return words[0] if words else None
 
 
