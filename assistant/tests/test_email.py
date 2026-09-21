@@ -27,13 +27,14 @@ def settings(**overrides):
 
 
 def letter(subject="Договор", body="Добрый день! Пришлите договор.",
-           sender="Анна Ковалёва <anna@example.com>", headers=None, html=False):
+           sender="Анна Ковалёва <anna@example.com>", headers=None, html=False,
+           message_id=None, ts=None):
     message = EmailMessage()
     message["From"] = sender
     message["To"] = ACCOUNT.user
     message["Subject"] = subject
-    message["Date"] = email.utils.formatdate(localtime=True)
-    message["Message-ID"] = email.utils.make_msgid()
+    message["Date"] = email.utils.formatdate(ts, localtime=True)
+    message["Message-ID"] = message_id or email.utils.make_msgid()
     for key, value in (headers or {}).items():
         message[key] = value
     message.set_content(body)
@@ -44,26 +45,34 @@ def letter(subject="Договор", body="Добрый день! Пришлит
 
 
 class FakeIMAP:
-    """Столько от IMAP, сколько использует Mailbox."""
+    """Столько от IMAP, сколько использует Mailbox — включая UID."""
 
-    def __init__(self, messages):
-        self.messages = messages
+    def __init__(self, messages, uidvalidity=7, first_uid=100):
+        self.uidvalidity = uidvalidity
+        self.by_uid = {first_uid + i: m for i, m in enumerate(messages)}
+        self.next_uid = first_uid + len(messages)
         self.logged_out = False
         self.readonly = None
+
+    def deliver(self, message):
+        """Пришло новое письмо — UID больше всех прежних."""
+        self.by_uid[self.next_uid] = message
+        self.next_uid += 1
 
     def select(self, folder, readonly=False):
         self.readonly = readonly
         return ("OK", [b"1"])
 
-    def search(self, charset, criterion):
-        assert criterion == "UNSEEN"
-        return ("OK", [b" ".join(str(i + 1).encode() for i in
-                                 range(len(self.messages)))])
+    def status(self, folder, what):
+        return ("OK", [f'"{folder}" (UIDVALIDITY {self.uidvalidity})'.encode()])
 
-    def fetch(self, uid, spec):
+    def uid(self, command, *args):
+        if command == "search":
+            return ("OK", [b" ".join(str(u).encode()
+                                     for u in sorted(self.by_uid))])
+        uid, spec = args
         assert "PEEK" in spec           # прочитанным письмо делает человек
-        index = int(uid) - 1
-        return ("OK", [(b"header", self.messages[index].as_bytes())])
+        return ("OK", [(b"header", self.by_uid[int(uid)].as_bytes())])
 
     def logout(self):
         self.logged_out = True
@@ -71,13 +80,20 @@ class FakeIMAP:
 
 @pytest.fixture
 def mailbox(monkeypatch):
-    def build(messages):
-        box = Mailbox(ACCOUNT, settings())
-        fake = FakeIMAP(messages)
+    def build(messages, cfg=None, **options):
+        box = Mailbox(ACCOUNT, cfg or settings())
+        fake = FakeIMAP(messages, **options)
         monkeypatch.setattr(box, "_connect", lambda: fake)
         box.fake = fake
         return box
     return build
+
+
+def catch_up(watcher):
+    """Первый опрос отмечает прошлое ящика; дальше идут только новые письма."""
+    started = watcher.poll_once()
+    assert started["new"] == 0 and started["started"]
+    return started
 
 
 # --- разбор письма --------------------------------------------------------
@@ -158,6 +174,60 @@ def test_the_owner_can_silence_an_address():
     quiet = settings(ignore_senders=("hh.ru",))
     assert not looks_personal("jobs@hh.ru", ["From"], quiet)
     assert looks_personal("jobs@hh.ru", ["From"], settings())
+
+
+@pytest.mark.parametrize("address", [
+    "echeck@1-ofd.ru", "receipt@shop.ru", "invoice@billing.com",
+    "order-3312@market.ru", "noreply-service@bank.ru", "alerts@monitor.io"])
+def test_transactional_robots_are_caught_by_name(address):
+    """Чеки и счёта не носят заголовков рассылки — узнать их можно только так."""
+    assert not looks_personal(address, ["From"], settings(), lists={})
+
+
+@pytest.mark.parametrize("address", [
+    "newsome@gmail.com", "billy@example.com", "checkanov@yandex.ru",
+    "orlov@mail.ru", "infanteev@corp.ru"])
+def test_people_whose_names_start_like_robots_get_through(address):
+    """Сверяется имя ящика целиком, иначе «news» ловил бы Newsome."""
+    assert looks_personal(address, ["From"], settings(), lists={})
+
+
+def test_the_owner_overrules_the_heuristic(isolated_db):
+    """Отбор не безошибочен, поэтому слово владельца сильнее любого правила."""
+    from providers.email import mark_sender, sender_lists
+
+    assert not looks_personal("echeck@1-ofd.ru", ["From"], settings())
+
+    mark_sender("echeck@1-ofd.ru", robot=False)
+    assert looks_personal("echeck@1-ofd.ru", ["From"], settings())
+    assert sender_lists()["allowed"] == ["echeck@1-ofd.ru"]
+
+    mark_sender("echeck@1-ofd.ru", robot=True)
+    assert not looks_personal("echeck@1-ofd.ru", ["From"], settings())
+    assert sender_lists() == {"muted": ["echeck@1-ofd.ru"], "allowed": []}
+
+
+def test_a_person_can_be_muted_too(isolated_db):
+    from providers.email import mark_sender
+
+    mark_sender("anna@example.com", robot=True)
+    assert not looks_personal("anna@example.com", ["From"], settings())
+
+
+def test_skipped_senders_are_not_lost_silently(core, mailbox):
+    """Если сюда попал человек, владелец должен это увидеть."""
+    box = mailbox([letter(subject="Прошлое")])
+    watcher = MailWatcher(core, settings(), mailboxes=[box])
+    catch_up(watcher)
+
+    box.fake.deliver(letter(sender="no-reply@ozon.ru", subject="Скидки"))
+    box.fake.deliver(letter(sender="no-reply@ozon.ru", subject="Ещё скидки"))
+    box.fake.deliver(letter(sender="echeck@1-ofd.ru", subject="Чек"))
+    report = watcher.poll_once()
+
+    assert report["skipped"] == 3
+    assert report["skipped_senders"] == [{"address": "no-reply@ozon.ru", "count": 2},
+                                         {"address": "echeck@1-ofd.ru", "count": 1}]
 
 
 # --- отправка -------------------------------------------------------------
@@ -391,14 +461,56 @@ def test_the_same_person_in_mail_and_telegram_is_one_contact(core):
 
 
 # --- опрос ящиков ---------------------------------------------------------
-def test_the_watcher_ignores_mailing_lists(core, mailbox):
-    box = mailbox([
-        letter(),
-        letter(sender="no-reply@ozon.ru", subject="Скидки"),
-        letter(sender="digest@news.ru", subject="Дайджест",
-               headers={"List-Unsubscribe": "<https://news.ru/off>"}),
-    ])
+def test_the_first_poll_only_marks_the_past(core, mailbox):
+    """Ящик со старой перепиской не должен превратиться в сотню подсказок."""
+    box = mailbox([letter(), letter(subject="Ещё")])
+    report = MailWatcher(core, settings(), mailboxes=[box]).poll_once()
+
+    assert report["new"] == 0 and report["started"] == [ACCOUNT.address]
+    assert pipeline.list_suggestions() == []
+
+
+def test_a_letter_arriving_later_is_picked_up(core, mailbox):
+    box = mailbox([letter(subject="Прошлое")])
     watcher = MailWatcher(core, settings(), mailboxes=[box])
+    catch_up(watcher)
+
+    box.fake.deliver(letter())
+    report = watcher.poll_once()
+
+    assert report["new"] == 1
+    assert [s["subject"] for s in pipeline.list_suggestions()] == ["Договор"]
+
+
+def test_a_person_is_not_lost_behind_a_wave_of_newsletters(core, mailbox):
+    """Опрос по непрочитанным брал только последние: письмо человека тонуло."""
+    roomy = settings(max_per_poll=50)
+    box = mailbox([letter(subject="Прошлое")], cfg=roomy)
+    watcher = MailWatcher(core, roomy, mailboxes=[box])
+    catch_up(watcher)
+
+    box.fake.deliver(letter())
+    for i in range(20):
+        box.fake.deliver(letter(sender="no-reply@ozon.ru", subject=f"Скидки {i}",
+                                message_id=f"<ad{i}@ozon.ru>"))
+
+    report = watcher.poll_once()
+
+    assert report["new"] == 1 and report["skipped"] == 20
+    assert [s["subject"] for s in pipeline.list_suggestions()] == ["Договор"]
+
+
+def test_the_watcher_ignores_mailing_lists(core, mailbox):
+    box = mailbox([letter(subject="Прошлое")])
+    watcher = MailWatcher(core, settings(), mailboxes=[box])
+    catch_up(watcher)
+
+    box.fake.deliver(letter())
+    box.fake.deliver(letter(sender="no-reply@ozon.ru", subject="Скидки",
+                            message_id="<ad@ozon.ru>"))
+    box.fake.deliver(letter(sender="digest@news.ru", subject="Дайджест",
+                            message_id="<d@news.ru>",
+                            headers={"List-Unsubscribe": "<https://news.ru/off>"}))
 
     report = watcher.poll_once()
 
@@ -406,15 +518,29 @@ def test_the_watcher_ignores_mailing_lists(core, mailbox):
     assert [c.display_name for c in contacts_mod.all_contacts()] == ["Анна Ковалёва"]
 
 
+def test_a_recreated_mailbox_starts_over_instead_of_flooding(core, mailbox):
+    """Смена UIDVALIDITY обнуляет нумерацию: старые UID больше ничего не значат."""
+    box = mailbox([letter(subject="Прошлое")])
+    watcher = MailWatcher(core, settings(), mailboxes=[box])
+    catch_up(watcher)
+
+    box.fake.uidvalidity = 99
+    report = watcher.poll_once()
+
+    assert report["new"] == 0 and report["started"] == [ACCOUNT.address]
+
+
 def test_a_broken_mailbox_does_not_stop_the_others(core, mailbox):
     class Dead:
         account = ACCOUNT
 
-        def fetch_unseen(self):
+        def fetch_new(self, state):
             raise OSError("соединение закрыто")
 
-    alive = mailbox([letter()])
+    alive = mailbox([letter(subject="Прошлое")])
     watcher = MailWatcher(core, settings(), mailboxes=[Dead(), alive])
+    catch_up(watcher)
+    alive.fake.deliver(letter())
 
     report = watcher.poll_once()
 
@@ -423,24 +549,27 @@ def test_a_broken_mailbox_does_not_stop_the_others(core, mailbox):
 
 
 def test_polling_twice_adds_nothing_new(core, mailbox):
-    box = mailbox([letter()])
+    box = mailbox([letter(subject="Прошлое")])
     watcher = MailWatcher(core, settings(), mailboxes=[box])
+    catch_up(watcher)
+    box.fake.deliver(letter())
 
-    watcher.poll_once()
+    first = watcher.poll_once()
     second = watcher.poll_once()
 
-    assert second["new"] == 0 and second["duplicates"] == 1
+    assert first["new"] == 1
+    assert second["new"] == 0 and second["skipped"] == 0
 
 
-def test_old_unread_letters_are_left_alone(core, mailbox):
-    """Иначе ящик с сотней старых непрочитанных завалил бы входящие."""
-    box = mailbox([letter(), letter(subject="Прошлогоднее")])
-    box.fetch_unseen = lambda: [
-        incoming(),
-        incoming(subject="Прошлогоднее", message_id="<old@example.com>",
-                 ts=time.time() - 40 * 86400),
-    ]
+def test_old_letters_are_left_alone(core, mailbox):
+    """Письмо, пролежавшее месяц, не стоит поднимать как срочное."""
+    box = mailbox([letter(subject="Прошлое")])
     watcher = MailWatcher(core, settings(), mailboxes=[box])
+    catch_up(watcher)
+
+    box.fake.deliver(letter())
+    box.fake.deliver(letter(subject="Прошлогоднее", message_id="<old@example.com>",
+                            ts=time.time() - 40 * 86400))
 
     report = watcher.poll_once()
 

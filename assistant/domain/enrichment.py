@@ -46,15 +46,27 @@ class Enricher:
                          daemon=True).start()
 
     def _safe_process(self, conversation, contact, message, from_owner):
-        for step in (self._extract_memories, self._extract_commitments,
-                     self._maybe_summarise, self._update_style):
-            try:
-                step(conversation, contact, message, from_owner)
-            except Exception as e:
-                print(f"enrichment step {step.__name__} failed: {type(e).__name__}: {e}")
+        # Договорённости идут первыми: память не должна повторять то, что уже
+        # учтено как обязательство. «Прислать счёт до пятницы» — не знание о
+        # человеке, а долг со сроком; в памяти он к субботе превратится в ложь.
+        obligations = self._step(self._extract_commitments, conversation, contact,
+                                 message, from_owner) or ()
+        self._step(self._extract_memories, conversation, contact, message,
+                   from_owner, obligations=obligations)
+        self._step(self._maybe_summarise, conversation, contact, message, from_owner)
+        self._step(self._update_style, conversation, contact, message, from_owner)
+
+    def _step(self, step, *args, **kwargs):
+        """Сбой обогащения не должен влиять ни на ответ, ни на соседние шаги."""
+        try:
+            return step(*args, **kwargs)
+        except Exception as e:
+            print(f"enrichment step {step.__name__} failed: {type(e).__name__}: {e}")
+            return None
 
     # -- steps -----------------------------------------------------------
-    def _extract_memories(self, conversation, contact, message, from_owner):
+    def _extract_memories(self, conversation, contact, message, from_owner,
+                          obligations=()):
         text = (message.transcription or message.text or "").strip()
         if len(text) < 12 or TRIVIAL_RE.match(text):
             return
@@ -88,6 +100,13 @@ class Enricher:
 
         source = "USER_MESSAGE" if from_owner else "TELEGRAM"
         for candidate in extraction.memories:
+            if restates(candidate.content, obligations):
+                # Запрет в промте маленькая модель исполняет не всегда, поэтому
+                # дубль отсекается по факту, а не по обещанию модели.
+                self.bus.emit(E.MEMORY_CANDIDATE,
+                              {"content": candidate.content,
+                               "outcome": "skipped_obligation"}, source="enrichment")
+                continue
             entity_id = None
             if candidate.about == "contact" and contact:
                 entity_id = contact.id
@@ -146,6 +165,7 @@ class Enricher:
         extraction = self.llm.structured_output(
             [{"role": "system", "content": system}, {"role": "user", "content": user}],
             CommitmentExtraction, private=True)
+        found = []
         for candidate in extraction.commitments:
             if candidate.confidence < 0.5:
                 continue
@@ -156,9 +176,11 @@ class Enricher:
                 due_at=parse_due(candidate.due_hint),
                 conversation_id=conversation.id, source_message_id=message.id,
                 confidence=candidate.confidence, bus=self.bus)
+            found.append(candidate.description)
         if not from_owner and contact:
             # Their reply closes what we were waiting for.
             commitments_mod.close_on_reply(conversation.id, contact.id, bus=self.bus)
+        return found
 
     def _maybe_summarise(self, conversation, contact, message, from_owner):
         fresh = conversation.summary_updated_at or 0
@@ -193,6 +215,31 @@ class Enricher:
         history = conversations_mod.as_history(conversation.id, 30)
         if len(history) >= 4:
             contacts_mod.update_style(contact, history)
+
+
+RESTATES_AT = 0.6
+
+
+def _stems(text):
+    """Грубые основы слов: «созвонитесь» и «созвониться» должны совпасть."""
+    return {word[:5] for word in memory_mod.tokens(text)}
+
+
+def restates(content, obligations):
+    """Память лишь пересказывает уже учтённое обязательство.
+
+    Считается доля слов обязательства, попавшая в память: пересказ покрывает
+    почти весь долг, а посторонний факт — почти ничего. Взаимная схожесть тут
+    не годится, потому что память обычно длиннее и подробнее.
+    """
+    words = _stems(content)
+    if not words:
+        return False
+    for text in obligations:
+        target = _stems(text)
+        if target and len(target & words) / len(target) >= RESTATES_AT:
+            return True
+    return False
 
 
 def _owner_name():

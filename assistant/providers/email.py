@@ -14,6 +14,7 @@ import email.header
 import email.utils
 import hashlib
 import imaplib
+import json
 import re
 import smtplib
 import ssl
@@ -23,14 +24,27 @@ from email.message import EmailMessage
 from core.actions import ActionProvider, ProviderError, ValidationError
 from core.config import config
 
-# Отправители, которые никогда не ждут ответа.
-ROBOT_NAMES = ("no-reply", "noreply", "do-not-reply", "donotreply", "mailer-daemon",
-               "postmaster", "bounce", "notification", "notifications", "newsletter",
-               "mailing", "info@", "support@", "robot@", "news@")
+# Имена ящиков, за которыми не сидит человек. Сверяется начало локальной части
+# адреса, а не любое вхождение: иначе «news» ловил бы Newsome, а «bill» — Билла.
+ROBOT_NAMES = (
+    "no-reply", "noreply", "do-not-reply", "donotreply", "reply-to",
+    "mailer-daemon", "postmaster", "bounce", "daemon", "auto", "automail",
+    "notification", "notifications", "notify", "alert", "alerts",
+    "newsletter", "mailing", "news", "digest", "info", "support", "robot",
+    # Транзакционные роботы: чеки, счета, заказы, коды подтверждения. Заголовков
+    # рассылки у них нет, так что узнать их можно только по имени ящика.
+    "echeck", "check", "cheque", "receipt", "bill", "billing", "invoice",
+    "order", "orders", "ticket", "promo", "offer", "sale", "service",
+    "account", "accounts", "security", "verify", "confirm", "welcome",
+    "mailer", "sender", "mail", "webmaster", "feedback",
+)
 
 # Заголовки, которыми рассылки сами себя объявляют рассылками.
 BULK_HEADERS = ("list-unsubscribe", "list-id", "list-post", "auto-submitted",
                 "x-auto-response-suppress")
+
+MUTED_KEY = "email_muted_senders"
+ALLOWED_KEY = "email_allowed_senders"
 
 QUOTE_LINE = re.compile(r"^\s*(>|On .+ wrote:|\d{1,2}\.\d{1,2}\.\d{2,4}.*(писал|wrote))",
                         re.IGNORECASE)
@@ -94,17 +108,76 @@ def strip_quotes(text):
     return "\n".join(lines)
 
 
-def looks_personal(sender, headers, cfg=None):
+def is_robot_mailbox(address):
+    """Имя ящика выдаёт робота.
+
+    Сверяется имя целиком, а не его начало: «news» иначе ловил бы Newsome,
+    «bill» — Билла, а «check» — Чеканова. Отбрасываются только приписки из
+    цифр и разделителей, какими роботы нумеруют письма: order-3312, noreply2.
+    """
+    local = (address or "").lower().split("@")[0]
+    candidates = {local,
+                  local.rstrip("0123456789-_."),
+                  re.split(r"[^a-z]", local, maxsplit=1)[0]}
+    return bool(candidates.intersection(ROBOT_NAMES))
+
+
+def _senders(key):
+    from core import db
+
+    try:
+        return set(json.loads(db.setting(key) or "[]"))
+    except (ValueError, TypeError):
+        return set()
+
+
+def sender_lists():
+    """Решения владельца об отправителях: кто робот, а кто всё-таки человек."""
+    return {"muted": sorted(_senders(MUTED_KEY)),
+            "allowed": sorted(_senders(ALLOWED_KEY))}
+
+
+def mark_sender(address, robot=True):
+    """Слово владельца сильнее эвристики и запоминается."""
+    from core import db
+
+    address = (address or "").strip().lower()
+    if not address:
+        return sender_lists()
+    muted, allowed = _senders(MUTED_KEY), _senders(ALLOWED_KEY)
+    if robot:
+        muted.add(address)
+        allowed.discard(address)
+    else:
+        allowed.add(address)
+        muted.discard(address)
+    db.set_setting(MUTED_KEY, json.dumps(sorted(muted), ensure_ascii=False))
+    db.set_setting(ALLOWED_KEY, json.dumps(sorted(allowed), ensure_ascii=False))
+    return sender_lists()
+
+
+def looks_personal(sender, headers, cfg=None, lists=None):
     """Письмо от человека, а не от рассылки.
 
     Без этой проверки каждая рекламная рассылка превращалась бы в контакт,
     диалог и подсказку ответа — входящие перестали бы что-то значить.
+
+    Совершенным отбор быть не может: транзакционные роботы — чеки, счета,
+    коды — шлют письма, неотличимые от обычных по заголовкам. Поэтому слово
+    владельца сильнее любой эвристики, а отсеянное не пропадает молча: кого
+    именно отбросили, видно в настройках.
     """
     cfg = cfg or config.email
+    lists = sender_lists() if lists is None else lists
     address = (sender or "").lower()
-    if any(mark in address for mark in ROBOT_NAMES):
+
+    if any(mark in address for mark in lists.get("allowed", ())):
+        return True
+    if any(mark in address for mark in lists.get("muted", ())):
         return False
     if any(mark in address for mark in cfg.ignore_senders):
+        return False
+    if is_robot_mailbox(address):
         return False
     lowered = {key.lower() for key in headers}
     return not lowered.intersection(BULK_HEADERS)
@@ -142,24 +215,66 @@ class Mailbox:
         limit = limit or self.cfg.max_per_poll
         client = self._connect()
         try:
-            status, _ = client.select(self.cfg.folder, readonly=True)
-            if status != "OK":
-                raise ProviderError(f"нет папки {self.cfg.folder}", retryable=False)
-            status, data = client.search(None, "UNSEEN")
+            self._select(client)
+            status, data = client.uid("search", None, "UNSEEN")
             if status != "OK":
                 return []
-            uids = (data[0] or b"").split()[-limit:]
-            letters = []
-            for uid in uids:
-                status, raw = client.fetch(uid, "(BODY.PEEK[])")
-                if status != "OK" or not raw or not isinstance(raw[0], tuple):
-                    continue
-                parsed = self.parse(raw[0][1])
-                if parsed:
-                    letters.append(parsed)
-            return letters
+            return self._load(client, (data[0] or b"").split()[-limit:])
         finally:
             self._logout(client)
+
+    def fetch_new(self, state=None):
+        """Письма, пришедшие после прошлого опроса.
+
+        По непрочитанным идти нельзя: ящик, где их сотня, показывает только
+        последние, и письмо человека, за которым пришла пачка рассылок,
+        выпадает из окна навсегда. UID растёт монотонно и такого не допускает.
+
+        Возвращает (письма, новое состояние). Пустое состояние на входе значит
+        первый запуск: тогда почта только помечается прошлым, иначе ассистент
+        начал бы с разбора всей истории ящика.
+        """
+        state = state or {}
+        client = self._connect()
+        try:
+            validity = int(self._select(client))
+            status, data = client.uid("search", None, "ALL")
+            uids = [int(x) for x in (data[0] or b"").split()] if status == "OK" else []
+            newest = max(uids) if uids else 0
+
+            known = state.get("uid", 0) if state.get("uidvalidity") == validity else 0
+            if not state or state.get("uidvalidity") != validity:
+                # Первый запуск или ящик пересоздан: UID прошлого больше не
+                # значат ничего, и разбирать историю заново незачем.
+                return [], {"uid": newest, "uidvalidity": validity, "first": True}
+
+            fresh = sorted(uid for uid in uids if uid > known)[:self.cfg.max_per_poll]
+            letters = self._load(client, [str(uid).encode() for uid in fresh])
+            highest = max(fresh) if fresh else known
+            return letters, {"uid": highest, "uidvalidity": validity}
+        finally:
+            self._logout(client)
+
+    def _select(self, client):
+        status, _ = client.select(self.cfg.folder, readonly=True)
+        if status != "OK":
+            raise ProviderError(f"нет папки {self.cfg.folder}", retryable=False)
+        status, data = client.status(self.cfg.folder, "(UIDVALIDITY)")
+        if status != "OK":
+            return 0
+        found = re.search(rb"UIDVALIDITY (\d+)", data[0] or b"")
+        return int(found.group(1)) if found else 0
+
+    def _load(self, client, uids):
+        letters = []
+        for uid in uids:
+            status, raw = client.uid("fetch", uid, "(BODY.PEEK[])")
+            if status != "OK" or not raw or not isinstance(raw[0], tuple):
+                continue
+            parsed = self.parse(raw[0][1])
+            if parsed:
+                letters.append(parsed)
+        return letters
 
     def parse(self, raw_bytes):
         message = email.message_from_bytes(raw_bytes)

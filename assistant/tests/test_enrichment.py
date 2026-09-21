@@ -39,6 +39,67 @@ def test_statement_is_stored_as_a_fact(setup):
     assert stored[0].source == "USER_MESSAGE"
 
 
+def test_an_obligation_is_not_remembered_twice(setup):
+    """Живой прогон: письмо про договор дало и обязательство, и «память» о нём.
+
+    Долг со сроком хранится в договорённостях. В памяти он не только дублирует
+    их, но и протухает: после пятницы «должны быть отправлены до пятницы» —
+    уже неправда, а память не знает, что срок прошёл.
+    """
+    enricher, llm, bus, contact, conversation = setup
+    llm.structured = {"MemoryExtraction": {"memories": [
+        {"type": "FACT", "confidence": 0.9, "importance": 0.6, "about": "owner",
+         "content": "Подписанный договор и счёт должны быть отправлены до пятницы."},
+        {"type": "PROCEDURE", "confidence": 0.9, "importance": 0.6, "about": "owner",
+         "content": "Созвониться с Анной во вторник в 15:00."},
+        {"type": "FACT", "confidence": 0.9, "importance": 0.7, "about": "contact",
+         "content": "Анна работает в бухгалтерии и закрывает месяц."},
+    ], "tasks": []}}
+
+    enricher._extract_memories(
+        conversation, contact,
+        message(conversation, "Пришлите договор и счёт до пятницы"),
+        from_owner=False,
+        obligations=["пришлите подписанный договор", "пришлите счёт",
+                     "созвонитесь во вторник в 15:00"])
+
+    assert [m.content for m in memory_mod.list_memories()] == [
+        "Анна работает в бухгалтерии и закрывает месяц."]
+
+
+def test_memory_survives_when_a_commitment_is_merely_nearby(setup):
+    """Отсекается пересказ долга, а не всё, что упомянуто рядом с ним."""
+    enricher, llm, bus, contact, conversation = setup
+    llm.structured = {"MemoryExtraction": {"memories": [
+        {"type": "PREFERENCE", "confidence": 0.9, "importance": 0.6,
+         "about": "contact", "content": "Анна предпочитает созвоны, а не переписку."},
+    ], "tasks": []}}
+
+    enricher._extract_memories(conversation, contact,
+                               message(conversation, "Давайте созвонимся"),
+                               from_owner=False,
+                               obligations=["созвонитесь во вторник в 15:00"])
+
+    assert len(memory_mod.list_memories()) == 1
+
+
+def test_commitments_are_extracted_before_memories(setup):
+    """Порядок не косметика: без него память не знает, что уже учтено."""
+    enricher, llm, bus, contact, conversation = setup
+    order = []
+    enricher._extract_commitments = lambda *a, **k: (order.append("commitments")
+                                                     or ["пришлите счёт"])
+    enricher._extract_memories = lambda *a, **k: order.append(
+        ("memories", tuple(k.get("obligations", ()))))
+    enricher._maybe_summarise = lambda *a, **k: None
+    enricher._update_style = lambda *a, **k: None
+
+    enricher._safe_process(conversation, contact,
+                           message(conversation, "Пришлите счёт"), False)
+
+    assert order == ["commitments", ("memories", ("пришлите счёт",))]
+
+
 def test_greeting_leaves_no_memory(setup):
     enricher, llm, bus, contact, conversation = setup
     llm.structured = {"MemoryExtraction": {"memories": [], "tasks": []}}

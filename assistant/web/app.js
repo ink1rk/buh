@@ -317,6 +317,8 @@ pages.inbox = {
                         <input class="grow" type="text" data-own placeholder="Написать свой ответ">
                         <button class="btn primary" data-send-own>Отправить</button>
                         <button class="btn ghost" data-ignore>Пропустить</button>
+                        ${s.channel === 'email' ? `<button class="btn ghost"
+                            data-mute="${esc(s.peer_id)}">Это робот</button>` : ''}
                     </div>
                     <div class="muted" data-result style="margin-top:8px"></div>
                 </div>`).join('')
@@ -377,6 +379,12 @@ pages.inbox = {
                 if (text) send({ text });
             });
             card.querySelector('[data-ignore]').addEventListener('click', async () => {
+                await api.post(`/suggestions/${id}/ignore`);
+                render();
+            });
+            card.querySelector('[data-mute]')?.addEventListener('click', async (event) => {
+                await api.post('/mail/sender',
+                    { address: event.target.dataset.mute, robot: true });
                 await api.post(`/suggestions/${id}/ignore`);
                 render();
             });
@@ -924,6 +932,13 @@ pages.settings = {
                 render();
             });
         });
+        root.querySelectorAll('[data-unmute]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                await api.post('/mail/sender',
+                    { address: button.dataset.unmute, robot: false });
+                render();
+            });
+        });
         root.querySelector('#check-mail')?.addEventListener('click', async (event) => {
             event.target.disabled = true;
             event.target.textContent = 'Проверяю…';
@@ -956,15 +971,36 @@ function mailSection(mail) {
 
     const report = last.at
         ? `Последняя проверка ${ago(last.at)}: новых ${last.new || 0},
-           пропущено рассылок ${last.skipped || 0}${(last.errors || []).length
+           отсеяно ${last.skipped || 0}, старых ${last.stale || 0}${(last.errors || []).length
             ? ', ошибки: ' + esc(last.errors.join('; ')) : ''}`
         : `Проверка каждые ${Math.round(mail.poll_seconds / 60)} мин, ещё не было.`;
+
+    // Отсеянное не должно пропадать молча: если сюда попал человек, владелец
+    // это увидит и вернёт его одной кнопкой.
+    const skipped = (last.skipped_senders || []).length
+        ? `<h3 style="margin-top:22px">Отсеяно как роботы</h3>
+           <div class="list" style="margin-top:8px">${last.skipped_senders.map((s) => `
+               <div class="row"><div class="grow">
+                   <div class="title">${esc(s.address)}</div>
+                   <div class="sub">${s.count} ${plural(s.count, 'письмо', 'письма', 'писем')}</div>
+               </div>
+               <div class="actions">
+                   <button class="btn ghost" data-unmute="${esc(s.address)}">Это человек</button>
+               </div></div>`).join('')}</div>`
+        : '';
+
+    const muted = (mail.muted || []).length
+        ? `<h3 style="margin-top:22px">Заглушены вручную</h3>
+           <div class="chips" style="margin-top:8px">${mail.muted.map((address) => `
+               <button class="chip" data-unmute="${esc(address)}">${esc(address)} ✕</button>`).join('')}</div>`
+        : '';
 
     return `<div class="list">${boxes}</div>
         <div class="bar" style="margin-top:12px">
             <div class="grow muted">${report}</div>
             <button class="btn" id="check-mail">Проверить сейчас</button>
-        </div>`;
+        </div>
+        ${skipped}${muted}`;
 }
 
 function securityNotice() {

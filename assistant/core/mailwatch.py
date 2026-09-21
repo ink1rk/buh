@@ -8,10 +8,13 @@
 Отдельного демона нет: IMAP — это короткий опрос раз в несколько минут, и
 ради него заводить ещё один systemd-юнит незачем.
 """
+import json
 import threading
 import time
 
 from .config import config
+
+STATE_KEY = "email_last_uid"
 
 
 class MailWatcher:
@@ -36,20 +39,28 @@ class MailWatcher:
         from . import pipeline
 
         result = {"at": time.time(), "new": 0, "skipped": 0, "duplicates": 0,
-                  "stale": 0, "errors": []}
+                  "stale": 0, "started": [], "skipped_senders": [], "errors": []}
+        skipped = {}
         oldest = time.time() - self.cfg.max_age_hours * 3600
         for mailbox in self.mailboxes:
             try:
-                letters = mailbox.fetch_unseen()
+                letters, state = mailbox.fetch_new(self._state(mailbox))
+                self._remember(mailbox, state)
             except Exception as e:
                 result["errors"].append(f"{mailbox.account.name}: {e}")
                 continue
+            if state.get("first"):
+                # Первый запуск: прошлое ящика помечено и не разбирается.
+                result["started"].append(mailbox.account.address)
 
             for letter in letters:
                 if not letter.get("personal"):
                     # Рассылки не заводят контакт и не ждут ответа: иначе
-                    # входящие превратились бы в рекламную ленту.
+                    # входящие превратились бы в рекламную ленту. Но отбор не
+                    # безошибочен, поэтому отсеянное видно владельцу.
                     result["skipped"] += 1
+                    skipped[letter.get("address")] = skipped.get(
+                        letter.get("address"), 0) + 1
                     continue
                 if not (letter.get("text") or letter.get("subject")):
                     result["skipped"] += 1
@@ -69,8 +80,30 @@ class MailWatcher:
                 else:
                     result["new"] += 1
 
+        result["skipped_senders"] = [
+            {"address": address, "count": count} for address, count
+            in sorted(skipped.items(), key=lambda item: -item[1])[:15]]
         self.last = result
         return result
+
+    # -- где остановились -----------------------------------------------
+    def _key(self, mailbox):
+        return f"{STATE_KEY}:{mailbox.account.name}"
+
+    def _state(self, mailbox):
+        from . import db
+
+        try:
+            return json.loads(db.setting(self._key(mailbox)) or "{}")
+        except (ValueError, TypeError):
+            return {}
+
+    def _remember(self, mailbox, state):
+        from . import db
+
+        db.set_setting(self._key(mailbox),
+                       json.dumps({"uid": state.get("uid", 0),
+                                   "uidvalidity": state.get("uidvalidity", 0)}))
 
     # -- фоновый поток --------------------------------------------------
     def start(self):

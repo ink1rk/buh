@@ -105,12 +105,14 @@ def api_mail():
     """Настроенные ящики и итог последнего опроса."""
     from .config import config
 
+    from providers.email import sender_lists
+
     core = get_core()
     return {"enabled": config.email.enabled,
             "poll_seconds": config.email.poll_seconds,
             "accounts": [{"name": a.name, "address": a.address} for a
                          in config.email.accounts],
-            "last": core.mail.last}
+            "last": core.mail.last, **sender_lists()}
 
 
 @router.post("/mail/check")
@@ -121,6 +123,21 @@ def api_mail_check():
     if not config.email.enabled:
         return {"error": "почта не настроена"}
     return get_core().mail.poll_once()
+
+
+@router.post("/mail/sender")
+def api_mail_sender(body: dict = Body(...)):
+    """Отбор роботов не безошибочен — владелец правит его сам, и правка живёт."""
+    from providers.email import mark_sender
+
+    address = (body.get("address") or "").strip().lower()
+    robot = bool(body.get("robot", True))
+    if not address:
+        return {"error": "нужен адрес"}
+    result = mark_sender(address, robot)
+    audit.record("email.sender.robot" if robot else "email.sender.person",
+                 actor="owner", entity_type="email", entity_id=address)
+    return result
 
 
 @router.get("/suggestions")
