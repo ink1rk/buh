@@ -6,6 +6,7 @@ from app.api.routes import (
     analytics,
     assets,
     coach,
+    connections,
     dashboard,
     goals,
     misc,
@@ -28,3 +29,4 @@ api_router.include_router(assets.router)
 api_router.include_router(timeline.router)
 api_router.include_router(profile_insights.router)
 api_router.include_router(coach.router)
+api_router.include_router(connections.router)

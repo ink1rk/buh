@@ -3,6 +3,7 @@ from app.models.achievement import Achievement, UserAchievement
 from app.models.calendar import CalendarEvent
 from app.models.capital import Asset, NetWorthSnapshot
 from app.models.coach import DailyChallenge
+from app.models.connection import BankConnection, BankImport, BankOperation
 from app.models.debt import Debt
 from app.models.goal import Goal
 from app.models.happiness import PurchaseRating
@@ -18,6 +19,9 @@ __all__ = [
     "Account",
     "Achievement",
     "UserAchievement",
+    "BankConnection",
+    "BankImport",
+    "BankOperation",
     "CalendarEvent",
     "Asset",
     "NetWorthSnapshot",

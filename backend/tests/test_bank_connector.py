@@ -1,0 +1,537 @@
+"""Tests for the bank connector layer and the Ozon Bank provider."""
+
+from __future__ import annotations
+
+import io
+from datetime import date
+
+import httpx
+import pytest
+from httpx import AsyncClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.connectors import get_connector
+from app.connectors.base import (
+    RawOperation,
+    StatementParseError,
+    parse_money,
+    parse_statement_date,
+)
+from app.connectors.categorize import classify
+from app.connectors.open_banking import (
+    OpenBankingClient,
+    OpenBankingError,
+    statement_from_transactions,
+)
+from app.connectors.tabular import read_csv_rows, rows_to_statement
+from app.models.account import Account
+from app.models.connection import BankConnection, BankOperation
+from app.models.transaction import Transaction
+from app.services.bank_sync import ingest_statement
+
+OZON_CSV = """Выписка по счёту Ozon Банк
+Клиент: Кирилл
+Период: 01.03.2026 - 31.03.2026
+
+Дата операции;Дата обработки;Сумма операции в валюте счёта;Валюта;Категория;MCC;Описание операции;Статус;Остаток после операции
+12.03.2026 14:23;12.03.2026;-1 234,56 ₽;RUB;Супермаркеты;5411;Пятёрочка;Проведена;48 765,44
+13.03.2026 09:01;13.03.2026;+180 000,00 ₽;RUB;Зарплата;;Зарплата ООО Ромашка;Проведена;228 765,44
+14.03.2026 10:15;14.03.2026;−450,00 ₽;RUB;Кофейни;5814;Surf Coffee;Проведена;228 315,44
+15.03.2026 11:00;15.03.2026;-2 000,00 ₽;RUB;Переводы;;Перевод между своими счетами;Проведена;226 315,44
+16.03.2026 12:00;16.03.2026;-999,00 ₽;RUB;Подписки;5815;Netflix;Отклонена;226 315,44
+17.03.2026 13:00;17.03.2026;+320,50 ₽;RUB;Кэшбэк;;Кэшбэк за март;Проведена;226 635,94
+"""
+
+
+def _csv_bytes(text: str = OZON_CSV, encoding: str = "utf-8") -> bytes:
+    return text.encode(encoding)
+
+
+# --- primitives -------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("-1 234,56 ₽", -1234.56),
+        ("\u2212450,00", -450.0),
+        ("+180 000,00 ₽", 180000.0),
+        ("1\u00a0234,56", 1234.56),
+        ("1.234,56", 1234.56),
+        ("1,234.56", 1234.56),
+        ("(2 000,00)", -2000.0),
+        ("1234", 1234.0),
+        ("", None),
+        ("—", None),
+        (-55.5, -55.5),
+    ],
+)
+def test_parse_money(raw, expected):
+    assert parse_money(raw) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("12.03.2026", date(2026, 3, 12)),
+        ("12.03.2026 14:23", date(2026, 3, 12)),
+        ("2026-03-12T10:00:00", date(2026, 3, 12)),
+        ("12/03/2026", date(2026, 3, 12)),
+        ("12.03.26", date(2026, 3, 12)),
+        ("5 марта 2026", date(2026, 3, 5)),
+        ("32.13.2026", None),
+        ("", None),
+    ],
+)
+def test_parse_statement_date(raw, expected):
+    assert parse_statement_date(raw) == expected
+
+
+# --- statement parsing ------------------------------------------------------
+
+
+def test_parses_ozon_csv_with_preamble_and_unicode_minus():
+    statement = get_connector("ozon").parse_statement(_csv_bytes(), "statement.csv")
+
+    # The declined Netflix row must not reach the ledger.
+    assert len(statement.operations) == 5
+    amounts = [op.amount for op in statement.operations]
+    assert amounts == [-1234.56, 180000.0, -450.0, -2000.0, 320.5]
+    assert statement.period_from == date(2026, 3, 12)
+    assert statement.period_to == date(2026, 3, 17)
+    assert statement.closing_balance == 226635.94
+
+    groceries = statement.operations[0]
+    assert groceries.mcc == "5411"
+    assert groceries.bank_category == "Супермаркеты"
+    assert groceries.merchant == "Пятёрочка"
+    assert groceries.currency == "RUB"
+
+
+def test_parses_cp1251_csv():
+    # CP1251 has no ₽ or unicode minus, so use the ASCII-signed variant.
+    cp1251_csv = OZON_CSV.replace(" ₽", "").replace("\u2212", "-")
+    statement = get_connector("ozon").parse_statement(
+        _csv_bytes(cp1251_csv, encoding="cp1251"), "s.csv"
+    )
+    assert len(statement.operations) == 5
+    assert statement.operations[0].merchant == "Пятёрочка"
+
+
+def test_parses_utf8_bom_csv():
+    statement = get_connector("ozon").parse_statement(
+        b"\xef\xbb\xbf" + _csv_bytes(), "s.csv"
+    )
+    assert len(statement.operations) == 5
+
+
+def test_parses_debit_credit_column_pair():
+    csv = (
+        "Дата;Приход;Расход;Описание\n"
+        "12.03.2026;;1 234,56;Пятёрочка\n"
+        "13.03.2026;180 000,00;;Зарплата\n"
+    )
+    statement = rows_to_statement(read_csv_rows(csv.encode()))
+    assert [op.amount for op in statement.operations] == [-1234.56, 180000.0]
+
+
+def test_uses_direction_column_when_amount_is_unsigned():
+    csv = (
+        "Дата операции;Сумма;Тип операции;Описание\n"
+        "12.03.2026;1234,56;Списание;Пятёрочка\n"
+        "13.03.2026;180000;Поступление;Зарплата\n"
+    )
+    statement = rows_to_statement(read_csv_rows(csv.encode()))
+    assert [op.amount for op in statement.operations] == [-1234.56, 180000.0]
+
+
+def test_ozon_bonus_points_are_not_money():
+    csv = (
+        "Дата операции;Сумма операции;Валюта;Описание операции\n"
+        "14.03.2026;-500,00;балл;Списание баллов Ozon\n"
+        "14.03.2026;-300,00;RUB;Пятёрочка\n"
+    )
+    statement = get_connector("ozon").parse_statement(csv.encode(), "s.csv")
+    assert [op.amount for op in statement.operations] == [-300.0]
+    assert any("баллах" in warning for warning in statement.warnings)
+
+
+def test_statement_without_recognisable_header_is_rejected():
+    with pytest.raises(StatementParseError, match="заголовка"):
+        get_connector("ozon").parse_statement(b"just;some;text\n1;2;3\n", "s.csv")
+
+
+def test_unsupported_provider_is_rejected():
+    with pytest.raises(StatementParseError, match="не поддерживается"):
+        get_connector("sberbank")
+
+
+def test_parses_xlsx_statement():
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append(["Выписка Ozon Банк"])
+    sheet.append([])
+    sheet.append(["Дата операции", "Сумма операции", "Категория", "MCC", "Описание операции"])
+    sheet.append([date(2026, 3, 12), -1234.56, "Супермаркеты", "5411", "Пятёрочка"])
+    sheet.append([date(2026, 3, 13), 180000, "Зарплата", None, "Зарплата"])
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+
+    statement = get_connector("ozon").parse_statement(buffer.getvalue(), "statement.xlsx")
+    assert [op.amount for op in statement.operations] == [-1234.56, 180000.0]
+    assert statement.operations[0].mcc == "5411"
+
+
+def test_parses_pdf_statement_best_effort():
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    pdf.setFont("Helvetica", 10)
+    y = 800
+    for line in (
+        "Vypiska po schetu Ozon Bank",
+        "12.03.2026 Pyaterochka -1 234,56 RUB 48 765,44 RUB",
+        "13.03.2026 Salary +180 000,00 RUB 228 765,44 RUB",
+    ):
+        pdf.drawString(40, y, line)
+        y -= 20
+    pdf.save()
+
+    statement = get_connector("ozon").parse_statement(buffer.getvalue(), "statement.pdf")
+    assert [op.amount for op in statement.operations] == [-1234.56, 180000.0]
+    assert any("PDF" in warning for warning in statement.warnings)
+
+
+def test_pdf_without_text_layer_gives_actionable_error():
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    pdf.save()
+    with pytest.raises(StatementParseError, match="CSV"):
+        get_connector("ozon").parse_statement(buffer.getvalue(), "scan.pdf")
+
+
+# --- categorisation ---------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("operation", "expected_category", "expected_type"),
+    [
+        (RawOperation(date(2026, 3, 1), -100, mcc="5411"), "groceries", "expense"),
+        (RawOperation(date(2026, 3, 1), -100, mcc="5814"), "cafe", "expense"),
+        (RawOperation(date(2026, 3, 1), -100, mcc="4121"), "transport", "expense"),
+        (RawOperation(date(2026, 3, 1), -100, bank_category="Супермаркеты"), "groceries", "expense"),
+        (RawOperation(date(2026, 3, 1), -100, merchant="Surf Coffee"), "cafe", "expense"),
+        (RawOperation(date(2026, 3, 1), -100, merchant="DNS"), "gadgets", "expense"),
+        (RawOperation(date(2026, 3, 1), 320, description="Кэшбэк за март"), "cashback", "income"),
+        (RawOperation(date(2026, 3, 1), 180000, description="Зарплата"), "salary", "income"),
+        (
+            RawOperation(date(2026, 3, 1), -2000, description="Перевод между своими счетами"),
+            "transfers",
+            "transfer",
+        ),
+        (RawOperation(date(2026, 3, 1), -5000, description="Снятие наличных"), "cash", "expense"),
+        (RawOperation(date(2026, 3, 1), -100), "other", "expense"),
+        (RawOperation(date(2026, 3, 1), 100), "other_income", "income"),
+    ],
+)
+def test_classify(operation, expected_category, expected_type):
+    assert classify(operation) == (expected_category, expected_type)
+
+
+def test_wording_beats_mcc_for_cashback():
+    # A cashback payout can carry the MCC of the shop that earned it.
+    operation = RawOperation(date(2026, 3, 1), 320, description="Кэшбэк за март", mcc="5411")
+    assert classify(operation) == ("cashback", "income")
+
+
+# --- Open API client --------------------------------------------------------
+
+
+def _transaction(transaction_id: str, amount: str, indicator: str) -> dict:
+    return {
+        "transactionId": transaction_id,
+        "accountId": "200200",
+        "Amount": {"amount": amount, "currency": "RUB"},
+        "creditDebitIndicator": indicator,
+        "status": "AcceptedSettlementCompleted",
+        "bookingDateTime": "2026-03-12T15:15:13+00:00",
+        "transactionInformation": "Покупка",
+        "Creditor": {"name": "Пятерочка"},
+        "MerchantInformation": {"merchantCategoryCode": "5411"},
+    }
+
+
+def test_open_banking_maps_transactions_to_operations():
+    statement = statement_from_transactions(
+        [_transaction("t1", "1234.56", "Debit"), _transaction("t2", "180000.00", "Credit")]
+    )
+    assert [op.amount for op in statement.operations] == [-1234.56, 180000.0]
+    assert statement.operations[0].mcc == "5411"
+    assert statement.operations[0].merchant == "Пятерочка"
+    assert statement.operations[0].external_id == "t1"
+    assert statement.period_from == date(2026, 3, 12)
+
+
+@pytest.mark.asyncio
+async def test_open_banking_client_follows_pagination():
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        assert request.headers["Authorization"] == "Bearer token-123"
+        assert "x-fapi-interaction-id" in request.headers
+        if "page=2" in str(request.url):
+            return httpx.Response(200, json={"Data": {"Transaction": [_transaction("t2", "10.00", "Credit")]}})
+        return httpx.Response(
+            200,
+            json={
+                "Data": {"Transaction": [_transaction("t1", "20.00", "Debit")]},
+                "Links": {"next": "https://bank.example/accounts/200200/transactions?page=2"},
+            },
+        )
+
+    client = OpenBankingClient(
+        "https://bank.example",
+        "token-123",
+        transport=httpx.MockTransport(handler),
+    )
+    transactions = await client.fetch_transactions(
+        "200200", since=date(2026, 3, 1), until=date(2026, 3, 31)
+    )
+
+    assert len(transactions) == 2
+    assert len(calls) == 2
+    assert "fromBookingDateTime=2026-03-01" in calls[0]
+
+
+@pytest.mark.asyncio
+async def test_open_banking_client_reports_auth_failures():
+    client = OpenBankingClient(
+        "https://bank.example",
+        "expired",
+        transport=httpx.MockTransport(lambda _r: httpx.Response(401, json={})),
+    )
+    with pytest.raises(OpenBankingError, match="401"):
+        await client.list_accounts()
+
+
+def test_open_banking_client_requires_base_url():
+    with pytest.raises(OpenBankingError, match="выписки"):
+        OpenBankingClient("", "token")
+
+
+# --- ingest pipeline --------------------------------------------------------
+
+
+async def _connection(db: AsyncSession) -> BankConnection:
+    account = Account(name="Ozon Банк", account_type="bank", balance=0.0)
+    db.add(account)
+    await db.flush()
+    connection = BankConnection(provider="ozon", label="Ozon Банк", account_id=account.id)
+    db.add(connection)
+    await db.flush()
+    return connection
+
+
+@pytest.mark.asyncio
+async def test_ingest_creates_transactions_and_syncs_balance(db: AsyncSession):
+    connection = await _connection(db)
+    statement = get_connector("ozon").parse_statement(_csv_bytes(), "march.csv")
+
+    run = await ingest_statement(db, connection, statement, source_name="march.csv")
+
+    assert run.imported_count == 5
+    assert run.duplicate_count == 0
+    transactions = list((await db.execute(select(Transaction))).scalars())
+    assert len(transactions) == 5
+    assert {t.source for t in transactions} == {"import"}
+    assert all("bank,ozon" == t.tags for t in transactions)
+
+    account = await db.get(Account, connection.account_id)
+    # The statement's own closing balance wins over summing the rows.
+    assert account.balance == 226635.94
+    assert connection.imported_total == 5
+    assert connection.last_operation_on == date(2026, 3, 17)
+
+
+@pytest.mark.asyncio
+async def test_reimporting_the_same_statement_adds_nothing(db: AsyncSession):
+    connection = await _connection(db)
+    connector = get_connector("ozon")
+
+    first = await ingest_statement(
+        db, connection, connector.parse_statement(_csv_bytes(), "march.csv"), source_name="a.csv"
+    )
+    second = await ingest_statement(
+        db, connection, connector.parse_statement(_csv_bytes(), "march.csv"), source_name="b.csv"
+    )
+
+    assert first.imported_count == 5
+    assert second.imported_count == 0
+    assert second.duplicate_count == 5
+    assert len(list((await db.execute(select(Transaction))).scalars())) == 5
+
+
+@pytest.mark.asyncio
+async def test_genuine_same_day_duplicates_are_both_kept(db: AsyncSession):
+    """Two identical coffees on one day are two operations, not a double import."""
+    connection = await _connection(db)
+    csv = (
+        "Дата операции;Сумма операции;Описание операции\n"
+        "12.03.2026;-200,00;Surf Coffee\n"
+        "12.03.2026;-200,00;Surf Coffee\n"
+    )
+    connector = get_connector("ozon")
+
+    first = await ingest_statement(
+        db, connection, connector.parse_statement(csv.encode(), "a.csv"), source_name="a.csv"
+    )
+    assert first.imported_count == 2
+
+    # Re-importing a statement that overlaps must still collapse to nothing new.
+    second = await ingest_statement(
+        db, connection, connector.parse_statement(csv.encode(), "b.csv"), source_name="b.csv"
+    )
+    assert second.imported_count == 0
+    assert second.duplicate_count == 2
+
+
+@pytest.mark.asyncio
+async def test_overlapping_statement_imports_only_new_rows(db: AsyncSession):
+    connection = await _connection(db)
+    connector = get_connector("ozon")
+    header = "Дата операции;Сумма операции;Описание операции\n"
+    first_csv = header + "12.03.2026;-200,00;Surf Coffee\n"
+    second_csv = first_csv + "13.03.2026;-300,00;Пятёрочка\n"
+
+    await ingest_statement(
+        db, connection, connector.parse_statement(first_csv.encode(), "a.csv"), source_name="a.csv"
+    )
+    run = await ingest_statement(
+        db, connection, connector.parse_statement(second_csv.encode(), "b.csv"), source_name="b.csv"
+    )
+
+    assert (run.imported_count, run.duplicate_count) == (1, 1)
+    operations = list((await db.execute(select(BankOperation))).scalars())
+    assert len(operations) == 2
+
+
+@pytest.mark.asyncio
+async def test_external_ids_dedupe_across_reordered_statements(db: AsyncSession):
+    connection = await _connection(db)
+    statement = statement_from_transactions(
+        [_transaction("t1", "100.00", "Debit"), _transaction("t2", "200.00", "Debit")]
+    )
+    reversed_statement = statement_from_transactions(
+        [_transaction("t2", "200.00", "Debit"), _transaction("t1", "100.00", "Debit")]
+    )
+
+    await ingest_statement(db, connection, statement, source_name="api", source_kind="api")
+    run = await ingest_statement(
+        db, connection, reversed_statement, source_name="api", source_kind="api"
+    )
+    assert run.imported_count == 0
+    assert run.duplicate_count == 2
+
+
+@pytest.mark.asyncio
+async def test_pending_operations_are_held_back(db: AsyncSession):
+    connection = await _connection(db)
+    csv = (
+        "Дата операции;Сумма операции;Описание операции;Статус\n"
+        "12.03.2026;-200,00;Surf Coffee;В обработке\n"
+        "12.03.2026;-300,00;Пятёрочка;Проведена\n"
+    )
+    statement = get_connector("ozon").parse_statement(csv.encode(), "a.csv")
+    run = await ingest_statement(db, connection, statement, source_name="a.csv")
+
+    assert (run.imported_count, run.skipped_count) == (1, 1)
+
+
+# --- API --------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_providers_endpoint_lists_ozon(client: AsyncClient):
+    response = await client.get("/api/v1/connections/providers")
+    assert response.status_code == 200
+    providers = response.json()
+    ozon = next(p for p in providers if p["provider"] == "ozon")
+    assert ozon["title"] == "Ozon Банк"
+    assert ".csv" in ozon["statement_formats"]
+    assert "Выписки и справки" in ozon["instructions"]
+
+
+@pytest.mark.asyncio
+async def test_connection_lifecycle_and_statement_upload(client: AsyncClient):
+    created = await client.post("/api/v1/connections", json={"provider": "ozon"})
+    assert created.status_code == 200
+    connection = created.json()
+    assert connection["account_id"] is not None
+    assert connection["has_credentials"] is False
+
+    upload = await client.post(
+        f"/api/v1/connections/{connection['id']}/statement",
+        files={"file": ("march.csv", _csv_bytes(), "text/csv")},
+    )
+    assert upload.status_code == 200
+    run = upload.json()
+    assert run["imported_count"] == 5
+    assert run["status"] == "ok"
+
+    transactions = (await client.get("/api/v1/transactions?limit=500")).json()
+    imported = [t for t in transactions if t["source"] == "import"]
+    assert len(imported) == 5
+    assert {t["category"] for t in imported} >= {"groceries", "salary", "cafe", "cashback"}
+
+    listed = (await client.get("/api/v1/connections")).json()
+    assert listed[0]["imported_total"] == 5
+    assert listed[0]["status"] == "idle"
+
+    history = (await client.get(f"/api/v1/connections/{connection['id']}/imports")).json()
+    assert history[0]["imported_count"] == 5
+
+
+@pytest.mark.asyncio
+async def test_broken_statement_returns_422_and_records_error(client: AsyncClient):
+    connection = (await client.post("/api/v1/connections", json={"provider": "ozon"})).json()
+    response = await client.post(
+        f"/api/v1/connections/{connection['id']}/statement",
+        files={"file": ("junk.csv", b"nothing useful here", "text/csv")},
+    )
+    assert response.status_code == 422
+    assert "заголовка" in response.json()["detail"]
+
+    listed = (await client.get("/api/v1/connections")).json()
+    assert listed[0]["status"] == "error"
+    assert listed[0]["last_error"]
+
+
+@pytest.mark.asyncio
+async def test_api_sync_without_credentials_fails_clearly(client: AsyncClient):
+    connection = (
+        await client.post("/api/v1/connections", json={"provider": "ozon", "mode": "api"})
+    ).json()
+    response = await client.post(f"/api/v1/connections/{connection['id']}/sync", json={})
+    assert response.status_code in {400, 502}
+    assert "выписки" in response.json()["detail"] or "токен" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_access_token_is_never_returned(client: AsyncClient):
+    created = await client.post(
+        "/api/v1/connections",
+        json={"provider": "ozon", "mode": "api", "access_token": "super-secret"},
+    )
+    body = created.json()
+    assert body["has_credentials"] is True
+    assert "super-secret" not in created.text
+    assert "access_token" not in body
