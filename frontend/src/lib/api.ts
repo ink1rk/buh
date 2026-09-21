@@ -23,6 +23,7 @@ export const api = {
     request<T>(path, { method: 'POST', body: body !== undefined ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
+  del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
   upload: async <T>(path: string, file: File): Promise<T> => {
     const fd = new FormData()
     fd.append('file', file)

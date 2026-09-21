@@ -8,6 +8,7 @@ import { CashflowPage } from '@/pages/CashflowPage'
 import { DebtsPage } from '@/pages/DebtsPage'
 import { SubscriptionsPage } from '@/pages/SubscriptionsPage'
 import { CalendarPage } from '@/pages/CalendarPage'
+import { ConnectionsPage } from '@/pages/ConnectionsPage'
 import { InvestmentsPage } from '@/pages/InvestmentsPage'
 import { AchievementsPage } from '@/pages/AchievementsPage'
 import { PurchasePage } from '@/pages/PurchasePage'
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="cashflow" element={<CashflowPage />} />
             <Route path="calendar" element={<CalendarPage />} />
+            <Route path="connections" element={<ConnectionsPage />} />
             <Route path="debts" element={<DebtsPage />} />
             <Route path="subscriptions" element={<SubscriptionsPage />} />
             <Route path="investments" element={<InvestmentsPage />} />
