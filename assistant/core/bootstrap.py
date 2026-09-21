@@ -91,12 +91,15 @@ class Core:
                 print("integration check failed:", e)
 
     def health(self):
+        from . import security
+
         checks = self.integrations.check()
         broken = [c for c in checks if c["status"] in ("ERROR",) and c["required"]]
         return {"status": "degraded" if broken else "ok",
                 "integrations": checks,
                 "agents": self.agents.describe(),
                 "response_mode": config.response_mode,
+                "security": security.mode(),
                 "assistant": config.assistant_name}
 
     def stop(self):

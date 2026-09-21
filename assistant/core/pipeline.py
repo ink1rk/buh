@@ -231,6 +231,18 @@ def _store_suggestion(conversation, contact, message, options, summary):
     return suggestion_id
 
 
+def list_suggestions(status="NEW", limit=30):
+    """Неразобранные подсказки — то, что ждёт решения владельца."""
+    if status:
+        rows = db.query("SELECT id FROM reply_suggestions WHERE status=?"
+                        " ORDER BY created_at DESC LIMIT ?", (status, limit))
+    else:
+        rows = db.query("SELECT id FROM reply_suggestions ORDER BY created_at DESC"
+                        " LIMIT ?", (limit,))
+    found = [get_suggestion(row["id"]) for row in rows]
+    return [item for item in found if item]
+
+
 def get_suggestion(suggestion_id):
     row = db.one("SELECT * FROM reply_suggestions WHERE id=?", (suggestion_id,))
     if row is None:

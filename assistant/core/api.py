@@ -100,6 +100,11 @@ def api_ingest_telegram(payload: dict = Body(...)):
     return pipeline.ingest_incoming(get_core(), payload)
 
 
+@router.get("/suggestions")
+def api_suggestions(status: str = "NEW", limit: int = 30):
+    return {"suggestions": pipeline.list_suggestions(status or None, limit)}
+
+
 @router.get("/suggestions/{suggestion_id}")
 def api_suggestion(suggestion_id: str):
     return pipeline.get_suggestion(suggestion_id) or {"error": "не найдено"}
@@ -317,3 +322,62 @@ def api_permissions_override(payload: dict = Body(...)):
 @router.get("/health")
 def api_health():
     return get_core().health()
+
+
+def _greeting(hour):
+    if hour < 5:
+        return "Доброй ночи"
+    if hour < 12:
+        return "Доброе утро"
+    if hour < 18:
+        return "Добрый день"
+    return "Добрый вечер"
+
+
+@router.get("/overview")
+def api_overview():
+    """Всё для главного экрана одним запросом — чтобы не собирать его из пяти."""
+    import datetime
+
+    from .config import config
+
+    core = get_core()
+    now = datetime.datetime.now(config.tz)
+    owner = contacts_mod.owner()
+
+    suggestions = pipeline.list_suggestions("NEW", 5)
+    approvals = [a.as_dict() for a in core.actions.list("WAITING_APPROVAL", 5)]
+    mine = commitments_mod.i_owe(20)
+    theirs = commitments_mod.waiting_for_reply(20)
+    overdue = [c for c in mine + theirs if c.status == "OVERDUE"]
+
+    def with_names(items):
+        out = []
+        for commitment in items[:5]:
+            contact = (contacts_mod.get(commitment.counterparty_id)
+                       if commitment.counterparty_id else None)
+            out.append({**commitment.as_dict(),
+                        "counterparty_name": contact.display_name if contact else None})
+        return out
+
+    integrations = core.integrations.status()
+    broken = [i["name"] for i in integrations if i["status"] == "ERROR"]
+
+    return {
+        "greeting": _greeting(now.hour),
+        "owner": (owner.display_name if owner else config.owner_name) or "",
+        "assistant": config.assistant_name,
+        "now": now.isoformat(),
+        "response_mode": config.response_mode,
+        "attention": {"suggestions": len(pipeline.list_suggestions("NEW", 100)),
+                      "approvals": len(core.actions.list("WAITING_APPROVAL", 100)),
+                      "i_owe": len(mine), "waiting": len(theirs),
+                      "overdue": len(overdue)},
+        "suggestions": suggestions,
+        "approvals": approvals,
+        "i_owe": with_names(mine),
+        "waiting": with_names(theirs),
+        "system": {"ok": not broken, "broken": broken,
+                   "integrations": [{"name": i["name"], "status": i["status"],
+                                     "detail": i["detail"]} for i in integrations]},
+    }

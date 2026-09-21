@@ -80,6 +80,8 @@ class Config:
     assistant_name: str = os.environ.get("ASSISTANT_NAME", "Джарвис")
     event_retention_days: int = _int("EVENT_RETENTION_DAYS", 30)
     response_mode: str = os.environ.get("RESPONSE_MODE", "SUGGEST_ONLY")
+    # Пусто — доступ как раньше, только предупреждение в /api/health.
+    web_token: str = os.environ.get("ASSISTANT_WEB_TOKEN", "").strip()
     trusted_peers: tuple = field(default_factory=lambda: _list("TRUSTED_PEERS"))
     llm: LLMConfig = field(default_factory=LLMConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)

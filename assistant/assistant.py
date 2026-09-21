@@ -10,9 +10,11 @@ import httpx
 import news
 import tgfmt
 from core import api as core_api
+from core import security
 from core.bootstrap import get_core
-from fastapi import FastAPI, Body, UploadFile, File
-from fastapi.responses import Response
+from fastapi import FastAPI, Body, UploadFile, File, Request
+from fastapi.responses import RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
@@ -710,6 +712,21 @@ def call_cursor(messages):
 
 app = FastAPI(title="Personal Assistant Core")
 app.include_router(core_api.router)
+
+WEB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+if os.path.isdir(WEB_DIR):
+    app.mount("/ui", StaticFiles(directory=WEB_DIR, html=True), name="ui")
+
+
+@app.middleware("http")
+async def require_token(request: Request, call_next):
+    denied = security.guard(request)
+    return denied if denied is not None else await call_next(request)
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/ui/")
 
 
 class ChatIn(BaseModel):
