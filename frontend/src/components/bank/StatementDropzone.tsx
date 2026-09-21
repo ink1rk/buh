@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, CheckCircle2, Loader2, Upload } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Info, Loader2, Upload } from 'lucide-react'
 import { api } from '@/lib/api'
 import { formatMoney } from '@/lib/utils'
 import type { BankImportRun } from '@/types/bank'
@@ -97,10 +97,17 @@ export function StatementDropzone({ connectionId, formats }: Props) {
 
       {run && (
         <div className="mt-3 space-y-2 text-sm">
-          <div className="flex items-center gap-2 text-emerald-200">
-            <CheckCircle2 className="h-4 w-4" />
-            Загружено {run.imported_count} из {run.parsed_count} операций
-          </div>
+          {run.imported_count === 0 ? (
+            <div className="flex items-center gap-2 text-sky-200">
+              <Info className="h-4 w-4" />
+              Новых операций нет — все {run.parsed_count} уже были загружены
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-emerald-200">
+              <CheckCircle2 className="h-4 w-4" />
+              Загружено {run.imported_count} из {run.parsed_count} операций
+            </div>
+          )}
           <div className="flex flex-wrap gap-2 text-xs text-[var(--text-soft)]">
             {run.duplicate_count > 0 && (
               <span className="rounded-full bg-white/5 px-3 py-1">
