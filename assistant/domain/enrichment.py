@@ -109,6 +109,10 @@ class Enricher:
         text = (message.transcription or message.text or "").strip()
         if len(text) < 10 or TRIVIAL_RE.match(text):
             return
+        if contact is not None and contact.is_owner:
+            # Разговор с самим ассистентом: обязательств перед собой не бывает,
+            # такие просьбы — это задачи, а не договорённости с человеком.
+            return
         history = conversations_mod.as_history(conversation.id, 6)
         rendered = "\n".join(
             ("Я: " if item["from_owner"] else "Он: ") + item["text"][:200]
@@ -166,7 +170,7 @@ class Enricher:
                                 ts=message.ts, bus=self.bus)
 
     def _update_style(self, conversation, contact, message, from_owner):
-        if contact is None:
+        if contact is None or contact.is_owner:
             return
         history = conversations_mod.as_history(conversation.id, 30)
         if len(history) >= 4:

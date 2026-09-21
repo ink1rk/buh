@@ -203,8 +203,7 @@ def test_communication_questions_go_to_the_communication_agent(core):
     contact = contacts_mod.upsert_from_telegram("999", "Иван")
     commitments_mod.create("прислать конфиг", direction="I_OWE",
                            counterparty_id=contact.id)
-    result = pipeline.handle_message(core, "что я обещал?", session="tg:1",
-                                     intents=["commitments"])
+    result = pipeline.handle_message(core, "что я обещал?", session="tg:1")
     assert result["agent"] == "communication"
     assert "прислать конфиг" in result["reply"]
 
@@ -213,23 +212,20 @@ def test_waiting_question_lists_expected_replies(core):
     contact = contacts_mod.upsert_from_telegram("998", "Пётр")
     commitments_mod.create("пришлёт договор", direction="THEY_OWE",
                            counterparty_id=contact.id)
-    result = pipeline.handle_message(core, "от кого я жду ответа?", session="tg:1",
-                                     intents=["communication"])
+    result = pipeline.handle_message(core, "от кого я жду ответа?", session="tg:1")
     assert "Пётр" in result["reply"]
 
 
 def test_contact_question_returns_a_profile(core):
     contacts_mod.upsert_from_telegram("997", "Сергей Иванов")
-    result = pipeline.handle_message(core, "кто такой Сергей?", session="tg:1",
-                                     intents=["contact_info"])
+    result = pipeline.handle_message(core, "кто такой Сергей?", session="tg:1")
     assert "Сергей Иванов" in result["reply"]
 
 
 def test_ambiguous_contact_question_asks_back(core):
     contacts_mod.upsert_from_telegram("996", "Сергей Иванов")
     contacts_mod.upsert_from_telegram("995", "Сергей Петров")
-    result = pipeline.handle_message(core, "кто такой Сергей?", session="tg:1",
-                                     intents=["contact_info"])
+    result = pipeline.handle_message(core, "кто такой Сергей?", session="tg:1")
     assert "несколько" in result["reply"].lower()
 
 
@@ -246,3 +242,21 @@ def test_pipeline_writes_an_audit_chain(core):
     events = [row["event"] for row in db.query("SELECT event FROM audit_log")]
     assert "telegram.message.received" in events
     assert "reply.sent" in events
+
+
+# --- intent recognition ---------------------------------------------------
+def test_communication_intents_are_recognised_by_rules():
+    from core import intents as intents_mod
+    cases = {"что я обещал Ивану?": "commitments",
+             "от кого я жду ответа": "waiting_reply",
+             "кто мне написал?": "who_wrote",
+             "кто такой Сергей": "contact_info",
+             "ответь Сергею": "suggest_reply"}
+    for text, expected in cases.items():
+        assert expected in intents_mod.detect(text), text
+
+
+def test_unrelated_question_is_not_a_communication_intent():
+    from core import intents as intents_mod
+    detected = intents_mod.detect("какая погода в Москве?")
+    assert not intents_mod.is_communication(detected)

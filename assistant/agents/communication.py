@@ -14,7 +14,8 @@ from domain import commitments as commitments_mod
 from domain import contacts as contacts_mod
 from domain import conversations as conversations_mod
 
-INTENTS = ("communication", "suggest_reply", "who_wrote", "commitments", "contact_info")
+INTENTS = ("communication", "suggest_reply", "who_wrote", "commitments",
+           "waiting_reply", "contact_info")
 
 
 class CommunicationAgent(Agent):
@@ -92,14 +93,12 @@ class CommunicationAgent(Agent):
 
     # -- questions about correspondence ----------------------------------
     def handle(self, context):
-        text = (context.text or "").lower()
-        if any(word in text for word in ("жду ответ", "от кого я жду", "кто должен мне")):
+        intents = context.intents or []
+        if "waiting_reply" in intents:
             return self._waiting(context)
-        if any(word in text for word in ("кому ответить", "кому я должен", "что я обещал",
-                                         "обязательств", "должен сделать")):
+        if "commitments" in intents:
             return self._owed(context)
-        if any(word in text for word in ("кто написал", "кто писал", "непрочит",
-                                         "что нового в переписк")):
+        if "who_wrote" in intents:
             return self._who_wrote(context)
         return self._about_contact(context)
 

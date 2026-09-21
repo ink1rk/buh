@@ -156,7 +156,7 @@ class FinanceIntegration(HttpIntegration):
 
     @property
     def url(self):
-        return f"{config.finance_api}/analytics/net-worth"
+        return f"{config.finance_api}/networth"
 
 
 class IntegrationRegistry:

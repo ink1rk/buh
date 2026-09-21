@@ -17,7 +17,7 @@ import time
 from domain import contacts as contacts_mod
 from domain import conversations as conversations_mod
 
-from . import audit, db
+from . import audit, db, intents as intents_mod
 from .events import E, new_id
 
 BOT_PLATFORM = "telegram:bot"          # the owner's own dialogue with the assistant
@@ -43,8 +43,9 @@ def handle_message(core, text, session="default", interface="telegram",
     conversations_mod.add_message(message, bus=core.bus)
 
     detected = list(intents or [])
-    if not detected and core.personal is not None:
-        detected = core.personal.skills.detect_intents(text)
+    if not detected:
+        skills = core.personal.skills if core.personal is not None else None
+        detected = intents_mod.detect(text, skills)
     core.bus.emit(E.INTENT_DETECTED, {"intents": detected, "text": text[:200]},
                   source="core", correlation_id=correlation_id)
 

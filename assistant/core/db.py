@@ -150,8 +150,27 @@ def execute(sql, params=()):
         return conn.execute(sql, params)
 
 
+# Tables whose names an earlier version of the assistant used with a different
+# shape. They are set aside instead of dropped — the data may still be wanted.
+LEGACY_GUARD = {"notifications": ("status", "severity", "channel")}
+
+
+def _set_aside_incompatible(conn):
+    for table, required in LEGACY_GUARD.items():
+        row = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                           (table,)).fetchone()
+        if row is None:
+            continue
+        columns = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if columns and not set(required).issubset(columns):
+            backup = f"{table}_legacy_{int(time.time())}"
+            conn.execute(f"ALTER TABLE {table} RENAME TO {backup}")
+            print(f"migration: {table} -> {backup} (старая схема)")
+
+
 def migrate():
     conn = connect()
+    _set_aside_incompatible(conn)
     for statement in SCHEMA:
         conn.execute(statement)
     conn.commit()

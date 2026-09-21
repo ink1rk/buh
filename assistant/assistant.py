@@ -31,7 +31,7 @@ WEATHER_PLACE = os.environ.get("WEATHER_PLACE", "Москва")
 TZ = zoneinfo.ZoneInfo(os.environ.get("TZ_NAME", "Europe/Moscow"))
 TRADING_CHANNEL = os.environ.get("TRADING_CHANNEL", "Full-Time Trading")
 ASSISTANT_NAME = os.environ.get("ASSISTANT_NAME", "Джарвис")
-ASSISTANT_GENDER = os.environ.get("ASSISTANT_GENDER", "female")   # голос женский
+ASSISTANT_GENDER = os.environ.get("ASSISTANT_GENDER", "female")   # род в речи о себе
 OWNER_NAME = os.environ.get("OWNER_NAME", "").strip()
 OWNER_GENDER = os.environ.get("OWNER_GENDER", "male")
 HISTORY = 12
@@ -127,11 +127,10 @@ STYLE_CHAT_LOCAL = (
 )
 
 STYLE_VOICE = (
-    "ФОРМАТ (голос)\n"
-    "Ответ будет озвучен вслух. Поэтому: только простые фразы, никакой разметки, "
-    "никаких ссылок, эмодзи, скобок и списков — вместо пунктов говори «во-первых», "
-    "«ещё». Числа пиши словами там, где их неудобно читать вслух. "
-    "Максимум 5–6 коротких предложений."
+    "ФОРМАТ (ответ на голосовое)\n"
+    "Вопрос пришёл голосом, ответ читают глазами: пиши текстом, коротко, "
+    "простыми фразами, без длинных списков и без ссылок. "
+    "Максимум 5–6 предложений, из разметки — только <b>жирный</b> и <i>курсив</i>."
 )
 
 SKILLS = (
@@ -140,7 +139,10 @@ SKILLS = (
     "• Погода — по городу пользователя.\n"
     "• Новости — восемь лент, сгруппированные по темам, и сводки по ним.\n"
     "• Telegram — непрочитанные чаты и поиск по перепискам.\n"
-    "• Голос — распознаёшь голосовые и отвечаешь голосом.\n"
+    "• Память — люди, договорённости, факты о владельце и его контактах.\n"
+    "• Переписка — кто написал, о чём говорили, что кому обещано, варианты ответов.\n"
+    "• Голосовые — расшифровываешь их и отвечаешь ТЕКСТОМ. "
+    "Голосовые сообщения ты никогда не отправляешь.\n"
     "Пока не подключены: почта, календарь, VK, Strava. "
     "Спросят про них — скажи, что этого ещё нет, и не выдумывай данные."
 )
@@ -170,7 +172,7 @@ def build_system(channel="chat", blocks=(), facts="", brain="cursor"):
         parts.append("ДАННЫЕ (свежие, используй только их)\n" + "\n\n".join(data))
     # Last line wins with small models: repeat the rules that break most often.
     parts.append("НАПОМИНАНИЕ: обращайся на «ты» (не «вы»), по-русски, коротко, "
-                 + ("простыми фразами без разметки."
+                 + ("простыми фразами, текстом — не голосом."
                     if channel == "voice"
                     else "без markdown (никаких ** и ##). Цифры — только из ДАННЫХ."))
     return "\n\n".join(parts)
@@ -574,6 +576,197 @@ def channel_context(limit=5, hours=24):
         return f"(канал трейдинга недоступен: {e})"
 
 
+def briefing_lead(data_blocks, evening=False):
+    """One or two lines written by the brain: what actually matters today."""
+    when = "вечер" if evening else "утро"
+    prompt = (
+        f"Ниже данные на {when}. Напиши РОВНО одну-две строки: что сегодня главное и "
+        "на что обратить внимание. Без приветствия, без списков, без разметки, "
+        "без повтора цифр целиком. Живым языком, как знакомый человек.\n\nДАННЫЕ:\n"
+        + "\n\n".join(b for b in data_blocks if b)
+    )
+    messages = [{"role": "system", "content": build_system(channel="chat")},
+                {"role": "user", "content": prompt}]
+    for call in (call_cursor, call_ollama):
+        try:
+            line = call(messages).strip()
+            if line:
+                return re.sub(r"\s+", " ", line)[:400]
+        except Exception:
+            continue
+    return ""
+
+
+def compose_briefing(use_llm=True, fmt="html", evening=False, news_limit=6):
+    """Deterministic layout + optional LLM lead, so the shape is always clean."""
+    now = datetime.datetime.now(TZ)
+    greet, icon = day_greeting(evening)
+    head = f"{greet}! {WEEKDAYS[now.weekday()].capitalize()}, {now.day} {MONTHS[now.month - 1]}"
+
+    weather_ico, weather = "🌤", "погода недоступна"
+    try:
+        wdata = weather_data()
+        weather_ico = weather_icon(wdata["code"])
+        weather = weather_line(icon=False, data=wdata)
+    except Exception:
+        pass
+    try:
+        fin = finance_data()
+        fin_line = (f"{money(fin['current'])} · за месяц {signed_money(fin['month'])} · "
+                    f"за год {signed_money(fin['year'])}")
+    except Exception:
+        fin_line = "данные приложения недоступны"
+    try:
+        news_block = news.render_flat(limit=news_limit, html=fmt == "html")
+        news_data = news.context(news_limit)
+    except Exception:
+        news_block = news_data = ""
+    try:
+        tg = tg_unread_data(limit=4)
+        chats = tg.get("chats") or []
+        n_chats, n_msgs = tg.get("total_unread_chats", 0), tg.get("total_unread", 0)
+        tg_line = (f"{n_chats} {plural(n_chats, 'чат', 'чата', 'чатов')}, "
+                   f"{n_msgs} {plural(n_msgs, 'непрочитанное', 'непрочитанных', 'непрочитанных')}")
+        tg_top = [f"{c['name']} ({c['unread']})" for c in chats[:3]]
+    except Exception:
+        tg_line, tg_top = "", []
+
+    lead = ""
+    if use_llm:
+        lead = briefing_lead([f"Погода. {weather}", f"Финансы. {fin_line}", news_data,
+                              f"Telegram. {tg_line}"], evening=evening)
+
+    html = fmt == "html"
+
+    def bold(text):
+        return f"<b>{text}</b>" if html else text
+
+    def italic(text):
+        return f"<i>{text}</i>" if html else text
+
+    out = [f"{icon} {bold(head)}", ""]
+    if lead:
+        out += [italic(lead), ""]
+    out += [f"{weather_ico} {bold('Погода')}", weather, ""]
+    out += [f"💰 {bold('Финансы')}", fin_line, ""]
+    if news_block:
+        out += [f"📰 {bold('Главное в новостях')}", news_block, ""]
+    channel_block = channel_brief(html=html)
+    if channel_block:
+        out += [f"📉 {bold(TRADING_CHANNEL)}", channel_block, ""]
+    if tg_line:
+        tail = (": " + ", ".join(tg_top)) if tg_top else ""
+        out += [f"💬 {bold('Telegram')}", f"{tg_line}{tail}", ""]
+    return "\n".join(out).strip()
+
+
+def briefing_voice(evening=False, news_limit=4):
+    """Spoken briefing: no markup, short sentences, numbers read naturally."""
+    now = datetime.datetime.now(TZ)
+    greet, _ = day_greeting(evening)
+    parts = [f"{greet}! Сегодня {WEEKDAYS[now.weekday()]}, {now.day} {MONTHS[now.month - 1]}."]
+    try:
+        w = weather_data()
+        parts.append(f"На улице {w['now']:.0f} "
+                     f"{plural(round(w['now']), 'градус', 'градуса', 'градусов')}, "
+                     f"днём до {w['max']:.0f}, осадки {w['rain']:.0f} процентов.")
+    except Exception:
+        pass
+    try:
+        fin = finance_data()
+        parts.append(f"Капитал {money_voice(fin['current'])}, "
+                     f"за месяц {money_voice(fin['month'], signed=True)}.")
+    except Exception:
+        pass
+    try:
+        parts.append(news.render_voice(limit=news_limit))
+    except Exception:
+        pass
+    return " ".join(parts)
+
+
+def call_ollama(messages):
+    r = httpx.post(f"{OLLAMA_URL}/api/chat",
+                   json={"model": OLLAMA_MODEL, "messages": messages, "stream": False},
+                   timeout=300, trust_env=False)
+    r.raise_for_status()
+    return r.json()["message"]["content"].strip()
+
+
+def call_cursor(messages):
+    r = httpx.post(f"{GATEWAY_URL}/chat/completions",
+                   headers={"Authorization": f"Bearer {GATEWAY_KEY}"},
+                   json={"model": GATEWAY_MODEL, "messages": messages},
+                   timeout=300, trust_env=False)
+    r.raise_for_status()
+    return r.json()["choices"][0]["message"]["content"].strip()
+
+
+app = FastAPI(title="Personal Assistant Core")
+app.include_router(core_api.router)
+
+
+class ChatIn(BaseModel):
+    text: str
+    session: str = "default"
+    brain: str = "auto"      # auto | local | cursor
+    channel: str = "chat"    # chat | voice
+
+
+def _warm_weather(period=540):
+    """Open-meteo goes through the proxy and takes seconds; keep it pre-fetched."""
+    def loop():
+        while True:
+            try:
+                _ttl_cache.pop("weather", None)
+                weather_data()
+            except Exception:
+                pass
+            time.sleep(period)
+
+    threading.Thread(target=loop, daemon=True, name="weather-warm").start()
+
+
+class LegacySkills:
+    """Adapter that lets the new PersonalAgent reuse the skills living here.
+
+    The core must not import this module — that would be both a circular import
+    and a layering violation — so the skills are handed over as a small object.
+    """
+
+    @staticmethod
+    def detect_intents(text):
+        return detect_intents(text or "")
+
+    @staticmethod
+    def is_private(intents):
+        return any(i in PRIVATE_INTENTS for i in intents)
+
+    @staticmethod
+    def context_blocks(intents, text=""):
+        return context_blocks(intents, text)
+
+    @staticmethod
+    def build_system(channel="chat", brain="local"):
+        return build_system(channel=channel, facts=facts_text(), brain=brain)
+
+    @staticmethod
+    def history(session):
+        return mem_history(session)
+
+    @staticmethod
+    def remember(session, role, text):
+        mem_add(session, role, text)
+
+
+@app.on_event("startup")
+def _startup():
+    db_init()
+    get_core(LegacySkills())
+    news.start_background_refresh()
+    _warm_weather()
+
+
 @app.get("/health")
 def health():
     ok_ollama = ok_gw = False
@@ -594,7 +787,7 @@ def health():
 
 
 def context_blocks(intents, text=""):
-    """Data the skills can add to a prompt — shared by the legacy chat and agents."""
+    """Skill data for a prompt — shared by the legacy chat and the new agents."""
     blocks = []
     if "finance" in intents:
         blocks.append(finance_context())
@@ -723,7 +916,7 @@ def api_channel(q: str = None, limit: int = 8, hours: int = 48):
 
 @app.post("/voice")
 async def api_voice(file: UploadFile = File(...), session: str = "default", brain: str = "auto"):
-    """Speech in, text out. The assistant never answers with audio."""
+    """Speech in, text out: the assistant never answers with audio."""
     data = await file.read()
     text_in = stt_bytes(data)
     res = chat(ChatIn(text=text_in, session=session, brain=brain, channel="voice"))

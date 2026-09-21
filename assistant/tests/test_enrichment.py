@@ -149,3 +149,16 @@ def test_broken_step_does_not_stop_the_others(setup):
                            from_owner=True)
     # style detection does not need the model and still runs
     assert contacts_mod.get(contact.id) is not None
+
+
+def test_talking_to_the_assistant_creates_no_commitments(setup):
+    enricher, llm, bus, contact, conversation = setup
+    owner = contacts_mod.save(contacts_mod.Contact(display_name="Владелец",
+                                                   is_owner=True))
+    llm.structured = {"CommitmentExtraction": {"commitments": [
+        {"description": "от кого я жду ответа?", "direction": "THEY_OWE",
+         "due_hint": "", "confidence": 0.9}]}}
+    enricher._extract_commitments(conversation, owner,
+                                  message(conversation, "от кого я жду ответа?"),
+                                  from_owner=True)
+    assert commitments_mod.all_commitments() == []
