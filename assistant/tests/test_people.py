@@ -5,6 +5,7 @@ from domain import commitments as commitments_mod
 from domain import contacts as contacts_mod
 from domain import conversations as conversations_mod
 from domain import episodes as episodes_mod
+from domain import memory as memory_mod
 from domain.enrichment import parse_due
 
 
@@ -138,6 +139,38 @@ def test_deleting_conversation_removes_messages(bus):
     conversations_mod.delete(conversation.id)
     assert conversations_mod.get(conversation.id) is None
     assert conversations_mod.messages(conversation.id) == []
+
+
+def test_deleting_conversation_takes_episodes_and_commitments(bus):
+    conversation = conversations_mod.get_or_create("telegram", "562", bus=bus)
+    episodes_mod.upsert(conversation.id, summary="про сервер", ts=time.time(), bus=bus)
+    commitments_mod.create("прислать конфиг", conversation_id=conversation.id, bus=bus)
+    conversations_mod.delete(conversation.id)
+    assert episodes_mod.for_conversation(conversation.id) == []
+    assert commitments_mod.all_commitments() == []
+
+
+def test_deleting_contact_forgets_everything_about_them(bus):
+    """Удаление человека — приватность, а не косметика: сирот остаться не должно."""
+    contact = contacts_mod.upsert_from_telegram("563", "Сергей Тестов", bus=bus)
+    conversation = conversations_mod.get_or_create("telegram", "563",
+                                                   contact_id=contact.id, bus=bus)
+    conversations_mod.add_message(conversations_mod.Message(
+        conversation_id=conversation.id, text="привет", sender_id=contact.id))
+    memory_mod.remember("Сергей работает в X", entity_id=contact.id,
+                        source="USER_EXPLICIT", confidence=0.9, bus=bus)
+    commitments_mod.create("прислать договор", counterparty_id=contact.id,
+                           conversation_id=conversation.id, bus=bus)
+    episodes_mod.upsert(conversation.id, contact_id=contact.id, summary="о договоре",
+                        ts=time.time(), bus=bus)
+
+    contacts_mod.delete(contact.id)
+
+    assert contacts_mod.get(contact.id) is None
+    assert memory_mod.list_memories(entity_id=contact.id) == []
+    assert commitments_mod.all_commitments() == []
+    assert episodes_mod.for_contact(contact.id) == []
+    assert conversations_mod.get(conversation.id) is None
 
 
 # --- episodes -------------------------------------------------------------

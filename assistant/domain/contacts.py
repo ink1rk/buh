@@ -259,5 +259,14 @@ def update_style(contact, messages):
 
 
 def delete(contact_id):
+    """Удалить человека — значит забыть и всё, что о нём знаем."""
+    from . import conversations as conversations_mod
+
+    for row in db.query("SELECT id FROM conversations WHERE contact_id=?", (contact_id,)):
+        conversations_mod.delete(row["id"])
+    db.execute("DELETE FROM memories WHERE entity_id=?", (contact_id,))
+    db.execute("DELETE FROM episodes WHERE contact_id=?", (contact_id,))
+    db.execute("DELETE FROM commitments WHERE counterparty_id=?", (contact_id,))
+    db.execute("DELETE FROM reply_suggestions WHERE contact_id=?", (contact_id,))
     db.execute("DELETE FROM contacts WHERE id=?", (contact_id,))
     return True

@@ -198,6 +198,15 @@ def set_summary(conversation_id, summary, bus=None):
 
 
 def delete(conversation_id):
+    """Забыть переписку целиком: осиротевшие эпизоды и подсказки — тоже утечка."""
+    messages = [row["id"] for row in db.query(
+        "SELECT id FROM conv_messages WHERE conversation_id=?", (conversation_id,))]
+    for message_id in messages:
+        db.execute("DELETE FROM memories WHERE source_id=?", (message_id,))
     db.execute("DELETE FROM conv_messages WHERE conversation_id=?", (conversation_id,))
+    db.execute("DELETE FROM episodes WHERE conversation_id=?", (conversation_id,))
+    db.execute("DELETE FROM commitments WHERE conversation_id=?", (conversation_id,))
+    db.execute("DELETE FROM reply_suggestions WHERE conversation_id=?",
+               (conversation_id,))
     db.execute("DELETE FROM conversations WHERE id=?", (conversation_id,))
     return True
