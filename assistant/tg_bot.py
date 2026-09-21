@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Telegram channel for the personal assistant.
 
-Long-polls Telegram (via proxy), forwards text/voice to the local assistant core
-and answers with formatted HTML plus voice. News come grouped by topic with
-inline buttons (topics, AI digest, refresh). Only the configured owner is served.
+Long-polls Telegram (via proxy) and talks to the local core over HTTP. Voice
+messages are transcribed and answered with text — the assistant never replies
+with audio. News come grouped by topic with inline buttons.
+Only the configured owner is served.
 """
-import os, base64, subprocess, tempfile, time, json, datetime, threading, traceback
+import os, time, json, datetime, threading, traceback
 import zoneinfo
 from html import escape
 
@@ -47,8 +48,12 @@ GREETING = (
     "• /digest — то же, но пересказано своими словами\n"
     "• /trading — сводка по каналу Full-Time Trading\n"
     "• /weather — погода\n"
-    "• /voice — выбрать голос (пришлю образцы)\n"
     "• /chats — непрочитанное в Telegram\n"
+    "• /inbox — кто ждёт ответа и что я обещал\n"
+    "• /who Имя — карточка контакта\n"
+    "• /memory [запрос] — что я помню\n"
+    "• /activity — журнал действий\n"
+    "• /status — состояние интеграций\n"
     "• /find &lt;текст&gt; — поиск по перепискам\n\n"
     "<i>Умею: финансы, погода, новости, твой Telegram. "
     "Дальше — почта, календарь, VK, спорт.</i>"
@@ -139,77 +144,6 @@ def typing_while(chat_id, act="typing"):
     return stop
 
 
-def wav_to_ogg(wav: bytes) -> bytes:
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-        f.write(wav); inp = f.name
-    out = inp + ".ogg"
-    try:
-        subprocess.run(["ffmpeg", "-y", "-i", inp, "-c:a", "libopus", "-b:a", "32k", out],
-                       capture_output=True, check=True)
-        return open(out, "rb").read()
-    finally:
-        for p in (inp, out):
-            try: os.unlink(p)
-            except OSError: pass
-
-
-def send_voice(chat_id, wav: bytes, caption=None):
-    try:
-        ogg = wav_to_ogg(wav)
-        api("sendVoice", chat_id=chat_id, caption=(caption or "")[:1000],
-            files={"voice": ("reply.ogg", ogg, "audio/ogg")})
-    except Exception as e:
-        print("sendVoice failed:", e)
-
-
-def tts(text: str, name=None) -> bytes:
-    payload = {"text": text}
-    if name:
-        payload["voice"] = name
-    return asst.post(f"{ASSISTANT}/tts", json=payload).content
-
-
-PREVIEW_TEXT = ("Привет. Это мой голос. Скажи, если хочешь, чтобы я говорила "
-                "медленнее или мягче.")
-
-
-def send_voices(chat_id):
-    """List presets, then send a sample of each so выбор делается на слух."""
-    d = asst.get(f"{ASSISTANT}/voices").json()
-    voices, current = d.get("voices") or {}, d.get("active")
-    lines = ["🎧 <b>Голоса</b>", ""]
-    rows, row = [], []
-    for name, info in voices.items():
-        mark = "✅ " if name == current else ""
-        lines.append(f"{mark}<b>{escape(info['title'])}</b>\n<i>      {escape(info['hint'])}</i>")
-        row.append({"text": f"{mark}{info['title'].split(' — ')[0]}", "callback_data": f"voice:{name}"})
-        if len(row) == 2:
-            rows.append(row); row = []
-    if row:
-        rows.append(row)
-    lines += ["", "<i>Сейчас пришлю образцы — выбери кнопкой, какой оставить.</i>"]
-    send_html(chat_id, "\n".join(lines), {"inline_keyboard": rows})
-    for name, info in voices.items():
-        action(chat_id, "record_voice")
-        try:
-            send_voice(chat_id, tts(PREVIEW_TEXT, name), caption=info["title"])
-        except Exception as e:
-            print(f"preview {name} failed:", e)
-
-
-def set_voice(chat_id, name):
-    d = asst.post(f"{ASSISTANT}/voices/set", json={"name": name}).json()
-    if d.get("error"):
-        return send_html(chat_id, f"Не смогла переключить: {escape(d['error'])}")
-    info = (asst.get(f"{ASSISTANT}/voices").json().get("voices") or {}).get(name, {})
-    send_html(chat_id, f"🎧 Теперь говорю голосом <b>{escape(info.get('title', name))}</b>.")
-    action(chat_id, "record_voice")
-    try:
-        send_voice(chat_id, tts("Готово. Теперь я звучу так. Обращайся."))
-    except Exception as e:
-        print("voice confirm failed:", e)
-
-
 def news_keyboard(topics, active=None):
     """Topic buttons (three per row) + digest/refresh row."""
     rows, row = [], []
@@ -271,7 +205,7 @@ def send_digest(chat_id):
         stop.set()
 
 
-def send_briefing(chat_id, evening=False, voice=True):
+def send_briefing(chat_id, evening=False):
     stop = typing_while(chat_id)
     try:
         d = asst.get(f"{ASSISTANT}/briefing", params={"evening": str(evening).lower()}).json()
@@ -279,15 +213,8 @@ def send_briefing(chat_id, evening=False, voice=True):
     except Exception as e:
         traceback.print_exc()
         send_html(chat_id, f"Брифинг не собрался: {escape(str(e))}")
-        return
     finally:
         stop.set()
-    if voice:
-        action(chat_id, "record_voice")
-        try:
-            send_voice(chat_id, tts(d.get("voice") or d.get("text", "")))
-        except Exception as e:
-            print("briefing voice failed:", e)
 
 
 def send_trading(chat_id, hours=24):
@@ -302,58 +229,233 @@ def send_trading(chat_id, hours=24):
         stop.set()
 
 
-def reply_keyboard(notif):
-    """Buttons: send one of the suggestions, or write the reply yourself."""
+def suggestion_keyboard(notification):
+    """SEND / EDIT / IGNORE for suggested replies."""
+    meta = notification.get("metadata") or {}
+    suggestion_id = meta.get("suggestion_id")
     rows = []
-    for index in range(len(notif.get("suggestions") or [])):
-        rows.append([{"text": f"Отправить вариант {index + 1}",
-                      "callback_data": f"snd:{notif['id']}:{index}"}])
-    rows.append([{"text": "✍️ Своими словами", "callback_data": f"own:{notif['id']}"},
-                 {"text": "🙈 Пропустить", "callback_data": f"skip:{notif['id']}"}])
+    for index in range(len(meta.get("options") or [])):
+        rows.append([{"text": f"📨 Отправить {index + 1}",
+                      "callback_data": f"snd:{suggestion_id}:{index}"}])
+    rows.append([{"text": "✍️ Свой ответ", "callback_data": f"own:{suggestion_id}"},
+                 {"text": "🙈 Пропустить", "callback_data": f"ign:{suggestion_id}"}])
     return {"inline_keyboard": rows}
 
 
-def render_notification(notif):
-    lines = [f"💬 <b>{escape(notif['peer_name'])}</b> пишет:",
-             f"<i>«{escape((notif['text'] or '')[:700])}»</i>"]
-    options = notif.get("suggestions") or []
+def approval_keyboard(notification):
+    action_id = (notification.get("metadata") or {}).get("action_id")
+    return {"inline_keyboard": [[
+        {"text": "✅ Подтвердить", "callback_data": f"apr:{action_id}"},
+        {"text": "❌ Отменить", "callback_data": f"cnl:{action_id}"}]]}
+
+
+def render_incoming(notification):
+    meta = notification.get("metadata") or {}
+    lines = [f"💬 <b>{escape(notification.get('title') or 'Сообщение')}</b>",
+             f"<i>«{escape((notification.get('body') or '')[:700])}»</i>"]
+    summary = meta.get("context_summary")
+    if summary:
+        lines.append(f"\n<i>Контекст: {escape(summary[:300])}</i>")
+    options = meta.get("options") or []
     if options:
-        lines.append("\nМожно ответить так:")
+        lines.append("\nВарианты ответа:")
         for index, option in enumerate(options, 1):
             lines.append(f"<b>{index}.</b> {escape(option)}")
     else:
-        lines.append("\n<i>Вариантов не придумала — ответь своими словами.</i>")
+        lines.append("\n<i>Вариантов нет — ответь своими словами.</i>")
     return "\n".join(lines)
 
 
+def render_approval(notification):
+    meta = notification.get("metadata") or {}
+    return (f"⚠️ <b>Требуется подтверждение</b>\n\n"
+            f"Действие: <code>{escape(meta.get('action_type', '?'))}</code>\n"
+            f"Риск: {escape(str(meta.get('risk', '?')))}\n\n"
+            f"<i>{escape((notification.get('body') or '')[:600])}</i>")
+
+
+def deliver(notification):
+    kind = (notification.get("metadata") or {}).get("kind")
+    if kind == "incoming_message":
+        send_html(OWNER, render_incoming(notification), suggestion_keyboard(notification))
+    elif kind == "approval":
+        send_html(OWNER, render_approval(notification), approval_keyboard(notification))
+    else:
+        body = notification.get("body") or ""
+        title = notification.get("title") or "Уведомление"
+        send_html(OWNER, f"<b>{escape(title)}</b>\n{escape(body[:900])}")
+
+
 def notification_poller():
-    """Drain the assistant's notification queue and push it to the owner."""
+    """Drain the core notification queue: the core has no Telegram token."""
     while True:
         try:
-            items = asst.get(f"{ASSISTANT}/notifications/pending",
+            items = asst.get(f"{ASSISTANT}/api/notifications/pending",
                              params={"limit": 5}).json().get("items") or []
             delivered = []
-            for notif in items:
+            for notification in items:
                 try:
-                    send_html(OWNER, render_notification(notif), reply_keyboard(notif))
-                    delivered.append(notif["id"])
+                    deliver(notification)
+                    delivered.append(notification["id"])
                 except Exception:
                     traceback.print_exc()
             if delivered:
-                asst.post(f"{ASSISTANT}/notifications/delivered", json={"ids": delivered})
+                asst.post(f"{ASSISTANT}/api/notifications/delivered",
+                          json={"ids": delivered})
         except Exception:
             pass
         time.sleep(NOTIFY_POLL)
 
 
-def send_reply_choice(chat_id, notif_id, index):
-    d = asst.post(f"{ASSISTANT}/notifications/send",
-                  json={"id": int(notif_id), "index": int(index)}, timeout=120).json()
-    if d.get("ok"):
-        send_html(chat_id, f"✅ Отправила <b>{escape(d.get('peer_name', ''))}</b>:\n"
-                           f"<i>«{escape(d.get('sent_text', ''))}»</i>")
+def send_suggestion(chat_id, suggestion_id, index=None, text=None):
+    payload = {"index": index} if text is None else {"text": text}
+    d = asst.post(f"{ASSISTANT}/api/suggestions/{suggestion_id}/send",
+                  json=payload, timeout=120).json()
+    if d.get("status") == "SUCCESS":
+        send_html(chat_id, f"✅ Отправлено <b>{escape(str(d.get('contact', '')))}</b>:\n"
+                           f"<i>«{escape(d.get('text', ''))}»</i>")
     else:
-        send_html(chat_id, f"Не смогла отправить: {escape(str(d.get('error')))}")
+        send_html(chat_id, "Не отправилось: "
+                           + escape(str(d.get("error") or d.get("status"))))
+
+
+def approve_action(chat_id, action_id, approve=True):
+    verb = "approve" if approve else "cancel"
+    d = asst.post(f"{ASSISTANT}/api/actions/{action_id}/{verb}", json={}, timeout=120).json()
+    status = d.get("status", "?")
+    if status == "SUCCESS":
+        send_html(chat_id, "✅ Выполнено.")
+    elif status == "CANCELLED":
+        send_html(chat_id, "❌ Отменено.")
+    elif status == "EXPIRED":
+        send_html(chat_id, "⌛️ Подтверждение просрочено — запроси действие заново.")
+    else:
+        send_html(chat_id, f"Статус: {escape(status)}. "
+                           + escape(str(d.get("error") or "")))
+
+
+def send_inbox(chat_id):
+    """Единый почтовый ящик коммуникаций: кто ждёт, кому должен."""
+    try:
+        waiting = asst.get(f"{ASSISTANT}/api/commitments",
+                           params={"status": "OPEN"}).json().get("commitments") or []
+        conversations = asst.get(f"{ASSISTANT}/api/conversations",
+                                 params={"limit": 8}).json().get("conversations") or []
+    except Exception as e:
+        return send_html(chat_id, f"Не собралось: {escape(str(e))}")
+    mine = [c for c in waiting if c["direction"] == "I_OWE"]
+    theirs = [c for c in waiting if c["direction"] == "THEY_OWE"]
+    lines = ["📥 <b>Коммуникации</b>"]
+    if mine:
+        lines.append("\n<b>Я должен ответить/сделать</b>")
+        for item in mine[:8]:
+            who = item.get("counterparty_name") or "—"
+            lines.append(f"• {escape(item['description'])} <i>({escape(who)})</i>")
+    if theirs:
+        lines.append("\n<b>Жду ответа</b>")
+        for item in theirs[:8]:
+            who = item.get("counterparty_name") or "—"
+            lines.append(f"• {escape(who)}: {escape(item['description'])}")
+    talks = [c for c in conversations if c.get("platform") == "telegram"]
+    if talks:
+        lines.append("\n<b>Последние диалоги</b>")
+        for conversation in talks[:6]:
+            name = conversation.get("contact_name") or conversation.get("title") or "чат"
+            summary = (conversation.get("summary") or "")[:140]
+            lines.append(f"▫️ <b>{escape(name)}</b>"
+                         + (f"\n<i>      {escape(summary)}</i>" if summary else ""))
+    if len(lines) == 1:
+        lines.append("\nПусто: никто ничего не ждёт.")
+    send_html(chat_id, "\n".join(lines))
+
+
+def send_commitments(chat_id):
+    d = asst.get(f"{ASSISTANT}/api/commitments", params={"status": "OPEN"}).json()
+    items = d.get("commitments") or []
+    if not items:
+        return send_html(chat_id, "Открытых обязательств нет.")
+    lines = ["🤝 <b>Обязательства</b>"]
+    for item in items[:20]:
+        arrow = "→" if item["direction"] == "I_OWE" else "←"
+        who = item.get("counterparty_name") or "—"
+        lines.append(f"{arrow} {escape(item['description'])} <i>({escape(who)})</i>")
+    send_html(chat_id, "\n".join(lines))
+
+
+def send_contact_card(chat_id, name):
+    if not name:
+        return send_html(chat_id, "Кого показать? Например: <code>/who Сергей</code>")
+    d = asst.get(f"{ASSISTANT}/api/contacts/resolve", params={"q": name}).json()
+    if d.get("ambiguous"):
+        options = "\n".join(f"• {escape(c['display_name'])}"
+                            for c in d.get("candidates", [])[:5])
+        return send_html(chat_id, f"Нашла несколько:\n{options}\n\nУточни, кто нужен.")
+    contact = d.get("resolved")
+    if not contact:
+        return send_html(chat_id, "Такого контакта пока нет.")
+    profile = asst.get(f"{ASSISTANT}/api/contacts/{contact['id']}/context").json()
+    lines = [f"👤 <b>{escape(contact['display_name'])}</b>"]
+    if contact.get("aliases"):
+        lines.append(f"<i>также: {escape(', '.join(contact['aliases'][:5]))}</i>")
+    lines.append(f"Отношения: {escape(contact.get('relationship_type', 'UNKNOWN').lower())}")
+    style = contact.get("communication_style") or {}
+    if style:
+        lines.append(f"Стиль: {escape(str(style.get('length')))}, "
+                     f"{escape(str(style.get('formality')))}")
+    for commitment in (profile.get("commitments") or [])[:6]:
+        arrow = "→" if commitment["direction"] == "I_OWE" else "←"
+        lines.append(f"{arrow} {escape(commitment['description'])}")
+    memories = profile.get("memories") or []
+    if memories:
+        lines.append("\n<b>Помню:</b>")
+        for memory in memories[:6]:
+            lines.append(f"• {escape(memory['content'])}")
+    send_html(chat_id, "\n".join(lines))
+
+
+def send_memory(chat_id, query):
+    if query:
+        d = asst.post(f"{ASSISTANT}/api/memory/search", json={"query": query}).json()
+        items = d.get("results") or []
+        head = f"🧠 <b>Память по «{escape(query)}»</b>"
+    else:
+        d = asst.get(f"{ASSISTANT}/api/memory", params={"limit": 15}).json()
+        items = d.get("memories") or []
+        head = "🧠 <b>Что я помню</b>"
+    if not items:
+        return send_html(chat_id, head + "\n\nПока пусто.")
+    lines = [head]
+    for memory in items[:15]:
+        mark = "?" if memory.get("source") == "LLM_INFERENCE" else "•"
+        lines.append(f"{mark} <b>{escape(memory['type'].lower())}</b>: "
+                     f"{escape(memory['content'][:220])}"
+                     f"\n<i>      {escape(memory['source'].lower())}, "
+                     f"уверенность {memory.get('confidence', 0):.2f}</i>")
+    send_html(chat_id, "\n".join(lines))
+
+
+def send_activity(chat_id):
+    d = asst.get(f"{ASSISTANT}/api/activity", params={"limit": 15}).json()
+    items = d.get("activity") or []
+    if not items:
+        return send_html(chat_id, "Журнал пуст.")
+    lines = ["🧾 <b>Что происходило</b>"]
+    for item in items:
+        stamp = datetime.datetime.fromtimestamp(item["ts"], TZ).strftime("%H:%M:%S")
+        lines.append(f"<code>{stamp}</code> {escape(item['event'])}")
+    send_html(chat_id, "\n".join(lines))
+
+
+def send_status(chat_id):
+    d = asst.get(f"{ASSISTANT}/api/integrations", params={"refresh": "true"}).json()
+    marks = {"CONNECTED": "🟢", "DEGRADED": "🟡", "ERROR": "🔴",
+             "NOT_CONFIGURED": "⚪️", "DISABLED": "⚫️"}
+    lines = ["🩺 <b>Интеграции</b>"]
+    for item in d.get("integrations") or []:
+        mark = marks.get(item["status"], "⚪️")
+        lines.append(f"{mark} <b>{escape(item['name'])}</b> — "
+                     f"{escape(str(item.get('detail') or item['status'])[:80])}")
+    send_html(chat_id, "\n".join(lines))
 
 
 def send_weather(chat_id):
@@ -416,13 +518,20 @@ def handle_command(chat_id, uid, text):
     elif cmd in ("/trading", "/trade"):
         hours = int(arg) if arg.isdigit() else 24
         send_trading(chat_id, hours)
+    elif cmd == "/inbox":
+        send_inbox(chat_id)
+    elif cmd in ("/todo", "/commitments"):
+        send_commitments(chat_id)
+    elif cmd == "/who":
+        send_contact_card(chat_id, arg)
+    elif cmd == "/memory":
+        send_memory(chat_id, arg)
+    elif cmd == "/activity":
+        send_activity(chat_id)
+    elif cmd in ("/status", "/integrations"):
+        send_status(chat_id)
     elif cmd == "/weather":
         send_weather(chat_id)
-    elif cmd == "/voice":
-        if arg:
-            set_voice(chat_id, arg.strip())
-        else:
-            send_voices(chat_id)
     elif cmd == "/chats":
         send_chats(chat_id)
     elif cmd == "/find":
@@ -435,43 +544,49 @@ def handle_command(chat_id, uid, text):
     return True
 
 
+def core_chat(text, uid, message_type="TEXT", transcription=None):
+    """Everything the owner says goes through the same core pipeline."""
+    return asst.post(f"{ASSISTANT}/api/chat",
+                     json={"text": text, "session": f"tg:{uid}", "interface": "telegram",
+                           "message_type": message_type,
+                           "transcription": transcription}).json()
+
+
 def handle_text(chat_id, uid, text):
     if text.startswith("/") and handle_command(chat_id, uid, text):
         return
-    if pending_reply.get("peer_id") and not text.startswith("/"):
+    if pending_reply.get("suggestion_id") and not text.startswith("/"):
         target = pending_reply.copy()
         pending_reply.clear()
-        d = asst.post(f"{ASSISTANT}/reply",
-                      json={"peer_id": target["peer_id"], "text": text}).json()
-        if d.get("ok"):
-            return send_html(chat_id, f"✅ Отправила <b>{escape(target['name'])}</b>:\n"
-                                      f"<i>«{escape(text)}»</i>")
-        return send_html(chat_id, f"Не смогла отправить: {escape(str(d.get('error')))}")
+        return send_suggestion(chat_id, target["suggestion_id"], text=text)
     stop = typing_while(chat_id)
     try:
-        d = asst.post(f"{ASSISTANT}/chat", json={"text": text, "session": f"tg:{uid}"}).json()
+        d = core_chat(text, uid)
     finally:
         stop.set()
-    tag = "🧠 cursor" if d.get("brain") == "cursor" else "⚡ локально"
+    tag = "🧠 cursor" if d.get("provider") == "cursor" else "⚡ локально"
     reply = tgfmt.to_html(d.get("reply") or "(пусто)")
     send_html(chat_id, f"{reply}\n\n<i>{tag}</i>")
 
 
 def handle_voice(chat_id, uid, file_id):
-    stop = typing_while(chat_id, "record_voice")
+    """Voice in → transcription → same pipeline → text out. Never audio back."""
+    stop = typing_while(chat_id)
     try:
         fp = api("getFile", file_id=file_id).get("result", {}).get("file_path")
         if not fp:
             return send_html(chat_id, "Не удалось получить голосовое.")
         audio = tg.get(f"{FILEAPI}/{fp}").content
-        d = asst.post(f"{ASSISTANT}/voice", params={"session": f"tg:{uid}"},
-                      files={"file": ("voice.ogg", audio, "audio/ogg")}).json()
+        heard = (asst.post(f"{ASSISTANT}/stt",
+                           files={"file": ("voice.ogg", audio, "audio/ogg")})
+                 .json().get("text") or "").strip()
+        if not heard:
+            return send_html(chat_id, "Не разобрала, что в голосовом.")
+        d = core_chat(heard, uid, message_type="VOICE", transcription=heard)
     finally:
         stop.set()
-    heard = escape((d.get("text_in") or "").strip())
-    send_html(chat_id, f"🗣 <i>«{heard}»</i>\n\n{tgfmt.to_html(d.get('reply') or '(пусто)')}")
-    if d.get("audio_b64"):
-        send_voice(chat_id, base64.b64decode(d["audio_b64"]))
+    send_html(chat_id, f"🗣 <i>«{escape(heard)}»</i>\n\n"
+                       f"{tgfmt.to_html(d.get('reply') or '(пусто)')}")
 
 
 def handle_callback(cb):
@@ -488,25 +603,34 @@ def handle_callback(cb):
     elif data == "digest":
         api("answerCallbackQuery", callback_query_id=cb["id"], text="Собираю сводку…")
         send_digest(chat_id)
-    elif data.startswith("voice:"):
-        api("answerCallbackQuery", callback_query_id=cb["id"], text="Переключаю голос…")
-        set_voice(chat_id, data.split(":", 1)[1])
     elif data.startswith("snd:"):
-        _, notif_id, index = data.split(":")
+        _, suggestion_id, index = data.split(":")
         api("answerCallbackQuery", callback_query_id=cb["id"], text="Отправляю…")
-        send_reply_choice(chat_id, notif_id, index)
+        send_suggestion(chat_id, suggestion_id, index=int(index))
     elif data.startswith("own:"):
-        notif_id = data.split(":", 1)[1]
-        notif = asst.get(f"{ASSISTANT}/notifications/{notif_id}").json()
-        if notif.get("peer_id"):
-            pending_reply.update({"peer_id": notif["peer_id"], "name": notif["peer_name"]})
+        suggestion_id = data.split(":", 1)[1]
+        suggestion = asst.get(f"{ASSISTANT}/api/suggestions/{suggestion_id}").json()
+        if suggestion.get("id"):
+            pending_reply.update({"suggestion_id": suggestion_id,
+                                  "name": suggestion.get("contact_name", "")})
             api("answerCallbackQuery", callback_query_id=cb["id"], text="Жду текст")
-            send_html(chat_id, f"✍️ Напиши ответ для <b>{escape(notif['peer_name'])}</b> "
+            send_html(chat_id, "✍️ Напиши ответ для "
+                               f"<b>{escape(suggestion.get('contact_name', ''))}</b> "
                                "следующим сообщением — отправлю как есть.")
         else:
             api("answerCallbackQuery", callback_query_id=cb["id"], text="Не нашла чат")
-    elif data.startswith("skip:"):
+    elif data.startswith("ign:"):
+        suggestion_id = data.split(":", 1)[1]
+        asst.post(f"{ASSISTANT}/api/suggestions/{suggestion_id}/ignore", json={})
         api("answerCallbackQuery", callback_query_id=cb["id"], text="Ок, пропускаю")
+        if message_id:
+            api("editMessageReplyMarkup", chat_id=chat_id, message_id=message_id,
+                reply_markup=json.dumps({"inline_keyboard": []}))
+    elif data.startswith(("apr:", "cnl:")):
+        kind, action_id = data.split(":", 1)
+        api("answerCallbackQuery", callback_query_id=cb["id"],
+            text="Выполняю…" if kind == "apr" else "Отменяю…")
+        approve_action(chat_id, action_id, approve=(kind == "apr"))
         if message_id:
             api("editMessageReplyMarkup", chat_id=chat_id, message_id=message_id,
                 reply_markup=json.dumps({"inline_keyboard": []}))
@@ -538,8 +662,12 @@ def setup_commands():
         {"command": "news", "description": "Новости по темам"},
         {"command": "digest", "description": "Сводка новостей своими словами"},
         {"command": "trading", "description": "Сводка трейдинг-канала"},
+        {"command": "inbox", "description": "Кто ждёт ответа"},
+        {"command": "who", "description": "Карточка контакта"},
+        {"command": "memory", "description": "Что помнит ассистент"},
+        {"command": "activity", "description": "Журнал действий"},
+        {"command": "status", "description": "Состояние интеграций"},
         {"command": "weather", "description": "Погода"},
-        {"command": "voice", "description": "Выбрать голос"},
         {"command": "chats", "description": "Непрочитанное в Telegram"},
         {"command": "find", "description": "Поиск по перепискам"},
         {"command": "start", "description": "О боте"},

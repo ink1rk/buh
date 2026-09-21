@@ -70,13 +70,17 @@ async def on_incoming(event):
             if not (msg.raw_text or "").strip():
                 continue
             history.append({"me": bool(msg.out), "text": msg.raw_text.strip()[:400],
+                            "id": msg.id,
                             "ts": msg.date.timestamp() if msg.date else 0})
         history.reverse()
-        await asst.post(f"{ASSISTANT}/notify", json={
+        await asst.post(f"{ASSISTANT}/api/ingest/telegram", json={
             "kind": "incoming_message",
             "peer_id": chat_id,
             "peer_name": utils.get_display_name(sender) or "неизвестный",
+            "username": getattr(sender, "username", None),
+            "message_id": event.id,
             "text": text[:1500],
+            "ts": event.date.timestamp() if event.date else None,
             "history": history,
             "is_private": private,
         })
