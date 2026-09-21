@@ -83,12 +83,16 @@ class QueueProvider(NotificationProvider):
         return {"queued": True, "channel": self.channel}
 
 
+def _now():
+    return datetime.datetime.now(config.tz)
+
+
 class NotificationPolicy:
     """Phase 1 policy: severity, quiet hours and a per-source rate limit."""
 
     def __init__(self, cfg=None, clock=None):
         self.cfg = cfg or config.notifications
-        self.clock = clock or (lambda: datetime.datetime.now(config.tz))
+        self.clock = clock or _now
         self._recent: dict = {}
 
     def _quiet_now(self):

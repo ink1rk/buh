@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 import tempfile
@@ -27,6 +28,16 @@ def isolated_db(monkeypatch):
             os.unlink(path + suffix)
         except OSError:
             pass
+
+
+@pytest.fixture(autouse=True)
+def daytime(monkeypatch):
+    """Pin the clock: quiet hours must not decide whether the suite passes."""
+    from core import notifications
+    from core.config import config
+    monkeypatch.setattr(
+        notifications, "_now",
+        lambda: datetime.datetime(2026, 9, 21, 12, 0, tzinfo=config.tz))
 
 
 class FakeLLM:
