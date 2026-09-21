@@ -324,6 +324,40 @@ def api_integrations(refresh: bool = False):
             else core.integrations.status()}
 
 
+@router.get("/mcp")
+def api_mcp(refresh: bool = False):
+    """Что сейчас подключено по MCP и какие инструменты оно даёт."""
+    return {"servers": get_core().mcp.catalogue(refresh=refresh)}
+
+
+@router.post("/mcp/read")
+def api_mcp_read(payload: dict = Body(...)):
+    """Чтение — напрямую: спросить данные не значит что-то совершить."""
+    from .mcp import McpError
+
+    core = get_core()
+    tool = payload.get("tool", "")
+    try:
+        server = payload.get("server")
+        return (core.mcp.call(server, tool, payload.get("arguments") or {}) if server
+                else core.mcp.call_tool(tool, payload.get("arguments") or {}))
+    except McpError as e:
+        return {"error": str(e)}
+
+
+@router.post("/mcp/call")
+def api_mcp_call(payload: dict = Body(...)):
+    """Вызов, который что-то меняет, идёт через движок действий и журнал."""
+    core = get_core()
+    action = core.actions.request(
+        "mcp.tool.call",
+        {"server": payload.get("server"), "tool": payload.get("tool", ""),
+         "arguments": payload.get("arguments") or {}},
+        source="api", requested_by="user:owner",
+        context={"user_confirmed": bool(payload.get("user_confirmed", True))})
+    return action.as_dict()
+
+
 @router.get("/permissions")
 def api_permissions():
     return get_core().permissions.describe()
@@ -355,6 +389,25 @@ def _greeting(hour):
     if hour < 18:
         return "Добрый день"
     return "Добрый вечер"
+
+
+def _phone_block(core):
+    """Телефон на главном экране — только если мост отвечает.
+
+    Обзор собирается на каждый заход, а телефон может молчать: его молчание
+    не должно превращаться в пустой экран.
+    """
+    from .mcp import McpError
+
+    if not core.mcp.names():
+        return None
+    try:
+        answer = core.mcp.call_tool("phone_today")
+    except McpError:
+        return None
+    data = answer.get("data") or {}
+    return {"text": answer.get("text", ""), "health": data.get("health", {}),
+            "attention": (data.get("attention") or [])[:5]}
 
 
 @router.get("/overview")
@@ -397,6 +450,7 @@ def api_overview():
                       "i_owe": len(mine), "waiting": len(theirs),
                       "overdue": len(overdue)},
         "suggestions": suggestions,
+        "phone": _phone_block(core),
         "approvals": approvals,
         "i_owe": with_names(mine),
         "waiting": with_names(theirs),

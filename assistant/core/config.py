@@ -139,6 +139,41 @@ class NotificationConfig:
 
 
 @dataclass(frozen=True)
+class McpServer:
+    name: str
+    url: str
+    token: str = ""
+
+
+def _mcp_servers():
+    """MCP_SERVERS=phone=http://127.0.0.1:8820/mcp,home=http://…/mcp
+
+    Токен у каждого свой и лежит отдельно (`MCP_PHONE_TOKEN`): адреса можно
+    показывать в интерфейсе, ключи — нет. Шлюз MCP выглядит так же, как
+    отдельный сервер, просто отдаёт инструменты нескольких сервисов сразу.
+    """
+    servers = []
+    for item in _list("MCP_SERVERS"):
+        name, _, url = item.partition("=")
+        name, url = name.strip().lower(), url.strip()
+        if not name or not url:
+            continue
+        key = name.upper().replace("-", "_").replace(".", "_")
+        servers.append(McpServer(name, url, os.environ.get(f"MCP_{key}_TOKEN", "").strip()))
+    return tuple(servers)
+
+
+@dataclass(frozen=True)
+class McpConfig:
+    servers: tuple = field(default_factory=_mcp_servers)
+    timeout: int = _int("MCP_TIMEOUT", 20)
+
+    @property
+    def enabled(self):
+        return bool(self.servers)
+
+
+@dataclass(frozen=True)
 class MemoryConfig:
     min_confidence: float = float(os.environ.get("MEMORY_MIN_CONFIDENCE", "0.45"))
     inference_confidence_cap: float = float(
@@ -166,6 +201,7 @@ class Config:
     actions: ActionConfig = field(default_factory=ActionConfig)
     notifications: NotificationConfig = field(default_factory=NotificationConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)
+    mcp: McpConfig = field(default_factory=McpConfig)
 
 
 config = Config()

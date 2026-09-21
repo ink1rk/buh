@@ -188,6 +188,35 @@ class FinanceIntegration(HttpIntegration):
         return f"{config.finance_api}/networth"
 
 
+class McpIntegration(Integration):
+    """Внешний сервис, подключённый по MCP: мост с телефоном, шлюз, что угодно.
+
+    Живой сервер — тот, который перечислил инструменты: ответ на `ping`
+    ничего не говорит о том, работает ли за ним его собственная база.
+    """
+
+    type = "mcp"
+
+    def __init__(self, client):
+        self.client = client
+        self.name = f"mcp.{client.name}"
+
+    def configured(self):
+        return bool(self.client.url)
+
+    def health_check(self):
+        if not self.configured():
+            return Status.NOT_CONFIGURED, "нет адреса"
+        try:
+            info = self.client.health()
+        except Exception as e:
+            return Status.ERROR, f"{type(e).__name__}: {e}"
+        if not info["tools"]:
+            return Status.DEGRADED, "сервер отвечает, но инструментов нет"
+        return Status.CONNECTED, (f"{info['tools']} инструментов, "
+                                  f"протокол {info['version']}, {info['ms']} мс")
+
+
 class IntegrationRegistry:
     def __init__(self, bus=None, integrations=None):
         self.bus = bus

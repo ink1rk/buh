@@ -38,6 +38,9 @@ ACTION_RISK = {
     "delete.telegram.message": RiskLevel.MEDIUM,
     "send.email": RiskLevel.MEDIUM,
     "create.calendar.event": RiskLevel.MEDIUM,
+    # За именем инструмента может быть что угодно — от «покажи сон» до
+    # «открой дверь», поэтому по умолчанию спрашиваем.
+    "mcp.tool.call": RiskLevel.MEDIUM,
     "call.taxi": RiskLevel.HIGH,
     "purchase.ozon": RiskLevel.HIGH,
     "bank.transfer": RiskLevel.CRITICAL,

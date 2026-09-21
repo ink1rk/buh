@@ -147,6 +147,9 @@ SKILLS = (
     "• Погода — по городу пользователя.\n"
     "• Новости — восемь лент, сгруппированные по темам, и сводки по ним.\n"
     "• Telegram — непрочитанные чаты и поиск по перепискам.\n"
+    "• Телефон и здоровье — сон, пульс, шаги, тренировки, пропущенные звонки "
+    "и кто ждёт ответа. Цифры уже сравнены с его обычной нормой: говори об "
+    "отклонениях, а не о таблицах.\n"
     "• Память — люди, договорённости, факты о владельце и его контактах.\n"
     "• Переписка — кто написал, о чём говорили, что кому обещано, варианты ответов.\n"
     "• Голосовые — расшифровываешь их и отвечаешь ТЕКСТОМ. "
@@ -196,9 +199,12 @@ TG_KEYWORDS = ("непрочит", "телеге", "телеграм", "кто �
 WEATHER_KEYWORDS = ("погод", "дожд", "тепло ли", "холодно", "зонт", "градус")
 TRADING_KEYWORDS = ("трейд", "сигнал", "сделк", "позици", "шорт", "лонг",
                     "full-time", "фултайм", "фулл-тайм", "что по рынк")
+HEALTH_KEYWORDS = ("здоров", "самочувств", "сон ", "выспал", "спал", "шаг",
+                   "пульс", "тренировк", "устал", "отдохнул", "форм",
+                   "пропущенн", "звонил", "телефон", "часы", "кольц")
 
 # Intents that touch private data stay on the local model on principle.
-PRIVATE_INTENTS = ("finance", "telegram", "trading")
+PRIVATE_INTENTS = ("finance", "telegram", "trading", "health")
 
 
 def db_init():
@@ -255,7 +261,7 @@ def detect_intents(msg):
     found = []
     for name, keywords in (("trading", TRADING_KEYWORDS), ("finance", FINANCE_KEYWORDS),
                            ("telegram", TG_KEYWORDS), ("news", NEWS_KEYWORDS),
-                           ("weather", WEATHER_KEYWORDS)):
+                           ("weather", WEATHER_KEYWORDS), ("health", HEALTH_KEYWORDS)):
         if any(k in m for k in keywords):
             found.append(name)
     return found or ["general"]
@@ -453,6 +459,25 @@ def weather_context():
         return f"(погода недоступна: {e})"
 
 
+def phone_context():
+    """Телефон и здоровье — через мост, подключённый по MCP.
+
+    Мост считает нормы сам, поэтому сюда приезжает уже готовый человеческий
+    текст: модели нужно «спал на два часа меньше обычного», а не таблица
+    замеров, которую она пересчитает с ошибкой.
+    """
+    try:
+        core = get_core()
+        if not core.mcp.names():
+            return ""
+        answer = cached("phone.today", 120,
+                        lambda: core.mcp.call_tool("phone_today"))
+        text = answer.get("text") or ""
+        return f"Телефон и здоровье. {text}" if text else ""
+    except Exception as e:
+        return f"(мост с телефоном недоступен: {e})"
+
+
 def news_items(limit=6):
     """Kept for compatibility: plain list of headlines."""
     _, shown = news.compose(limit=limit)
@@ -629,6 +654,9 @@ def compose_briefing(use_llm=True, fmt="html", evening=False, news_limit=6):
         news_data = news.context(news_limit)
     except Exception:
         news_block = news_data = ""
+    phone_line = phone_context().replace("Телефон и здоровье. ", "")
+    if phone_line.startswith("("):
+        phone_line = ""              # мост молчит — в брифинге об этом ни к чему
     try:
         tg = tg_unread_data(limit=4)
         chats = tg.get("chats") or []
@@ -642,7 +670,9 @@ def compose_briefing(use_llm=True, fmt="html", evening=False, news_limit=6):
     lead = ""
     if use_llm:
         lead = briefing_lead([f"Погода. {weather}", f"Финансы. {fin_line}", news_data,
-                              f"Telegram. {tg_line}"], evening=evening)
+                              f"Telegram. {tg_line}",
+                              f"Телефон и здоровье. {phone_line}" if phone_line else ""],
+                             evening=evening)
 
     html = fmt == "html"
 
@@ -656,6 +686,8 @@ def compose_briefing(use_llm=True, fmt="html", evening=False, news_limit=6):
     if lead:
         out += [italic(lead), ""]
     out += [f"{weather_ico} {bold('Погода')}", weather, ""]
+    if phone_line:
+        out += [f"⌚ {bold('Самочувствие')}", phone_line, ""]
     out += [f"💰 {bold('Финансы')}", fin_line, ""]
     if news_block:
         out += [f"📰 {bold('Главное в новостях')}", news_block, ""]
@@ -680,6 +712,9 @@ def briefing_voice(evening=False, news_limit=4):
                      f"днём до {w['max']:.0f}, осадки {w['rain']:.0f} процентов.")
     except Exception:
         pass
+    phone_line = phone_context().replace("Телефон и здоровье. ", "")
+    if phone_line and not phone_line.startswith("("):
+        parts.append(phone_line.replace(";", ",") + ".")
     try:
         fin = finance_data()
         parts.append(f"Капитал {money_voice(fin['current'])}, "
@@ -822,6 +857,8 @@ def context_blocks(intents, text=""):
         blocks.append(tg_unread_context(12))
     if "trading" in intents:
         blocks.append(channel_context(6, 24))
+    if "health" in intents:
+        blocks.append(phone_context())
     return [b for b in blocks if b]
 
 
