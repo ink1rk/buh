@@ -22,22 +22,24 @@
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 32px rgba(0, 0, 0, .22);
 }
 
+/* Светлая тема отдельно подобрана по контрасту: белые карточки на почти белом
+   фоне сливались, а серый текст на них не читался. */
 [data-theme="light"] {
-    --bg: #fbfbfa;
+    --bg: #f2f2f0;
     --surface: #ffffff;
-    --surface-2: #f6f6f5;
-    --surface-3: #eeeeec;
-    --line: rgba(0, 0, 0, .08);
-    --line-strong: rgba(0, 0, 0, .15);
-    --text: #16181c;
-    --muted: #6b7178;
-    --faint: #9aa0a7;
-    --accent: #4b58d6;
-    --accent-soft: rgba(75, 88, 214, .1);
-    --ok: #1a7f37;
-    --warn: #9a6700;
-    --bad: #cf222e;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 8px 28px rgba(0, 0, 0, .06);
+    --surface-2: #f4f4f2;
+    --surface-3: #e7e7e4;
+    --line: rgba(0, 0, 0, .12);
+    --line-strong: rgba(0, 0, 0, .2);
+    --text: #14161a;
+    --muted: #565c63;
+    --faint: #7b8189;
+    --accent: #4048c4;
+    --accent-soft: rgba(64, 72, 196, .11);
+    --ok: #15702f;
+    --warn: #8a5a00;
+    --bad: #c02121;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 8px 28px rgba(0, 0, 0, .07);
 }
 
 * {
@@ -124,7 +126,7 @@ a {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 7px 10px;
+    padding: 8px 11px;
     border-radius: var(--radius-sm);
     color: var(--muted);
     transition: background .12s ease, color .12s ease;
@@ -166,18 +168,20 @@ a {
 }
 
 .main {
-    padding: 44px 56px 90px;
-    max-width: 1140px;
+    padding: 52px 60px 96px;
+    max-width: 1060px;
     width: 100%;
+    /* Колонка шире ограничения — без этого страница липнет к левому краю. */
+    margin: 0 auto;
 }
 
 /* --- заголовки --------------------------------------------------------- */
 .page-head {
-    margin-bottom: 30px;
+    margin-bottom: 34px;
 }
 
 h1 {
-    font-size: 27px;
+    font-size: 29px;
     font-weight: 600;
     letter-spacing: -.022em;
     margin: 0 0 5px;
@@ -194,7 +198,7 @@ h2 {
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--faint);
-    margin: 38px 0 13px;
+    margin: 44px 0 14px;
 }
 
 h3 {
@@ -233,7 +237,7 @@ h3 {
     background: var(--surface);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    padding: 16px 18px;
+    padding: 20px 22px 18px;
     display: block;
     transition: border-color .12s ease, transform .12s ease;
 }
@@ -244,11 +248,12 @@ a.stat:hover {
 }
 
 .stat .n {
-    font-size: 26px;
+    font-size: 32px;
     font-weight: 600;
-    letter-spacing: -.02em;
+    letter-spacing: -.028em;
     font-variant-numeric: tabular-nums;
-    line-height: 1.25;
+    line-height: 1.15;
+    margin-bottom: 2px;
 }
 
 .stat .k {
@@ -276,7 +281,7 @@ a.stat:hover {
     display: flex;
     gap: 14px;
     align-items: flex-start;
-    padding: 14px 18px;
+    padding: 15px 20px;
     border-bottom: 1px solid var(--line);
 }
 
@@ -451,6 +456,24 @@ button.row:hover {
     gap: 7px;
     flex-wrap: wrap;
     align-items: center;
+}
+
+/* Кнопки в каждой строке длинного списка рябят: показываем их по наведению,
+   но на сенсорных экранах наведения нет — там они видны всегда. */
+.row .actions {
+    opacity: .28;
+    transition: opacity .12s ease;
+}
+
+.row:hover .actions,
+.row:focus-within .actions {
+    opacity: 1;
+}
+
+@media (hover: none) {
+    .row .actions {
+        opacity: 1;
+    }
 }
 
 input[type="text"],

@@ -62,7 +62,7 @@ Integration (tg_user_service)
 
 | Процесс | Файл | Роль |
 |---|---|---|
-| `assistant` | `assistant.py` + `core/` | Ядро, HTTP API (`:8800`), навыки, фоновые воркеры |
+| `assistant` | `assistant.py` + `core/` | Ядро, HTTP API (`:8800`), Web UI (`/ui`), навыки, фоновые воркеры |
 | `assistant-telegram` | `tg_bot.py` | Канал владельца: команды, уведомления, кнопки |
 | `tg-user` | `tg_user_service.py` | Аккаунт владельца (Telethon): входящие, отправка от его имени |
 
@@ -88,7 +88,9 @@ assistant/
 │   ├── integrations.py   реестр интеграций и health
 │   ├── pipeline.py       единый путь сообщения для всех интерфейсов
 │   ├── api.py            Core API (/api/*)
+│   ├── security.py       кто имеет право спрашивать ядро
 │   └── bootstrap.py      сборка графа объектов
+├── web/                  Web UI поверх Core API, без сборки
 ├── domain/               Phase 2 — предметная область
 │   ├── contacts.py       контакты, алиасы, entity resolution, стиль
 │   ├── conversations.py  диалоги и сообщения (включая VOICE + транскрипт)
@@ -131,5 +133,5 @@ TTS в проекте нет: модуль синтеза и эндпоинты 
 | Phase 1 — ядро | реализовано и используется Telegram-потоком |
 | Phase 2 — память, контакты, диалоги | реализовано |
 | Phase 3 — миграция Telegram | реализовано (бот работает через `/api/*`) |
-| Phase 4 — Web UI | не начато (API готов) |
+| Phase 4 — Web UI | реализовано ([web.md](web.md)) |
 | Phase 5+ — почта, календарь, финансы, рынки, такси, Ozon | не начато |
