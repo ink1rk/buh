@@ -72,6 +72,12 @@ function ago(seconds) {
     return stamp(seconds, { day: 'numeric', month: 'short' });
 }
 
+/* Ошибка действия несёт имя класса исключения — это для журнала, не для человека. */
+function plainError(error, fallback) {
+    const text = (error || '').replace(/^[A-Za-z_]*Error:\s*/, '').trim();
+    return text || fallback;
+}
+
 function stamp(seconds, options) {
     if (!seconds) return '';
     return new Date(seconds * 1000).toLocaleString('ru-RU',
@@ -106,6 +112,7 @@ const NAV = [
             { path: '', label: 'Сегодня' },
             { path: 'chat', label: 'Чат' },
             { path: 'inbox', label: 'Входящие', badge: 'inbox' },
+            { path: 'calendar', label: 'Расписание' },
         ]
     },
     {
@@ -168,7 +175,9 @@ const pages = {};
 pages[''] = {
     title: 'Сегодня',
     async render() {
-        const data = await api.get('/overview');
+        const [data, calendar] = await Promise.all([
+            api.get('/overview'), api.get('/calendar'),
+        ]);
         state.overview = data;
         const a = data.attention;
         const date = new Date(data.now).toLocaleDateString('ru-RU',
@@ -229,6 +238,11 @@ pages[''] = {
                 ${tile('#/inbox', a.i_owe, 'я обещал')}
                 ${tile('#/inbox', a.waiting, 'жду от других')}
             </div>
+
+            ${calendar.enabled ? `<h2>Сегодня в календаре</h2>
+            <div class="list">${calendar.today.length
+                ? calendar.today.map(eventRow).join('')
+                : empty('Встреч на сегодня нет')}</div>` : ''}
 
             <h2>Новые сообщения</h2>
             <div class="list">${suggestions}</div>
@@ -692,6 +706,104 @@ async function conversationView(id) {
             </div>
         </div>`;
 }
+
+/* Встречу удобнее видеть строкой, одинаковой везде: и на «Сегодня», и здесь. */
+function eventRow(event) {
+    const start = new Date(event.start * 1000);
+    const end = event.end ? new Date(event.end * 1000) : null;
+    const clock = (value) => value.toLocaleTimeString('ru-RU',
+        { hour: '2-digit', minute: '2-digit' });
+    const when = event.all_day ? 'весь день'
+        : clock(start) + (end ? '–' + clock(end) : '');
+    const day = start.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const sub = [event.location, event.calendar].filter(Boolean).join(' · ');
+
+    return `<div class="row">
+        <div class="when" style="min-width:96px;text-align:left">
+            <div>${esc(day)}</div><div class="faint">${esc(when)}</div></div>
+        <div class="grow">
+            <div class="title">${esc(event.summary || 'Без названия')}</div>
+            ${sub ? `<div class="sub clip">${esc(sub)}</div>` : ''}
+        </div>
+    </div>`;
+}
+
+pages.calendar = {
+    title: 'Расписание',
+    async render() {
+        const data = await api.get('/calendar?days=30');
+        if (!data.enabled) {
+            return `<div class="page-head"><h1>Расписание</h1></div>
+                <div class="card muted">Календарь не подключён. Добавьте
+                <b>CALDAV_ACCOUNTS</b> с логином и паролем приложения в окружение
+                ядра — встречи появятся здесь и в ответах ассистента.</div>`;
+        }
+
+        // Дни, а не сплошной список: «что у меня в четверг» — обычный вопрос.
+        const days = new Map();
+        data.events.forEach((event) => {
+            const key = new Date(event.start * 1000).toLocaleDateString('ru-RU',
+                { weekday: 'long', day: 'numeric', month: 'long' });
+            if (!days.has(key)) days.set(key, []);
+            days.get(key).push(event);
+        });
+
+        const schedule = days.size ? [...days].map(([day, events]) => `
+            <h3 style="margin-top:22px">${esc(day)}</h3>
+            <div class="list" style="margin-top:8px">${events.map(eventRow).join('')}</div>`
+        ).join('') : empty('Впереди ничего не запланировано');
+
+        const last = data.last || {};
+        const trouble = (last.errors || []).length
+            ? `<div class="card bad" style="margin-bottom:16px">Календарь отвечает с
+               ошибкой: ${esc(last.errors.join('; '))}. Показано последнее, что
+               удалось загрузить.</div>` : '';
+
+        return `
+            <div class="page-head"><h1>Расписание</h1>
+                <p class="lede">Ближайшие ${data.horizon_days} дней ·
+                    ${esc(data.accounts.map((a) => a.address).join(', '))}</p></div>
+            ${trouble}
+            <div class="card" style="margin-bottom:18px">
+                <h3 style="margin:0 0 12px">Записать встречу</h3>
+                <div class="bar" style="margin:0;flex-wrap:wrap">
+                    <input class="grow" id="event-summary" type="text"
+                           placeholder="Название" style="min-width:220px">
+                    <input id="event-start" type="datetime-local">
+                    <input id="event-minutes" type="number" value="60" min="5" step="5"
+                           style="width:84px" title="Длительность в минутах">
+                    <input id="event-place" type="text" placeholder="Место"
+                           style="min-width:140px">
+                    <button class="btn primary" id="event-add">Записать</button>
+                </div>
+                <div class="muted" id="event-note" style="margin-top:10px"></div>
+            </div>
+            ${schedule}`;
+    },
+    mount(root) {
+        const note = root.querySelector('#event-note');
+        root.querySelector('#event-add')?.addEventListener('click', async (e) => {
+            const summary = root.querySelector('#event-summary').value.trim();
+            const start = root.querySelector('#event-start').value;
+            if (!summary || !start) {
+                note.textContent = 'Нужны название и время.';
+                return;
+            }
+            e.target.disabled = true;
+            note.textContent = 'Записываю…';
+            const result = await api.post('/calendar/event', {
+                summary, start,
+                minutes: Number(root.querySelector('#event-minutes').value) || 60,
+                location: root.querySelector('#event-place').value.trim(),
+            });
+            if (result.status === 'SUCCESS') render();
+            else {
+                e.target.disabled = false;
+                note.textContent = plainError(result.error, 'Не получилось записать.');
+            }
+        });
+    },
+};
 
 pages.news = {
     title: 'Новости',

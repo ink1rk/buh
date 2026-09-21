@@ -71,6 +71,9 @@ class Core:
 
         self.mail = MailWatcher(self)
         self.calendar = CalendarWatcher(self)
+        # Резолвер спрашивает расписание у кэша, а не у сети: ответ владельцу
+        # не должен ждать CalDAV.
+        self.resolver.schedule = self.calendar.upcoming
         self._stop = threading.Event()
         if start_workers:
             self._start_workers()

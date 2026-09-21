@@ -34,6 +34,7 @@ class Context:
     memories: list = field(default_factory=list)
     episodes: list = field(default_factory=list)
     open_commitments: list = field(default_factory=list)
+    schedule: list = field(default_factory=list)
     intents: list = field(default_factory=list)
     correlation_id: str = field(default_factory=lambda: new_id("corr-"))
     now: datetime.datetime = field(default_factory=lambda: datetime.datetime.now(config.tz))
@@ -67,6 +68,27 @@ class Context:
             blocks.append("Жду от него:\n" + commitments_mod.render(theirs, config.tz))
         return "\n".join(blocks)
 
+    def schedule_block(self, limit=5):
+        """Расписание словами, а не метками времени: модель читает его как текст."""
+        if not self.schedule:
+            return ""
+        today = self.now.date()
+        lines = []
+        for event in self.schedule[:limit]:
+            day = event.start.date()
+            if day == today:
+                when = "сегодня"
+            elif (day - today).days == 1:
+                when = "завтра"
+            else:
+                when = f"{event.start:%d.%m}"
+            at = "весь день" if event.all_day else f"в {event.start:%H:%M}"
+            line = f"— {when} {at}: {event.summary}"
+            if event.location:
+                line += f" ({event.location})"
+            lines.append(line)
+        return "\n".join(lines)
+
     def as_dict(self):
         return {"text": self.text, "interface": self.interface, "session": self.session,
                 "contact": self.contact.as_dict() if self.contact else None,
@@ -80,9 +102,12 @@ class Context:
 
 
 class ContextResolver:
-    def __init__(self, permissions=None, memory_limit=None):
+    def __init__(self, permissions=None, memory_limit=None, schedule=None):
         self.permissions = permissions
         self.memory_limit = memory_limit or config.memory.retrieval_limit
+        # Расписание приходит готовым списком: резолвер не должен знать, что
+        # за ним стоит сеть, и не должен ждать её при каждом ответе.
+        self.schedule = schedule
 
     def resolve(self, text="", interface="telegram", session="default",
                 conversation=None, contact=None, correlation_id=None,
@@ -120,6 +145,15 @@ class ContextResolver:
             for memory in memory_mod.for_entity(entity_id, 5):
                 if memory.id not in known:
                     context.memories.append(memory)
+
+        if self.schedule is not None:
+            try:
+                context.schedule = list(self.schedule(
+                    limit=config.calendar.context_events,
+                    within_hours=config.calendar.horizon_days * 24))
+            except Exception as e:
+                # Календарь — приятное дополнение к ответу, а не его условие.
+                print(f"schedule unavailable: {type(e).__name__}: {e}")
 
         if self.permissions:
             context.permissions = {"response_mode": config.response_mode,

@@ -173,6 +173,34 @@ def test_an_all_day_event_does_not_ring(watcher, core, now):
     assert watch.check_reminders() == []
 
 
+def test_the_schedule_reaches_the_answer_in_words(now):
+    """Модель читает текст, а не метки времени."""
+    from core.context import ContextResolver
+
+    tomorrow = (now + datetime.timedelta(days=1)).replace(hour=15, minute=0)
+    resolver = ContextResolver(
+        schedule=lambda **kw: [event(now + datetime.timedelta(hours=2),
+                                     summary="Смета"),
+                               event(tomorrow, summary="Планёрка")])
+
+    block = resolver.resolve(text="что у меня по встречам").schedule_block()
+
+    assert "сегодня" in block and "Смета" in block
+    assert "завтра в 15:00: Планёрка" in block
+
+
+def test_a_broken_calendar_does_not_break_the_answer(now):
+    """Расписание — дополнение к ответу, а не его условие."""
+    from core.context import ContextResolver
+
+    def angry(**kwargs):
+        raise OSError("caldav недоступен")
+
+    context = ContextResolver(schedule=angry).resolve(text="привет")
+
+    assert context.schedule == [] and context.schedule_block() == ""
+
+
 def test_reminders_are_off_when_nothing_is_configured(watcher, core, now):
     watch = watcher([event(now + datetime.timedelta(minutes=5))],
                     cfg=settings(remind_minutes=()))

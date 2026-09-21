@@ -49,6 +49,12 @@ class CommunicationAgent(Agent):
         commitment_block = context.commitments_block()
         if commitment_block:
             blocks.append(commitment_block)
+        schedule_block = context.schedule_block()
+        if schedule_block:
+            # Без расписания подсказка легко соглашается на уже занятое время.
+            blocks.append(f"Моё расписание (сейчас {context.now:%d.%m %H:%M}):\n"
+                          + schedule_block +
+                          "\nНа занятое время не соглашайся — предложи другое.")
         history = context.history_block(12)
         if history:
             blocks.append("Последние сообщения (Я — владелец):\n" + history)

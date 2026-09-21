@@ -111,3 +111,58 @@ def test_suggestions_list_shows_only_undecided(core):  # noqa: F811
     listed = pipeline.list_suggestions("NEW")
     assert [item["id"] for item in listed] == [first["suggestion_id"]]
     assert listed[0]["contact_name"] and listed[0]["options"]
+
+
+# --- календарь в панели ---------------------------------------------------
+@pytest.fixture
+def panel(core, monkeypatch):  # noqa: F811
+    """Эндпоинты берут ядро через get_core — привяжем его к нашему."""
+    from core import bootstrap
+
+    monkeypatch.setattr(bootstrap, "_core", core)
+    return core
+
+
+def test_the_panel_shows_an_empty_calendar_without_pretending(panel):
+    """Календарь не настроен — это не ошибка и не пустое расписание."""
+    from core.api import api_calendar
+
+    data = api_calendar()
+    assert data["enabled"] is False
+    assert data["events"] == [] and data["today"] == []
+
+
+def test_the_panel_shows_what_is_ahead(panel, monkeypatch):
+    import datetime
+
+    from core.config import config
+    from providers.calendar import Event
+
+    now = datetime.datetime.now(config.tz)
+    event = Event(uid="u-1", summary="Смета", start=now + datetime.timedelta(hours=2),
+                  end=now + datetime.timedelta(hours=3), calendar="Мои события")
+    monkeypatch.setattr(panel.calendar, "_events", [event])
+
+    from core.api import api_calendar
+
+    data = api_calendar()
+    assert [e["summary"] for e in data["events"]] == ["Смета"]
+    assert [e["summary"] for e in data["today"]] == ["Смета"]
+
+
+def test_a_meeting_tomorrow_is_ahead_but_not_today(panel, monkeypatch):
+    import datetime
+
+    from core.config import config
+    from providers.calendar import Event
+
+    now = datetime.datetime.now(config.tz)
+    event = Event(uid="u-2", summary="Планёрка", start=now + datetime.timedelta(days=1),
+                  end=now + datetime.timedelta(days=1, hours=1))
+    monkeypatch.setattr(panel.calendar, "_events", [event])
+
+    from core.api import api_calendar
+
+    data = api_calendar()
+    assert [e["summary"] for e in data["events"]] == ["Планёрка"]
+    assert data["today"] == []

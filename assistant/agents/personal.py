@@ -33,6 +33,10 @@ class PersonalAgent(Agent):
         memory_block = context.memory_block(6)
         if memory_block:
             system += "\n\nЧТО ТЫ ПОМНИШЬ О ВЛАДЕЛЬЦЕ:\n" + memory_block
+        schedule_block = context.schedule_block()
+        if schedule_block:
+            system += ("\n\nБЛИЖАЙШИЕ ВСТРЕЧИ ВЛАДЕЛЬЦА "
+                       f"(сейчас {context.now:%d.%m %H:%M}):\n" + schedule_block)
 
         messages = [{"role": "system", "content": system}]
         messages += skills.history(context.session)
