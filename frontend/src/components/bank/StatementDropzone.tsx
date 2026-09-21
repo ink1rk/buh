@@ -77,7 +77,13 @@ export function StatementDropzone({ connectionId, formats }: Props) {
             type="file"
             accept={formats.join(',')}
             className="hidden"
-            onChange={(e) => onFiles(e.target.files)}
+            onChange={(e) => {
+              onFiles(e.target.files)
+              // Clearing the value lets the user pick the same file again —
+              // otherwise re-uploading a corrected or repeated statement is a
+              // no-op, because the input's value never changes.
+              e.target.value = ''
+            }}
           />
         </label>
       </div>
