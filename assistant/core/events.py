@@ -53,6 +53,9 @@ def _matches(pattern, event_type):
     return False
 
 
+_SHUTDOWN = object()        # sentinel that releases a worker from the queue
+
+
 class EventBus:
     def __init__(self, workers=2, persist=True):
         self._subs: list = []                 # (pattern, handler, name)
@@ -129,6 +132,8 @@ class EventBus:
             except queue.Empty:
                 continue
             try:
+                if event is _SHUTDOWN:
+                    return
                 for handler in self._handlers_for(event.type):
                     self._call(handler, event)
             finally:
@@ -147,8 +152,17 @@ class EventBus:
         except Exception as e:
             print("event persist failed:", e)
 
-    def stop(self):
+    def stop(self, timeout=5.0):
+        """Deliver what is already queued, then let the workers finish."""
+        try:
+            self.drain(timeout)
+        except Exception:
+            pass
         self._stop.set()
+        for _ in self._workers:
+            self._queue.put(_SHUTDOWN)      # wake the poll loop at once
+        for thread in self._workers:
+            thread.join(timeout=1.0)
 
 
 # Event type catalogue — keeps producers and consumers honest.

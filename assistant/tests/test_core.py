@@ -33,6 +33,16 @@ def test_unsubscribe_stops_delivery(bus):
     assert len(seen) == 1
 
 
+def test_stop_delivers_what_is_still_queued():
+    """Перезапуск не должен терять уже принятые события."""
+    instance = EventBus(workers=1)
+    seen = []
+    instance.subscribe("*", lambda e: seen.append(e.type))
+    instance.emit("a.b", persist=False)
+    instance.stop()
+    assert seen == ["a.b"]
+
+
 def test_handler_failure_does_not_break_publishing(bus):
     delivered = []
 
