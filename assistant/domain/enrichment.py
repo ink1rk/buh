@@ -116,21 +116,30 @@ class Enricher:
             # Разговор с самим ассистентом: обязательств перед собой не бывает,
             # такие просьбы — это задачи, а не договорённости с человеком.
             return
+        me = _owner_name()
+        peer = contact.display_name if contact else "собеседник"
         history = conversations_mod.as_history(conversation.id, 6)
         rendered = "\n".join(
-            ("Я: " if item["from_owner"] else "Он: ") + item["text"][:200]
+            f"{me if item['from_owner'] else peer}: " + item["text"][:200]
             for item in history)
-        who_wrote = "владелец" if from_owner else "собеседник"
+        # Маленькая локальная модель путает говорящего с исполнителем, поэтому
+        # роли закреплены именами, а направление показано на примерах.
         system = (
             "Ты выделяешь из переписки договорённости: кто и что должен сделать.\n"
-            "who_acts='owner' — выполнить должен владелец.\n"
-            "who_acts='counterparty' — выполнить должен собеседник.\n"
-            "Обязательство возникает и когда человек сам обещает, и когда его прямо "
-            "просят: просьба в адрес владельца — это обязательство владельца, "
-            "просьба владельца к собеседнику — обязательство собеседника.\n"
+            f"Участники: владелец ({me}) и собеседник ({peer}).\n"
+            f"who_acts='owner' — действие выполняет {me}.\n"
+            f"who_acts='counterparty' — действие выполняет {peer}.\n"
+            "Важно: исполнитель — не тот, кто говорит, а тот, кто должен сделать.\n"
+            "Примеры:\n"
+            f"— {peer} пишет «пришли мне отчёт» → делает {me} → who_acts='owner'.\n"
+            f"— {me} пишет «пришли мне отчёт» → делает {peer} → who_acts='counterparty'.\n"
+            f"— {me} пишет «я всё настрою к вечеру» → делает {me} → who_acts='owner'.\n"
+            f"— {peer} пишет «я пришлю счёт завтра» → делает {peer} → "
+            "who_acts='counterparty'.\n"
             "Вопросы, уточнения и обычный обмен репликами обязательств не создают — "
             "тогда пустой список."
         )
+        who_wrote = f"владелец {me}" if from_owner else f"собеседник {peer}"
         user = (f"Переписка:\n{rendered}\n\nПоследнее сообщение ({who_wrote}): «{text}»\n\n"
                 "Найди обязательства из последнего сообщения. Описывай действие, "
                 "а не пересказывай реплику. due_hint — срок словами, как в тексте.")
@@ -184,6 +193,13 @@ class Enricher:
         history = conversations_mod.as_history(conversation.id, 30)
         if len(history) >= 4:
             contacts_mod.update_style(contact, history)
+
+
+def _owner_name():
+    owner = contacts_mod.owner()
+    if owner is not None and owner.display_name:
+        return owner.display_name
+    return config.owner_name or "владелец"
 
 
 RELATIVE_DAYS = {"сегодня": 0, "завтра": 1, "послезавтра": 2}

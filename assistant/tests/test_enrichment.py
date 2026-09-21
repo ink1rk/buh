@@ -112,6 +112,19 @@ def test_their_request_is_something_the_owner_owes(setup):
     assert commitments_mod.waiting_for_reply() == []
 
 
+def test_commitment_prompt_anchors_roles_by_name(setup):
+    """Маленькая модель путает говорящего с исполнителем — роли зовём по именам."""
+    enricher, llm, bus, contact, conversation = setup
+    contacts_mod.save(contacts_mod.Contact(display_name="Кирилл", is_owner=True))
+    llm.structured = {"CommitmentExtraction": {"commitments": []}}
+    enricher._extract_commitments(conversation, contact,
+                                  message(conversation, "Пришли мне конфиг завтра"),
+                                  from_owner=False)
+    system = llm.calls[-1][0]["content"]
+    assert "владелец (Кирилл)" in system and "собеседник (Иван)" in system
+    assert "не тот, кто говорит, а тот, кто должен сделать" in system
+
+
 def test_low_confidence_commitment_is_skipped(setup):
     enricher, llm, bus, contact, conversation = setup
     llm.structured = {"CommitmentExtraction": {"commitments": [
