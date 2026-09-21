@@ -180,6 +180,13 @@ class FakeSMTP:
         FakeSMTP.sent.append(message)
 
 
+class FakeStartTLS(FakeSMTP):
+    started = False
+
+    def starttls(self, context=None):
+        FakeStartTLS.started = True
+
+
 @pytest.fixture
 def smtp(monkeypatch):
     FakeSMTP.sent = []
@@ -204,6 +211,52 @@ def test_a_reply_keeps_the_thread(smtp):
     assert sent["References"] == "<original@example.com>"
     assert "Кирилл" in sent["From"] and ACCOUNT.user in sent["From"]
     assert result["transport"] == "smtp"
+
+
+def test_a_starttls_mailbox_is_not_opened_as_ssl(monkeypatch):
+    """Порт не говорит о режиме: угадывание молча вешало отправку."""
+    FakeSMTP.sent = []
+    FakeStartTLS.started = False
+    monkeypatch.setattr("smtplib.SMTP", FakeStartTLS)
+    starttls = MailAccount(name="corp", user="k@corp.ru", password="x",
+                           imap_host="imap.corp.ru", imap_port=993,
+                           smtp_host="smtp.corp.ru", smtp_port=587, smtp_ssl=False)
+
+    EmailActionProvider(EmailConfig(accounts=(starttls,))).execute(
+        Action(to="anna@example.com", body="Привет"))
+
+    assert FakeStartTLS.started is True
+    assert len(FakeSMTP.sent) == 1
+
+
+def test_the_default_mode_follows_the_port(monkeypatch):
+    monkeypatch.setenv("MAIL_ACCOUNTS", "yandex,corp")
+    monkeypatch.setenv("MAIL_YANDEX_USER", "k@yandex.ru")
+    monkeypatch.setenv("MAIL_YANDEX_PASSWORD", "x")
+    monkeypatch.setenv("MAIL_CORP_USER", "k@corp.ru")
+    monkeypatch.setenv("MAIL_CORP_PASSWORD", "x")
+    monkeypatch.setenv("MAIL_CORP_IMAP_HOST", "imap.corp.ru")
+    monkeypatch.setenv("MAIL_CORP_SMTP_HOST", "smtp.corp.ru")
+    monkeypatch.setenv("MAIL_CORP_SMTP_PORT", "587")
+
+    built = {a.name: a for a in EmailConfig().accounts}
+
+    assert built["yandex"].smtp_ssl is True        # 465
+    assert built["corp"].smtp_ssl is False         # 587 — STARTTLS
+
+
+def test_a_nonstandard_ssl_port_can_be_declared(monkeypatch):
+    """На своём сервере implicit TLS бывает не на 465 — это надо уметь сказать."""
+    monkeypatch.setenv("MAIL_ACCOUNTS", "lab")
+    monkeypatch.setenv("MAIL_LAB_USER", "k@lab.ru")
+    monkeypatch.setenv("MAIL_LAB_PASSWORD", "x")
+    monkeypatch.setenv("MAIL_LAB_IMAP_HOST", "imap.lab.ru")
+    monkeypatch.setenv("MAIL_LAB_SMTP_HOST", "smtp.lab.ru")
+    monkeypatch.setenv("MAIL_LAB_SMTP_PORT", "3465")
+    monkeypatch.setenv("MAIL_LAB_SMTP_SSL", "true")
+
+    [account] = EmailConfig().accounts
+    assert account.smtp_port == 3465 and account.smtp_ssl is True
 
 
 @pytest.mark.parametrize("params, complaint", [

@@ -234,7 +234,7 @@ class EmailActionProvider(ActionProvider):
         message.set_content(params["body"])
 
         try:
-            if account.smtp_port == 465:
+            if account.smtp_ssl:
                 server = smtplib.SMTP_SSL(account.smtp_host, account.smtp_port,
                                           timeout=45,
                                           context=ssl.create_default_context())

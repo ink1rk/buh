@@ -65,6 +65,9 @@ class MailAccount:
     smtp_host: str
     smtp_port: int
     from_name: str = ""
+    # Порт не говорит о режиме: 465 обычно implicit TLS, 587 — STARTTLS, но
+    # на своём сервере бывает любой. Угадывание молча вешало отправку.
+    smtp_ssl: bool = True
 
     @property
     def address(self):
@@ -81,6 +84,7 @@ def _mail_accounts():
         if not (user and password):
             continue                      # настроен наполовину — значит не настроен
         preset = MAIL_PRESETS.get(name.lower(), ("", 993, "", 465))
+        smtp_port = _int(f"MAIL_{key}_SMTP_PORT", preset[3])
         accounts.append(MailAccount(
             name=name.lower(),
             user=user,
@@ -88,7 +92,8 @@ def _mail_accounts():
             imap_host=os.environ.get(f"MAIL_{key}_IMAP_HOST", preset[0]).strip(),
             imap_port=_int(f"MAIL_{key}_IMAP_PORT", preset[1]),
             smtp_host=os.environ.get(f"MAIL_{key}_SMTP_HOST", preset[2]).strip(),
-            smtp_port=_int(f"MAIL_{key}_SMTP_PORT", preset[3]),
+            smtp_port=smtp_port,
+            smtp_ssl=_bool(f"MAIL_{key}_SMTP_SSL", smtp_port != 587),
             from_name=os.environ.get(f"MAIL_{key}_FROM_NAME", "").strip()))
     return tuple(a for a in accounts if a.imap_host and a.smtp_host)
 
