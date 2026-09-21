@@ -10,7 +10,7 @@
 | `core/` | платформа: шина событий, движок действий, разрешения, уведомления, LLM-абстракция, контекст, аудит, интеграции, Core API |
 | `domain/` | предметная область: контакты, диалоги, память, эпизоды, обязательства, фоновое обогащение |
 | `agents/` | агенты: `personal` (навыки) и `communication` (переписка и подсказки ответов) |
-| `providers/` | выход во внешние сервисы; сейчас только Telegram |
+| `providers/` | выход во внешние сервисы: Telegram, почта, инструменты MCP |
 | `assistant.py` | приложение FastAPI на `:8800`: навыки (погода, финансы, новости, брифинг), промпт, монтирование Core API |
 | `news.py` | сбор и компоновка новостей: 8 лент, дедупликация, темы, рендер в HTML/текст/голос |
 | `tgfmt.py` | приведение ответов модели к Telegram-HTML (и обратно — в чистый текст) |
@@ -18,7 +18,8 @@
 | `tests/` | офлайн-тесты: ядро, память, контакты, диалоги, обязательства, пайплайн, форматтер |
 
 Рядом на хосте: `tg_user_service.py` (личный аккаунт через Telethon, `:8810`),
-`cursor-gateway` (`:8791`), `ollama` (`:11434`), приложение финансов (`nginx :80`).
+мост с телефоном `phone/` (`:8820`, подключается по MCP), `cursor-gateway`
+(`:8791`), `ollama` (`:11434`), приложение финансов (`nginx :80`).
 
 ## Как новости собираются
 
@@ -80,11 +81,15 @@ GET    /api/contacts/{id}/context  PATCH|DELETE /api/contacts/{id}
 GET    /api/conversations  /api/conversations/{id}  /{id}/messages
 GET    /api/commitments  PATCH /api/commitments/{id}
 GET    /api/episodes  /api/activity  /api/integrations  /api/permissions  /api/health
+GET    /api/mcp                           подключённые серверы MCP и их инструменты
+POST   /api/mcp/read                      прочитать данные внешнего сервиса
+POST   /api/mcp/call                      вызвать инструмент через движок действий
 ```
 
 Подробности — в `docs/architecture.md`, `docs/events.md`, `docs/actions.md`,
 `docs/permissions.md`, `docs/integrations.md`, `docs/memory.md`,
-`docs/contacts.md`, `docs/conversations.md`, `docs/commitments.md`.
+`docs/contacts.md`, `docs/conversations.md`, `docs/commitments.md`,
+`docs/email.md`, `docs/phone.md`.
 
 ## Промпт
 

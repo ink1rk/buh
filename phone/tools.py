@@ -8,9 +8,11 @@
 Имена намеренно без точек: те же инструменты уходят модели как функции, а
 у OpenAI-совместимых схем в имени допустимы только буквы, цифры, `_` и `-`.
 """
+import datetime
 import time
 
 from . import insights, metrics, store
+from .config import config
 from .mcp import Server, ToolError, no_arguments
 
 VERSION = "1.0.0"
@@ -40,6 +42,11 @@ def _hours(value):
     if value is None:
         return "нет данных"
     return f"{int(value)} ч {int(round((value - int(value)) * 60)):02d} мин"
+
+
+def _when(ts):
+    """У звонка важно время, а не только дата: «в 9 утра» — это другой разговор."""
+    return datetime.datetime.fromtimestamp(ts, config.tz).strftime("%d.%m %H:%M")
 
 
 # --- сводки --------------------------------------------------------------
@@ -142,11 +149,12 @@ def phone_calls(hours=24, only_missed=False, limit=50):
     lines = []
     for row in rows:
         who = row["peer_name"] or row["peer_number"] or "неизвестный номер"
-        when = insights.day_of(row["started_at"])
+        when = _when(row["started_at"])
         if row["status"] == "missed":
             lines.append(f"{when} {who} — пропущенный")
         else:
-            lines.append(f"{when} {who} — {row['direction']},"
+            direction = "входящий" if row["direction"] == "incoming" else "исходящий"
+            lines.append(f"{when} {who} — {direction},"
                          f" {round(row['duration'] / 60, 1)} мин")
     return {"text": "\n".join(lines), "data": {"calls": rows}}
 
@@ -192,7 +200,7 @@ def phone_workouts(days=7):
     rows = store.workouts(since=since)
     if not rows:
         return {"text": f"Тренировок за {days} дн. нет.", "data": {"workouts": []}}
-    lines = [f"{insights.day_of(row['started_at'])}: {row['kind'] or 'тренировка'},"
+    lines = [f"{_when(row['started_at'])}: {row['kind'] or 'тренировка'},"
              f" {_number(row['duration'], 'мин')}"
              + (f", {_number(row['energy'], 'ккал')}" if row["energy"] else "")
              for row in rows]
