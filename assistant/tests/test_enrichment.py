@@ -77,7 +77,7 @@ def test_contact_facts_are_attached_to_the_contact(setup):
 def test_promise_creates_a_commitment(setup):
     enricher, llm, bus, contact, conversation = setup
     llm.structured = {"CommitmentExtraction": {"commitments": [
-        {"description": "прислать конфиг", "direction": "I_OWE",
+        {"description": "прислать конфиг", "who_acts": "owner",
          "due_hint": "завтра", "confidence": 0.8}]}}
     enricher._extract_commitments(conversation, contact,
                                   message(conversation, "Пришлю конфиг завтра"),
@@ -90,7 +90,7 @@ def test_promise_creates_a_commitment(setup):
 def test_request_from_them_creates_an_expectation(setup):
     enricher, llm, bus, contact, conversation = setup
     llm.structured = {"CommitmentExtraction": {"commitments": [
-        {"description": "прислать договор", "direction": "THEY_OWE",
+        {"description": "прислать договор", "who_acts": "counterparty",
          "due_hint": "завтра", "confidence": 0.9}]}}
     enricher._extract_commitments(conversation, contact,
                                   message(conversation, "Пришли мне договор завтра"),
@@ -99,10 +99,23 @@ def test_request_from_them_creates_an_expectation(setup):
         ["прислать договор"]
 
 
+def test_their_request_is_something_the_owner_owes(setup):
+    """Собеседник просит — это долг владельца, а не ожидание от собеседника."""
+    enricher, llm, bus, contact, conversation = setup
+    llm.structured = {"CommitmentExtraction": {"commitments": [
+        {"description": "прислать конфиг", "who_acts": "owner",
+         "due_hint": "завтра", "confidence": 0.9}]}}
+    enricher._extract_commitments(conversation, contact,
+                                  message(conversation, "Пришли мне конфиг завтра"),
+                                  from_owner=False)
+    assert [c.description for c in commitments_mod.i_owe()] == ["прислать конфиг"]
+    assert commitments_mod.waiting_for_reply() == []
+
+
 def test_low_confidence_commitment_is_skipped(setup):
     enricher, llm, bus, contact, conversation = setup
     llm.structured = {"CommitmentExtraction": {"commitments": [
-        {"description": "возможно созвониться", "direction": "I_OWE",
+        {"description": "возможно созвониться", "who_acts": "owner",
          "due_hint": "", "confidence": 0.3}]}}
     enricher._extract_commitments(conversation, contact,
                                   message(conversation, "Может как-нибудь созвонимся"),
@@ -156,7 +169,7 @@ def test_talking_to_the_assistant_creates_no_commitments(setup):
     owner = contacts_mod.save(contacts_mod.Contact(display_name="Владелец",
                                                    is_owner=True))
     llm.structured = {"CommitmentExtraction": {"commitments": [
-        {"description": "от кого я жду ответа?", "direction": "THEY_OWE",
+        {"description": "от кого я жду ответа?", "who_acts": "counterparty",
          "due_hint": "", "confidence": 0.9}]}}
     enricher._extract_commitments(conversation, owner,
                                   message(conversation, "от кого я жду ответа?"),

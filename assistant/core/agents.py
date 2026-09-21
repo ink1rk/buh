@@ -102,9 +102,16 @@ class MemoryExtraction(BaseModel):
 
 class CommitmentCandidate(BaseModel):
     description: str
-    direction: str = Field(default="I_OWE", description="I_OWE | THEY_OWE")
+    # Кто исполнитель — единственный вопрос, на который модель отвечает надёжно.
+    # Сторона обязательства (I_OWE/THEY_OWE) выводится из этого поля в коде.
+    who_acts: str = Field(default="owner",
+                          description="owner | counterparty — кто должен выполнить")
     due_hint: str = Field(default="", description="срок словами, как в тексте")
     confidence: float = Field(default=0.6, ge=0.0, le=1.0)
+
+    def direction(self):
+        return "THEY_OWE" if self.who_acts.strip().lower().startswith("counter") \
+            else "I_OWE"
 
 
 class CommitmentExtraction(BaseModel):

@@ -70,10 +70,13 @@ class Enricher:
         who = "владелец" if from_owner else (contact.display_name if contact else "собеседник")
         system = (
             "Ты извлекаешь из сообщения только то, что стоит помнить долго. "
-            "Не запоминай приветствия, болтовню, сиюминутные детали и просьбы-напоминания. "
+            "Не запоминай приветствия, болтовню и сиюминутные детали. "
+            "Просьбы, обещания и сроки тоже не запоминай: договорённости и задачи "
+            "учитываются отдельно, память — только про устойчивое знание. "
             "Типы: FACT (устойчивый факт), PREFERENCE (предпочтение/привычка), "
             "EVENT (состоявшееся или назначенное событие), RELATION (кто кому кто), "
-            "PROCEDURE (как обычно поступать). Если запоминать нечего — пустой список."
+            "PROCEDURE (как принято поступать в повторяющейся ситуации). "
+            "Если запоминать нечего — пустой список."
         )
         user = (f"Сообщение от: {who}\nТекст: «{text}»\n\n"
                 "Верни память в JSON. about='owner', если факт про владельца, "
@@ -117,14 +120,20 @@ class Enricher:
         rendered = "\n".join(
             ("Я: " if item["from_owner"] else "Он: ") + item["text"][:200]
             for item in history)
+        who_wrote = "владелец" if from_owner else "собеседник"
         system = (
-            "Ты выделяешь из переписки обязательства. I_OWE — что пообещал или должен "
-            "сделать владелец. THEY_OWE — что владелец ждёт от собеседника. "
-            "Обычный обмен репликами без обещаний — пустой список."
+            "Ты выделяешь из переписки договорённости: кто и что должен сделать.\n"
+            "who_acts='owner' — выполнить должен владелец.\n"
+            "who_acts='counterparty' — выполнить должен собеседник.\n"
+            "Обязательство возникает и когда человек сам обещает, и когда его прямо "
+            "просят: просьба в адрес владельца — это обязательство владельца, "
+            "просьба владельца к собеседнику — обязательство собеседника.\n"
+            "Вопросы, уточнения и обычный обмен репликами обязательств не создают — "
+            "тогда пустой список."
         )
-        user = (f"Переписка:\n{rendered}\n\nПоследнее сообщение "
-                f"({'владельца' if from_owner else 'собеседника'}): «{text}»\n\n"
-                "Найди обязательства из последнего сообщения. due_hint — срок словами.")
+        user = (f"Переписка:\n{rendered}\n\nПоследнее сообщение ({who_wrote}): «{text}»\n\n"
+                "Найди обязательства из последнего сообщения. Описывай действие, "
+                "а не пересказывай реплику. due_hint — срок словами, как в тексте.")
         extraction = self.llm.structured_output(
             [{"role": "system", "content": system}, {"role": "user", "content": user}],
             CommitmentExtraction, private=True)
@@ -133,7 +142,7 @@ class Enricher:
                 continue
             commitments_mod.create(
                 candidate.description,
-                direction=("I_OWE" if candidate.direction.upper() == "I_OWE" else "THEY_OWE"),
+                direction=candidate.direction(),
                 counterparty_id=contact.id if contact else None,
                 due_at=parse_due(candidate.due_hint),
                 conversation_id=conversation.id, source_message_id=message.id,
