@@ -5,9 +5,12 @@ memory, and a finance skill. Channel-agnostic HTTP API; Telegram attaches later.
 import os, sqlite3, time, json, re, io, base64, wave, tempfile, threading
 import datetime, zoneinfo
 from contextlib import closing
+from html import escape as escape_html
 import httpx
+import inbox as inbox_mod
 import news
 import tgfmt
+import voice
 from fastapi import FastAPI, Body, UploadFile, File
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -21,12 +24,16 @@ FINANCE_API = os.environ.get("FINANCE_API", "http://127.0.0.1/api/v1")
 TG_USER_URL = os.environ.get("TG_USER_URL", "http://127.0.0.1:8810")
 DB = os.environ.get("ASSISTANT_DB", "/opt/assistant/assistant.db")
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
-PIPER_VOICE = os.environ.get("PIPER_VOICE", "/opt/assistant/voices/ru_RU-dmitri-medium.onnx")
 EXT_PROXY = os.environ.get("EXT_PROXY", "http://172.20.20.231:8080")
 WEATHER_LAT = os.environ.get("WEATHER_LAT", "55.75")
 WEATHER_LON = os.environ.get("WEATHER_LON", "37.62")
 WEATHER_PLACE = os.environ.get("WEATHER_PLACE", "Москва")
 TZ = zoneinfo.ZoneInfo(os.environ.get("TZ_NAME", "Europe/Moscow"))
+TRADING_CHANNEL = os.environ.get("TRADING_CHANNEL", "Full-Time Trading")
+ASSISTANT_NAME = os.environ.get("ASSISTANT_NAME", "Джарвис")
+ASSISTANT_GENDER = os.environ.get("ASSISTANT_GENDER", "female")   # голос женский
+OWNER_NAME = os.environ.get("OWNER_NAME", "").strip()
+OWNER_GENDER = os.environ.get("OWNER_GENDER", "male")
 HISTORY = 12
 
 WEEKDAYS = ("понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье")
@@ -34,7 +41,6 @@ MONTHS = ("января", "февраля", "марта", "апреля", "ма�
           "сентября", "октября", "ноября", "декабря")
 
 _whisper = None
-_voice = None
 _vlock = threading.Lock()
 
 
@@ -48,14 +54,8 @@ def get_whisper():
     return _whisper
 
 
-def get_voice():
-    global _voice
-    if _voice is None:
-        with _vlock:
-            if _voice is None:
-                from piper import PiperVoice
-                _voice = PiperVoice.load(PIPER_VOICE)
-    return _voice
+def tts_wav(text: str) -> bytes:
+    return voice.synthesize(text or "…")
 
 
 def stt_bytes(data: bytes) -> str:
@@ -69,19 +69,28 @@ def stt_bytes(data: bytes) -> str:
         os.unlink(path)
 
 
-def tts_wav(text: str) -> bytes:
-    buf = io.BytesIO()
-    with wave.open(buf, "wb") as wf:
-        get_voice().synthesize_wav(text or "…", wf)
-    return buf.getvalue()
 
-PERSONA = (
-    "Ты — Джарвис: личный ассистент одного человека (владельца этой системы). "
-    "Ты работаешь на его домашнем сервере, поэтому говоришь как свой человек: "
-    "спокойно, по-деловому, с лёгкой иронией, без подхалимства и без канцелярита.\n"
-    "Язык — русский. Обращение — «ты».\n"
-    "Ты не языковая модель и не рассказываешь о себе как об ИИ; ты просто ассистент."
-)
+def _persona():
+    about_self = ("О себе говори в женском роде («сделала», «нашла»)."
+                  if ASSISTANT_GENDER == "female"
+                  else "О себе говори в мужском роде.")
+    about_owner = ("Владелец — мужчина, обращайся к нему в мужском роде "
+                   "(«ты сделал», «тебе пришло»)."
+                   if OWNER_GENDER == "male"
+                   else "Владелец — женщина, обращайся в женском роде.")
+    if OWNER_NAME:
+        about_owner += f" Его имя — {OWNER_NAME}, иногда зови по имени."
+    return (
+        f"Ты — {ASSISTANT_NAME}: личный ассистент одного человека (владельца этой "
+        "системы). Ты живёшь на его домашнем сервере, поэтому говоришь как свой "
+        "человек: спокойно, по-деловому, с лёгкой иронией, без подхалимства и без "
+        "канцелярита.\n"
+        f"Язык — русский. Обращение — «ты». {about_self} {about_owner}\n"
+        "Ты не языковая модель и не рассказываешь о себе как об ИИ; ты просто ассистент."
+    )
+
+
+PERSONA = _persona()
 
 PRINCIPLES = (
     "КАК ДУМАТЬ И ОТВЕЧАТЬ\n"
@@ -179,15 +188,34 @@ NEWS_KEYWORDS = ("новост", "что нового", "в мире", "что �
                  "лент", "заголовк", "дайджест", "что интересного", "обзор дня")
 TG_KEYWORDS = ("непрочит", "телеге", "телеграм", "кто писал", "в чат", "переписк")
 WEATHER_KEYWORDS = ("погод", "дожд", "тепло ли", "холодно", "зонт", "градус")
+TRADING_KEYWORDS = ("трейд", "сигнал", "сделк", "позици", "шорт", "лонг",
+                    "full-time", "фултайм", "фулл-тайм", "что по рынк")
 
 # Intents that touch private data stay on the local model on principle.
-PRIVATE_INTENTS = ("finance", "telegram")
+PRIVATE_INTENTS = ("finance", "telegram", "trading")
 
 
 def db_init():
     with closing(sqlite3.connect(DB)) as c:
         c.execute("CREATE TABLE IF NOT EXISTS messages(session TEXT, role TEXT, content TEXT, ts REAL)")
         c.execute("CREATE TABLE IF NOT EXISTS facts(id INTEGER PRIMARY KEY, fact TEXT, ts REAL)")
+        c.execute("CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT)")
+        c.commit()
+
+
+def setting_get(key, default=None):
+    try:
+        with closing(sqlite3.connect(DB)) as c:
+            row = c.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return row[0] if row else default
+    except Exception:
+        return default
+
+
+def setting_set(key, value):
+    with closing(sqlite3.connect(DB)) as c:
+        c.execute("INSERT INTO settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=?",
+                  (key, value, value))
         c.commit()
 
 
@@ -219,8 +247,9 @@ def detect_intents(msg):
     """All intents the message touches; the first one is the primary."""
     m = msg.lower()
     found = []
-    for name, keywords in (("finance", FINANCE_KEYWORDS), ("telegram", TG_KEYWORDS),
-                           ("news", NEWS_KEYWORDS), ("weather", WEATHER_KEYWORDS)):
+    for name, keywords in (("trading", TRADING_KEYWORDS), ("finance", FINANCE_KEYWORDS),
+                           ("telegram", TG_KEYWORDS), ("news", NEWS_KEYWORDS),
+                           ("weather", WEATHER_KEYWORDS)):
         if any(k in m for k in keywords):
             found.append(name)
     return found or ["general"]
@@ -450,6 +479,127 @@ def tg_unread_data(limit=6):
         return h.get(f"{TG_USER_URL}/unread", params={"limit": limit}).json()
 
 
+def channel_posts(query=None, limit=8, hours=48):
+    """Posts of a followed Telegram channel (trading signals live here)."""
+    with httpx.Client(timeout=60, trust_env=False) as h:
+        return h.get(f"{TG_USER_URL}/channel",
+                     params={"q": query or TRADING_CHANNEL, "limit": limit,
+                             "hours": hours}).json()
+
+
+def trading_digest(limit=8, hours=24, brain="cursor"):
+    """Squeeze a trading channel into a short, structured summary."""
+    return cached(f"trading:{hours}:{limit}:{brain}", 900,
+                  lambda: _trading_digest(limit, hours, brain))
+
+
+def _trading_digest(limit, hours, brain):
+    data = channel_posts(TRADING_CHANNEL, limit=limit, hours=hours)
+    posts = data.get("posts") or []
+    if not posts:
+        return {"html": (f"📉 В канале «{escape_html(data.get('channel') or TRADING_CHANNEL)}» "
+                         f"за последние {hours} ч ничего нового."),
+                "posts": 0, "channel": data.get("channel")}
+    body = []
+    for post in posts:
+        when = datetime.datetime.fromtimestamp(post["ts"], TZ).strftime("%d.%m %H:%M")
+        text = re.sub(r"[ \t]+", " ", post["text"])[:700]
+        body.append(f"[{when}] {text}")
+    prompt = (
+        "Ниже посты Telegram-канала, свежие сверху. Канал смешанный: бывают "
+        "сделки и сигналы, бывает рыночная аналитика, бывают просто интересные "
+        "посты. Собери сводку по-русски.\n"
+        "Блоки — только те, для которых реально есть материал:\n"
+        "• «<b>📊 Сделки и сигналы</b>» — пункты вида «ИНСТРУМЕНТ — направление, "
+        "вход, цель, стоп», строго по тексту постов;\n"
+        "• «<b>🧭 Рынок и деньги</b>» — 2–4 пункта об экономике, нефти, ставках, курсах;\n"
+        "• «<b>📌 Остальное из канала</b>» — 2–3 пункта про всё прочее.\n"
+        "Жёсткие правила: не придумывай тикеры, цены и проценты — если их нет в "
+        "постах, не упоминай. Пустые блоки не выводи вовсе, фразы вроде "
+        "«итогов нет» не пиши. Каждый пункт с «• », одна мысль, максимум 8 пунктов. "
+        "Без ссылок и markdown.\n\n"
+        "ПОСТЫ:\n" + "\n\n".join(body)
+    )
+    messages = [{"role": "system", "content": build_system(channel="chat", brain=brain)},
+                {"role": "user", "content": prompt}]
+    order = [("cursor", call_cursor), ("local", call_ollama)]
+    if brain == "local":
+        order.reverse()
+    errors = []
+    for name, call in order:
+        try:
+            stamp = datetime.datetime.now(TZ).strftime("%d.%m, %H:%M")
+            head = (f"<b>📉 {escape_html(data.get('channel') or TRADING_CHANNEL)} · "
+                    f"{stamp} МСК</b>\n<i>{len(posts)} постов за {hours} ч</i>\n\n")
+            return {"html": head + tgfmt.to_html(call(messages)), "brain": name,
+                    "posts": len(posts), "channel": data.get("channel")}
+        except Exception as e:
+            errors.append(f"{name}: {e}")
+    return {"html": "Не удалось собрать сводку по каналу: " + "; ".join(errors),
+            "error": True, "posts": len(posts)}
+
+
+def channel_brief(limit=3, hours=24, html=True):
+    """Two-three latest channel posts, one line each — for the briefing."""
+    try:
+        data = channel_posts(TRADING_CHANNEL, limit=limit, hours=hours)
+    except Exception:
+        return ""
+    posts = data.get("posts") or []
+    if not posts:
+        return ""
+    lines = []
+    for post in posts[:limit]:
+        text = re.sub(r"\s+", " ", post["text"]).strip()
+        head = re.split(r"(?<=[.!?])\s", text)[0][:180].rstrip(" .") or text[:180]
+        when = datetime.datetime.fromtimestamp(post["ts"], TZ).strftime("%H:%M")
+        if html:
+            lines.append(f"▫️ {escape_html(head)}\n<i>      {when}</i>")
+        else:
+            lines.append(f"▫️ {head} ({when})")
+    return "\n".join(lines)
+
+
+def channel_context(limit=5, hours=24):
+    """Compact trading-channel block for the briefing and prompts."""
+    try:
+        data = channel_posts(TRADING_CHANNEL, limit=limit, hours=hours)
+        posts = data.get("posts") or []
+        if not posts:
+            return ""
+        lines = [f"Трейдинг-канал «{data.get('channel') or TRADING_CHANNEL}» "
+                 f"(последние {hours} ч):"]
+        for post in posts:
+            when = datetime.datetime.fromtimestamp(post["ts"], TZ).strftime("%H:%M")
+            text = re.sub(r"\s+", " ", post["text"])[:300]
+            lines.append(f"- [{when}] {text}")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"(канал трейдинга недоступен: {e})"
+
+
+def suggest_replies(peer_name, history, text):
+    """Three reply options in the owner's own voice — always the local model."""
+    prompt = inbox_mod.SUGGEST_PROMPT.format(
+        name=peer_name, text=text, history=inbox_mod.format_history(history))
+    gender = ("мужском" if OWNER_GENDER == "male" else "женском")
+    system = (
+        "Ты пишешь черновики ответов ЗА владельца этого ассистента — как будто это "
+        f"он сам печатает. О себе в этих ответах пиши в {gender} роде "
+        "(«смогу», «занят», «сделаю»). Имитируешь его манеру письма из переписки, "
+        "а не свою. Отвечай только строками вариантов: без пояснений, без нумерации, "
+        "без кавычек, по-русски."
+    )
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+    return inbox_mod.parse_options(call_ollama(messages))
+
+
+def tg_send(peer_id, text):
+    with httpx.Client(timeout=60, trust_env=False) as h:
+        return h.post(f"{TG_USER_URL}/send",
+                      json={"peer_id": peer_id, "text": text}).json()
+
+
 def briefing_lead(data_blocks, evening=False):
     """One or two lines written by the brain: what actually matters today."""
     when = "вечер" if evening else "утро"
@@ -525,6 +675,9 @@ def compose_briefing(use_llm=True, fmt="html", evening=False, news_limit=6):
     out += [f"💰 {bold('Финансы')}", fin_line, ""]
     if news_block:
         out += [f"📰 {bold('Главное в новостях')}", news_block, ""]
+    channel_block = channel_brief(html=html)
+    if channel_block:
+        out += [f"📉 {bold(TRADING_CHANNEL)}", channel_block, ""]
     if tg_line:
         tail = (": " + ", ".join(tg_top)) if tg_top else ""
         out += [f"💬 {bold('Telegram')}", f"{tg_line}{tail}", ""]
@@ -574,6 +727,7 @@ def call_cursor(messages):
 
 
 app = FastAPI(title="Personal Assistant Core")
+INBOX = None
 
 
 class ChatIn(BaseModel):
@@ -599,7 +753,12 @@ def _warm_weather(period=540):
 
 @app.on_event("startup")
 def _startup():
+    global INBOX
     db_init()
+    INBOX = inbox_mod.Inbox(DB, suggest_replies)
+    voice.bind_storage(lambda: setting_get("tts_voice"),
+                       lambda name: setting_set("tts_voice", name))
+    voice.warm_up()
     news.start_background_refresh()
     _warm_weather()
 
@@ -637,6 +796,8 @@ def chat(inp: ChatIn):
         blocks.append(news_context(8))
     if "telegram" in intents:
         blocks.append(tg_unread_context(12))
+    if "trading" in intents:
+        blocks.append(channel_context(6, 24))
     system = build_system(channel=inp.channel, blocks=blocks,
                           facts=facts_text(), brain=brain)
     messages = [{"role": "system", "content": system}]
@@ -730,12 +891,105 @@ async def stt(file: UploadFile = File(...)):
 @app.post("/tts")
 def tts(payload: dict = Body(...)):
     """Markup never reaches the synthesiser — it reads tags out loud otherwise."""
-    return Response(content=tts_wav(tgfmt.plain(payload.get("text", ""))),
+    return Response(content=voice.synthesize(tgfmt.plain(payload.get("text", "")),
+                                             payload.get("voice")),
+                    media_type="audio/wav")
+
+
+@app.get("/trading")
+def api_trading(hours: int = 24, limit: int = 8, brain: str = "cursor"):
+    try:
+        return trading_digest(limit=limit, hours=hours, brain=brain)
+    except Exception as e:
+        return {"html": f"Канал недоступен: {escape_html(str(e))}", "error": True}
+
+
+@app.get("/channel")
+def api_channel(q: str = None, limit: int = 8, hours: int = 48):
+    try:
+        return channel_posts(q, limit=limit, hours=hours)
+    except Exception as e:
+        return {"error": str(e), "posts": []}
+
+
+@app.post("/notify")
+def api_notify(payload: dict = Body(...)):
+    """Called by tg-user when somebody writes; prepares reply options."""
+    if INBOX is None:
+        return {"error": "inbox не готов"}
+    return INBOX.handle(payload)
+
+
+@app.get("/notifications/pending")
+def api_notifications_pending(limit: int = 10):
+    return {"items": INBOX.pending(limit) if INBOX else []}
+
+
+@app.get("/notifications/{notif_id}")
+def api_notification(notif_id: int):
+    notif = INBOX.get(notif_id) if INBOX else None
+    return notif or {"error": "не найдено"}
+
+
+@app.post("/notifications/delivered")
+def api_notifications_delivered(payload: dict = Body(...)):
+    if INBOX:
+        INBOX.mark_delivered(payload.get("ids") or [])
+    return {"ok": True}
+
+
+@app.post("/notifications/send")
+def api_notifications_send(payload: dict = Body(...)):
+    """Send a reply the owner picked: either a suggestion index or his own text."""
+    if INBOX is None:
+        return {"error": "inbox не готов"}
+    notif = INBOX.get(payload.get("id"))
+    if not notif:
+        return {"error": "уведомление не найдено"}
+    text = (payload.get("text") or "").strip()
+    if not text:
+        index = int(payload.get("index", 0))
+        options = notif["suggestions"]
+        if index < 0 or index >= len(options):
+            return {"error": "нет такого варианта"}
+        text = options[index]
+    result = tg_send(notif["peer_id"], text)
+    result["sent_text"] = text
+    result["peer_name"] = notif["peer_name"]
+    return result
+
+
+@app.post("/reply")
+def api_reply(payload: dict = Body(...)):
+    """Send a free-form reply to a peer (used by «своими словами»)."""
+    peer_id, text = payload.get("peer_id"), (payload.get("text") or "").strip()
+    if not peer_id or not text:
+        return {"error": "нужны peer_id и text"}
+    return tg_send(peer_id, text)
+
+
+@app.get("/voices")
+def api_voices():
+    return {"active": voice.active(), "voices": voice.voices()}
+
+
+@app.post("/voices/set")
+def api_voices_set(payload: dict = Body(...)):
+    try:
+        return {"active": voice.set_active(payload.get("name", ""))}
+    except ValueError as e:
+        return {"error": str(e), "active": voice.active()}
+
+
+@app.post("/voices/preview")
+def api_voices_preview(payload: dict = Body(...)):
+    text = payload.get("text") or "Привет. Я снова с тобой. Рассказать, что случилось за день?"
+    return Response(content=voice.synthesize(text, payload.get("name")),
                     media_type="audio/wav")
 
 
 @app.post("/voice")
-async def voice(file: UploadFile = File(...), session: str = "default", brain: str = "auto"):
+async def api_voice(file: UploadFile = File(...), session: str = "default", brain: str = "auto"):
     data = await file.read()
     text_in = stt_bytes(data)
     res = chat(ChatIn(text=text_in, session=session, brain=brain, channel="voice"))

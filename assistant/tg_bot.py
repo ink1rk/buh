@@ -21,12 +21,15 @@ TZ = zoneinfo.ZoneInfo(os.environ.get("TZ_NAME", "Europe/Moscow"))
 BRIEFING_TIME = os.environ.get("BRIEFING_TIME", "08:30")        # HH:MM local
 EVENING_TIME = os.environ.get("EVENING_BRIEFING_TIME", "").strip()  # optional HH:MM
 NEWS_LIMIT = int(os.environ.get("TG_NEWS_LIMIT", "12"))
+NOTIFY_POLL = int(os.environ.get("TG_NOTIFY_POLL", "5"))        # seconds
 
 API = f"https://api.telegram.org/bot{TOKEN}"
 FILEAPI = f"https://api.telegram.org/file/bot{TOKEN}"
 
 tg = httpx.Client(proxy=PROXY, timeout=70)           # Telegram API (needs proxy)
 asst = httpx.Client(timeout=300, trust_env=False)     # local assistant (no proxy)
+
+pending_reply: dict = {}     # set when the owner chooses «своими словами»
 
 TOPIC_LABELS = {
     "world": "🌍 Мир", "russia": "🇷🇺 Россия", "econ": "💰 Экономика",
@@ -42,7 +45,9 @@ GREETING = (
     "• /evening — вечерний вариант сводки\n"
     "• /news — новости по темам, с кнопками\n"
     "• /digest — то же, но пересказано своими словами\n"
+    "• /trading — сводка по каналу Full-Time Trading\n"
     "• /weather — погода\n"
+    "• /voice — выбрать голос (пришлю образцы)\n"
     "• /chats — непрочитанное в Telegram\n"
     "• /find &lt;текст&gt; — поиск по перепискам\n\n"
     "<i>Умею: финансы, погода, новости, твой Telegram. "
@@ -157,8 +162,52 @@ def send_voice(chat_id, wav: bytes, caption=None):
         print("sendVoice failed:", e)
 
 
-def tts(text: str) -> bytes:
-    return asst.post(f"{ASSISTANT}/tts", json={"text": text}).content
+def tts(text: str, name=None) -> bytes:
+    payload = {"text": text}
+    if name:
+        payload["voice"] = name
+    return asst.post(f"{ASSISTANT}/tts", json=payload).content
+
+
+PREVIEW_TEXT = ("Привет. Это мой голос. Скажи, если хочешь, чтобы я говорила "
+                "медленнее или мягче.")
+
+
+def send_voices(chat_id):
+    """List presets, then send a sample of each so выбор делается на слух."""
+    d = asst.get(f"{ASSISTANT}/voices").json()
+    voices, current = d.get("voices") or {}, d.get("active")
+    lines = ["🎧 <b>Голоса</b>", ""]
+    rows, row = [], []
+    for name, info in voices.items():
+        mark = "✅ " if name == current else ""
+        lines.append(f"{mark}<b>{escape(info['title'])}</b>\n<i>      {escape(info['hint'])}</i>")
+        row.append({"text": f"{mark}{info['title'].split(' — ')[0]}", "callback_data": f"voice:{name}"})
+        if len(row) == 2:
+            rows.append(row); row = []
+    if row:
+        rows.append(row)
+    lines += ["", "<i>Сейчас пришлю образцы — выбери кнопкой, какой оставить.</i>"]
+    send_html(chat_id, "\n".join(lines), {"inline_keyboard": rows})
+    for name, info in voices.items():
+        action(chat_id, "record_voice")
+        try:
+            send_voice(chat_id, tts(PREVIEW_TEXT, name), caption=info["title"])
+        except Exception as e:
+            print(f"preview {name} failed:", e)
+
+
+def set_voice(chat_id, name):
+    d = asst.post(f"{ASSISTANT}/voices/set", json={"name": name}).json()
+    if d.get("error"):
+        return send_html(chat_id, f"Не смогла переключить: {escape(d['error'])}")
+    info = (asst.get(f"{ASSISTANT}/voices").json().get("voices") or {}).get(name, {})
+    send_html(chat_id, f"🎧 Теперь говорю голосом <b>{escape(info.get('title', name))}</b>.")
+    action(chat_id, "record_voice")
+    try:
+        send_voice(chat_id, tts("Готово. Теперь я звучу так. Обращайся."))
+    except Exception as e:
+        print("voice confirm failed:", e)
 
 
 def news_keyboard(topics, active=None):
@@ -241,6 +290,72 @@ def send_briefing(chat_id, evening=False, voice=True):
             print("briefing voice failed:", e)
 
 
+def send_trading(chat_id, hours=24):
+    stop = typing_while(chat_id)
+    try:
+        d = asst.get(f"{ASSISTANT}/trading", params={"hours": hours}, timeout=300).json()
+        send_html(chat_id, d.get("html") or "Канал недоступен.")
+    except Exception as e:
+        traceback.print_exc()
+        send_html(chat_id, f"Сводка по каналу не собралась: {escape(str(e))}")
+    finally:
+        stop.set()
+
+
+def reply_keyboard(notif):
+    """Buttons: send one of the suggestions, or write the reply yourself."""
+    rows = []
+    for index in range(len(notif.get("suggestions") or [])):
+        rows.append([{"text": f"Отправить вариант {index + 1}",
+                      "callback_data": f"snd:{notif['id']}:{index}"}])
+    rows.append([{"text": "✍️ Своими словами", "callback_data": f"own:{notif['id']}"},
+                 {"text": "🙈 Пропустить", "callback_data": f"skip:{notif['id']}"}])
+    return {"inline_keyboard": rows}
+
+
+def render_notification(notif):
+    lines = [f"💬 <b>{escape(notif['peer_name'])}</b> пишет:",
+             f"<i>«{escape((notif['text'] or '')[:700])}»</i>"]
+    options = notif.get("suggestions") or []
+    if options:
+        lines.append("\nМожно ответить так:")
+        for index, option in enumerate(options, 1):
+            lines.append(f"<b>{index}.</b> {escape(option)}")
+    else:
+        lines.append("\n<i>Вариантов не придумала — ответь своими словами.</i>")
+    return "\n".join(lines)
+
+
+def notification_poller():
+    """Drain the assistant's notification queue and push it to the owner."""
+    while True:
+        try:
+            items = asst.get(f"{ASSISTANT}/notifications/pending",
+                             params={"limit": 5}).json().get("items") or []
+            delivered = []
+            for notif in items:
+                try:
+                    send_html(OWNER, render_notification(notif), reply_keyboard(notif))
+                    delivered.append(notif["id"])
+                except Exception:
+                    traceback.print_exc()
+            if delivered:
+                asst.post(f"{ASSISTANT}/notifications/delivered", json={"ids": delivered})
+        except Exception:
+            pass
+        time.sleep(NOTIFY_POLL)
+
+
+def send_reply_choice(chat_id, notif_id, index):
+    d = asst.post(f"{ASSISTANT}/notifications/send",
+                  json={"id": int(notif_id), "index": int(index)}, timeout=120).json()
+    if d.get("ok"):
+        send_html(chat_id, f"✅ Отправила <b>{escape(d.get('peer_name', ''))}</b>:\n"
+                           f"<i>«{escape(d.get('sent_text', ''))}»</i>")
+    else:
+        send_html(chat_id, f"Не смогла отправить: {escape(str(d.get('error')))}")
+
+
 def send_weather(chat_id):
     action(chat_id, "typing")
     d = asst.get(f"{ASSISTANT}/weather").json()
@@ -298,8 +413,16 @@ def handle_command(chat_id, uid, text):
         send_news(chat_id, arg.lower() if arg in TOPIC_LABELS else None)
     elif cmd == "/digest":
         send_digest(chat_id)
+    elif cmd in ("/trading", "/trade"):
+        hours = int(arg) if arg.isdigit() else 24
+        send_trading(chat_id, hours)
     elif cmd == "/weather":
         send_weather(chat_id)
+    elif cmd == "/voice":
+        if arg:
+            set_voice(chat_id, arg.strip())
+        else:
+            send_voices(chat_id)
     elif cmd == "/chats":
         send_chats(chat_id)
     elif cmd == "/find":
@@ -315,6 +438,15 @@ def handle_command(chat_id, uid, text):
 def handle_text(chat_id, uid, text):
     if text.startswith("/") and handle_command(chat_id, uid, text):
         return
+    if pending_reply.get("peer_id") and not text.startswith("/"):
+        target = pending_reply.copy()
+        pending_reply.clear()
+        d = asst.post(f"{ASSISTANT}/reply",
+                      json={"peer_id": target["peer_id"], "text": text}).json()
+        if d.get("ok"):
+            return send_html(chat_id, f"✅ Отправила <b>{escape(target['name'])}</b>:\n"
+                                      f"<i>«{escape(text)}»</i>")
+        return send_html(chat_id, f"Не смогла отправить: {escape(str(d.get('error')))}")
     stop = typing_while(chat_id)
     try:
         d = asst.post(f"{ASSISTANT}/chat", json={"text": text, "session": f"tg:{uid}"}).json()
@@ -356,6 +488,28 @@ def handle_callback(cb):
     elif data == "digest":
         api("answerCallbackQuery", callback_query_id=cb["id"], text="Собираю сводку…")
         send_digest(chat_id)
+    elif data.startswith("voice:"):
+        api("answerCallbackQuery", callback_query_id=cb["id"], text="Переключаю голос…")
+        set_voice(chat_id, data.split(":", 1)[1])
+    elif data.startswith("snd:"):
+        _, notif_id, index = data.split(":")
+        api("answerCallbackQuery", callback_query_id=cb["id"], text="Отправляю…")
+        send_reply_choice(chat_id, notif_id, index)
+    elif data.startswith("own:"):
+        notif_id = data.split(":", 1)[1]
+        notif = asst.get(f"{ASSISTANT}/notifications/{notif_id}").json()
+        if notif.get("peer_id"):
+            pending_reply.update({"peer_id": notif["peer_id"], "name": notif["peer_name"]})
+            api("answerCallbackQuery", callback_query_id=cb["id"], text="Жду текст")
+            send_html(chat_id, f"✍️ Напиши ответ для <b>{escape(notif['peer_name'])}</b> "
+                               "следующим сообщением — отправлю как есть.")
+        else:
+            api("answerCallbackQuery", callback_query_id=cb["id"], text="Не нашла чат")
+    elif data.startswith("skip:"):
+        api("answerCallbackQuery", callback_query_id=cb["id"], text="Ок, пропускаю")
+        if message_id:
+            api("editMessageReplyMarkup", chat_id=chat_id, message_id=message_id,
+                reply_markup=json.dumps({"inline_keyboard": []}))
     else:
         api("answerCallbackQuery", callback_query_id=cb["id"])
 
@@ -383,7 +537,9 @@ def setup_commands():
         {"command": "evening", "description": "Вечерняя сводка"},
         {"command": "news", "description": "Новости по темам"},
         {"command": "digest", "description": "Сводка новостей своими словами"},
+        {"command": "trading", "description": "Сводка трейдинг-канала"},
         {"command": "weather", "description": "Погода"},
+        {"command": "voice", "description": "Выбрать голос"},
         {"command": "chats", "description": "Непрочитанное в Telegram"},
         {"command": "find", "description": "Поиск по перепискам"},
         {"command": "start", "description": "О боте"},
@@ -395,6 +551,7 @@ def main():
           + (f", evening at {EVENING_TIME}" if EVENING_TIME else ""))
     setup_commands()
     threading.Thread(target=scheduler, daemon=True).start()
+    threading.Thread(target=notification_poller, daemon=True).start()
     offset = None
     while True:
         try:
