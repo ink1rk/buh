@@ -147,6 +147,68 @@ class MemoryConfig:
     retrieval_limit: int = _int("MEMORY_RETRIEVAL_LIMIT", 8)
 
 
+CALDAV_PRESETS = {
+    "yandex": "https://caldav.yandex.ru",
+    "mailru": "https://calendar.mail.ru/principals",
+    "icloud": "https://caldav.icloud.com",
+    "google": "https://apidata.googleusercontent.com/caldav/v2",
+}
+
+
+@dataclass(frozen=True)
+class CalDAVAccount:
+    name: str
+    user: str
+    password: str
+    url: str
+
+    @property
+    def address(self):
+        return self.user.lower()
+
+
+def _caldav_accounts():
+    """CALDAV_ACCOUNTS=yandex → CALDAV_YANDEX_USER, CALDAV_YANDEX_PASSWORD."""
+    accounts = []
+    for name in _list("CALDAV_ACCOUNTS"):
+        key = name.upper().replace("-", "_")
+        user = os.environ.get(f"CALDAV_{key}_USER", "").strip()
+        password = os.environ.get(f"CALDAV_{key}_PASSWORD", "")
+        url = os.environ.get(f"CALDAV_{key}_URL",
+                             CALDAV_PRESETS.get(name.lower(), "")).strip()
+        if user and password and url:
+            accounts.append(CalDAVAccount(name=name.lower(), user=user,
+                                          password=password, url=url.rstrip("/")))
+    return tuple(accounts)
+
+
+@dataclass(frozen=True)
+class CalendarConfig:
+    accounts: tuple = field(default_factory=_caldav_accounts)
+    # Дальше горизонта ассистент не заглядывает: это уже не «что у меня сегодня».
+    horizon_days: int = _int("CALENDAR_HORIZON_DAYS", 14)
+    # Сколько ближайших встреч подмешивать в контекст ответа.
+    context_events: int = _int("CALENDAR_CONTEXT_EVENTS", 5)
+    refresh_seconds: int = _int("CALENDAR_REFRESH_SECONDS", 600)
+    # За сколько предупреждать о встрече.
+    remind_minutes: tuple = field(
+        default_factory=lambda: tuple(sorted(
+            {int(x) for x in _list("CALENDAR_REMIND_MINUTES", ("60", "10")) if
+             x.isdigit()}, reverse=True)))
+    timeout: int = _int("CALDAV_TIMEOUT", 30)
+
+    @property
+    def enabled(self):
+        return bool(self.accounts)
+
+    def account(self, name_or_address=None):
+        needle = (name_or_address or "").lower()
+        for item in self.accounts:
+            if needle in (item.name, item.address):
+                return item
+        return self.accounts[0] if self.accounts else None
+
+
 @dataclass(frozen=True)
 class Config:
     db_path: str = os.environ.get("ASSISTANT_DB", "/opt/assistant/assistant.db")
@@ -163,6 +225,7 @@ class Config:
     llm: LLMConfig = field(default_factory=LLMConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
     email: EmailConfig = field(default_factory=EmailConfig)
+    calendar: CalendarConfig = field(default_factory=CalendarConfig)
     actions: ActionConfig = field(default_factory=ActionConfig)
     notifications: NotificationConfig = field(default_factory=NotificationConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)
