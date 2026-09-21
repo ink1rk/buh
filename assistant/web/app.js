@@ -766,14 +766,12 @@ pages.calendar = {
             ${trouble}
             <div class="card" style="margin-bottom:18px">
                 <h3 style="margin:0 0 12px">Записать встречу</h3>
-                <div class="bar" style="margin:0;flex-wrap:wrap">
-                    <input class="grow" id="event-summary" type="text"
-                           placeholder="Название" style="min-width:220px">
+                <div class="form-grid">
+                    <input id="event-summary" type="text" placeholder="Название">
                     <input id="event-start" type="datetime-local">
                     <input id="event-minutes" type="number" value="60" min="5" step="5"
-                           style="width:84px" title="Длительность в минутах">
-                    <input id="event-place" type="text" placeholder="Место"
-                           style="min-width:140px">
+                           title="Длительность в минутах">
+                    <input id="event-place" type="text" placeholder="Место">
                     <button class="btn primary" id="event-add">Записать</button>
                 </div>
                 <div class="muted" id="event-note" style="margin-top:10px"></div>

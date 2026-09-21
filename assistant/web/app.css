@@ -479,6 +479,8 @@ button.row:hover {
 input[type="text"],
 input[type="password"],
 input[type="search"],
+input[type="datetime-local"],
+input[type="number"],
 textarea,
 select {
     font: inherit;
@@ -528,6 +530,27 @@ textarea {
     align-items: center;
     margin-bottom: 14px;
     flex-wrap: wrap;
+}
+
+/* Форма из разнотипных полей: на переносах flex рвёт её на три строки и
+   растягивает короткое поле во всю ширину. Сетка держит ряд предсказуемым. */
+.form-grid {
+    display: grid;
+    gap: 10px;
+    align-items: center;
+    grid-template-columns:
+        minmax(180px, 2.2fr) minmax(192px, 1fr) 88px minmax(120px, 1fr) auto;
+}
+
+@media (max-width: 900px) {
+    .form-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .form-grid > :first-child,
+    .form-grid > button {
+        grid-column: 1 / -1;
+    }
 }
 
 .bar .grow {
