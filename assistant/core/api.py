@@ -100,6 +100,29 @@ def api_ingest_telegram(payload: dict = Body(...)):
     return pipeline.ingest_incoming(get_core(), payload)
 
 
+@router.get("/mail")
+def api_mail():
+    """Настроенные ящики и итог последнего опроса."""
+    from .config import config
+
+    core = get_core()
+    return {"enabled": config.email.enabled,
+            "poll_seconds": config.email.poll_seconds,
+            "accounts": [{"name": a.name, "address": a.address} for a
+                         in config.email.accounts],
+            "last": core.mail.last}
+
+
+@router.post("/mail/check")
+def api_mail_check():
+    """Забрать почту сейчас, не дожидаясь очередного опроса."""
+    from .config import config
+
+    if not config.email.enabled:
+        return {"error": "почта не настроена"}
+    return get_core().mail.poll_once()
+
+
 @router.get("/suggestions")
 def api_suggestions(status: str = "NEW", limit: int = 30):
     return {"suggestions": pipeline.list_suggestions(status or None, limit)}

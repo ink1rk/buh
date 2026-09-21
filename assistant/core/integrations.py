@@ -150,6 +150,35 @@ class TelegramUserIntegration(HttpIntegration):
             return Status.ERROR, str(e)
 
 
+class EmailIntegration(Integration):
+    """Все настроенные ящики разом: один сломанный — уже повод сказать."""
+
+    name = "email"
+    type = "email"
+    required = False
+
+    def configured(self):
+        return config.email.enabled
+
+    def health_check(self):
+        if not self.configured():
+            return Status.NOT_CONFIGURED, "ящики не настроены"
+        from providers.email import mailboxes
+
+        alive, broken = [], []
+        for mailbox in mailboxes():
+            try:
+                mailbox.check()
+                alive.append(mailbox.account.address)
+            except Exception as e:
+                broken.append(f"{mailbox.account.name}: {e}")
+        if broken and not alive:
+            return Status.ERROR, "; ".join(broken)
+        if broken:
+            return Status.DEGRADED, "; ".join(broken)
+        return Status.CONNECTED, ", ".join(alive)
+
+
 class FinanceIntegration(HttpIntegration):
     name = "finance"
     type = "finance"

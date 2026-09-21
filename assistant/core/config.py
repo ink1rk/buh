@@ -46,6 +46,78 @@ class TelegramConfig:
     user_service_url: str = os.environ.get("TG_USER_URL", "http://127.0.0.1:8810")
 
 
+# Чтобы в окружении хранились только логин и пароль, а не порты провайдера.
+MAIL_PRESETS = {
+    "yandex": ("imap.yandex.ru", 993, "smtp.yandex.ru", 465),
+    "gmail": ("imap.gmail.com", 993, "smtp.gmail.com", 465),
+    "mailru": ("imap.mail.ru", 993, "smtp.mail.ru", 465),
+    "icloud": ("imap.mail.me.com", 993, "smtp.mail.me.com", 587),
+}
+
+
+@dataclass(frozen=True)
+class MailAccount:
+    name: str
+    user: str
+    password: str
+    imap_host: str
+    imap_port: int
+    smtp_host: str
+    smtp_port: int
+    from_name: str = ""
+
+    @property
+    def address(self):
+        return self.user.lower()
+
+
+def _mail_accounts():
+    """MAIL_ACCOUNTS=yandex,work → MAIL_YANDEX_USER, MAIL_WORK_USER и так далее."""
+    accounts = []
+    for name in _list("MAIL_ACCOUNTS"):
+        key = name.upper().replace("-", "_")
+        user = os.environ.get(f"MAIL_{key}_USER", "").strip()
+        password = os.environ.get(f"MAIL_{key}_PASSWORD", "")
+        if not (user and password):
+            continue                      # настроен наполовину — значит не настроен
+        preset = MAIL_PRESETS.get(name.lower(), ("", 993, "", 465))
+        accounts.append(MailAccount(
+            name=name.lower(),
+            user=user,
+            password=password,
+            imap_host=os.environ.get(f"MAIL_{key}_IMAP_HOST", preset[0]).strip(),
+            imap_port=_int(f"MAIL_{key}_IMAP_PORT", preset[1]),
+            smtp_host=os.environ.get(f"MAIL_{key}_SMTP_HOST", preset[2]).strip(),
+            smtp_port=_int(f"MAIL_{key}_SMTP_PORT", preset[3]),
+            from_name=os.environ.get(f"MAIL_{key}_FROM_NAME", "").strip()))
+    return tuple(a for a in accounts if a.imap_host and a.smtp_host)
+
+
+@dataclass(frozen=True)
+class EmailConfig:
+    accounts: tuple = field(default_factory=_mail_accounts)
+    folder: str = os.environ.get("MAIL_FOLDER", "INBOX")
+    poll_seconds: int = _int("MAIL_POLL_SECONDS", 120)
+    max_per_poll: int = _int("MAIL_MAX_PER_POLL", 10)
+    # Письмо длиннее всё равно не поместится в подсказку осмысленно.
+    max_body_chars: int = _int("MAIL_MAX_BODY_CHARS", 4000)
+    # Ящик со старыми непрочитанными письмами не должен при первом запуске
+    # превратиться в сотню подсказок на давно неактуальное.
+    max_age_hours: int = _int("MAIL_MAX_AGE_HOURS", 72)
+    ignore_senders: tuple = field(default_factory=lambda: _list("MAIL_IGNORE_SENDERS"))
+
+    @property
+    def enabled(self):
+        return bool(self.accounts)
+
+    def account(self, name_or_address):
+        needle = (name_or_address or "").lower()
+        for item in self.accounts:
+            if needle in (item.name, item.address):
+                return item
+        return self.accounts[0] if self.accounts else None
+
+
 @dataclass(frozen=True)
 class ActionConfig:
     approval_ttl: int = _int("ACTION_APPROVAL_TTL", 600)        # seconds
@@ -85,6 +157,7 @@ class Config:
     trusted_peers: tuple = field(default_factory=lambda: _list("TRUSTED_PEERS"))
     llm: LLMConfig = field(default_factory=LLMConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
+    email: EmailConfig = field(default_factory=EmailConfig)
     actions: ActionConfig = field(default_factory=ActionConfig)
     notifications: NotificationConfig = field(default_factory=NotificationConfig)
     memory: MemoryConfig = field(default_factory=MemoryConfig)

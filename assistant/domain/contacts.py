@@ -169,6 +169,36 @@ def upsert_from_telegram(telegram_id, display_name, username=None, bus=None):
     return contact
 
 
+def upsert_from_email(address, display_name=None, bus=None):
+    """Пришло письмо: тот же человек, что и в Telegram, если адрес уже известен."""
+    address = (address or "").strip().lower()
+    contact = by_email(address)
+    created = False
+    if contact is None:
+        # Имя из заголовка письма надёжнее адреса, но адрес есть всегда.
+        contact = Contact(display_name=(display_name or address).strip(),
+                          emails=[address])
+        created = True
+    if address not in [e.lower() for e in contact.emails]:
+        contact.emails.append(address)
+    if display_name and contact.display_name.lower() == address:
+        contact.display_name = display_name.strip()
+    for alias in filter(None, [display_name, address]):
+        alias = alias.strip()
+        if alias and alias != contact.display_name and alias not in contact.aliases:
+            contact.aliases.append(alias)
+    parts = (contact.display_name or "").split()
+    if parts and not contact.first_name and "@" not in contact.display_name:
+        contact.first_name = parts[0]
+        contact.last_name = parts[1] if len(parts) > 1 else None
+    contact.last_interaction_at = time.time()
+    save(contact)
+    if bus:
+        bus.emit(E.CONTACT_CREATED if created else E.CONTACT_UPDATED,
+                 contact.as_dict(), source="email")
+    return contact
+
+
 def _norm(text):
     return re.sub(r"[^\w]+", "", (text or "").lower().replace("ё", "е"))
 

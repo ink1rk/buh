@@ -17,7 +17,7 @@ import time
 from domain import contacts as contacts_mod
 from domain import conversations as conversations_mod
 
-from . import audit, db, intents as intents_mod
+from . import audit, channels, db, intents as intents_mod
 from .events import E, new_id
 
 BOT_PLATFORM = "telegram:bot"          # the owner's own dialogue with the assistant
@@ -84,36 +84,49 @@ def handle_message(core, text, session="default", interface="telegram",
             "correlation_id": correlation_id}
 
 
-def ingest_incoming(core, payload):
-    """Somebody wrote to the owner: store it, then prepare reply options."""
+def ingest_incoming(core, payload, channel="telegram"):
+    """Somebody wrote to the owner: store it, then prepare reply options.
+
+    Один путь для всех каналов: письмо и сообщение в Telegram отличаются только
+    тем, как из них достаётся человек и чем отправляется ответ.
+    """
+    channel = channels.get(channel) if isinstance(channel, str) else channel
     correlation_id = new_id("corr-")
-    peer_id = str(payload.get("peer_id"))
+    peer_id = channel.conversation_key(payload)
     text = (payload.get("text") or "").strip()
-    contact = contacts_mod.upsert_from_telegram(
-        peer_id, payload.get("peer_name"), payload.get("username"), bus=core.bus)
+    subject = (payload.get("subject") or "").strip()
+    contact = channel.resolve_contact(payload, core.bus)
     conversation = conversations_mod.get_or_create(
-        "telegram", peer_id, contact_id=contact.id,
-        title=payload.get("peer_name"), bus=core.bus)
+        channel.platform, peer_id, contact_id=contact.id,
+        title=channel.title(payload), bus=core.bus)
 
     _backfill(conversation, payload.get("history") or [], contact)
+
+    metadata = {}
+    if subject:
+        metadata["subject"] = subject
+    if payload.get("account"):
+        metadata["account"] = payload["account"]
 
     message = conversations_mod.Message(
         conversation_id=conversation.id, text=text, sender_type="CONTACT",
         sender_id=contact.id, external_id=payload.get("message_id"),
         message_type=payload.get("message_type", "TEXT"),
         transcription=payload.get("transcription"),
-        ts=payload.get("ts") or time.time())
+        ts=payload.get("ts") or time.time(), metadata=metadata)
     message, is_new = conversations_mod.add_message(message, bus=core.bus)
     if not is_new:
         return {"duplicate": True, "conversation_id": conversation.id}
 
-    core.bus.emit(E.TELEGRAM_MESSAGE_RECEIVED,
+    core.bus.emit(channel.received_event,
                   {"peer_id": peer_id, "contact_id": contact.id,
                    "conversation_id": conversation.id, "message_id": message.id,
-                   "text": text[:500]},
-                  source="telegram", correlation_id=correlation_id)
+                   "subject": subject, "text": text[:500]},
+                  source=channel.source, correlation_id=correlation_id)
 
-    context = core.resolver.for_incoming_message(conversation, contact, text,
+    # Тема письма — часть сообщения: без неё модель не понимает, о чём речь.
+    for_model = f"Тема: {subject}\n\n{text}" if subject else text
+    context = core.resolver.for_incoming_message(conversation, contact, for_model,
                                                  correlation_id=correlation_id)
     options, summary = core.communication.suggest_replies(context)
     suggestion_id = _store_suggestion(conversation, contact, message, options, summary)
@@ -124,18 +137,20 @@ def ingest_incoming(core, payload):
 
     severity = "high" if contact.importance >= 0.7 else "medium"
     core.notifications.notify(
-        "message.incoming", contact.display_name, body=text[:900], severity=severity,
-        metadata={"kind": "incoming_message", "suggestion_id": suggestion_id,
+        "message.incoming", contact.display_name,
+        body=(f"{subject}\n{text}" if subject else text)[:900], severity=severity,
+        metadata={"kind": channel.notification_kind, "channel": channel.name,
+                  "suggestion_id": suggestion_id, "subject": subject,
                   "contact_id": contact.id, "conversation_id": conversation.id,
                   "peer_id": peer_id, "options": options,
                   "context_summary": summary or (conversation.summary or ""),
-                  "source": f"telegram:{peer_id}"},
+                  "source": f"{channel.name}:{peer_id}"},
         correlation_id=correlation_id)
 
     core.enricher.on_message(conversation, contact, message, from_owner=False)
     return {"suggestion_id": suggestion_id, "contact_id": contact.id,
             "conversation_id": conversation.id, "options": options,
-            "correlation_id": correlation_id}
+            "channel": channel.name, "correlation_id": correlation_id}
 
 
 def send_reply(core, suggestion_id, index=None, text=None, actor="owner"):
@@ -150,10 +165,10 @@ def send_reply(core, suggestion_id, index=None, text=None, actor="owner"):
             return {"error": "нет такого варианта"}
         body = options[index]
 
+    channel = channels.for_platform(suggestion.get("platform"))
     action = core.actions.request(
-        "send.telegram.message",
-        {"peer_id": suggestion["peer_id"], "text": body, "as_user": True},
-        source="telegram", requested_by=f"user:{actor}",
+        channel.action_type, channel.send_parameters(suggestion, body),
+        source=channel.source, requested_by=f"user:{actor}",
         idempotency_key=f"reply:{suggestion_id}:{index if text is None else 'custom'}",
         context={"user_confirmed": True})
 
@@ -167,9 +182,9 @@ def send_reply(core, suggestion_id, index=None, text=None, actor="owner"):
         db.execute("UPDATE reply_suggestions SET status='SENT', chosen_index=?,"
                    " sent_text=?, decided_at=? WHERE id=?",
                    (index if text is None else -1, body, time.time(), suggestion_id))
-        core.bus.emit(E.TELEGRAM_MESSAGE_SENT,
+        core.bus.emit(channel.sent_event,
                       {"peer_id": suggestion["peer_id"], "action_id": action.id,
-                       "text": body[:300]}, source="telegram",
+                       "text": body[:300]}, source=channel.source,
                       correlation_id=action.correlation_id)
     audit.record("reply.sent" if action.status == "SUCCESS" else "reply.failed",
                  actor=actor, correlation_id=action.correlation_id,
@@ -253,9 +268,18 @@ def get_suggestion(suggestion_id):
         options = json.loads(row["options"] or "[]")
     except ValueError:
         options = []
+    # Ответ письмом должен попасть в ту же ветку, поэтому нужны тема, ящик и
+    # идентификатор исходного письма — всё это лежит на самом сообщении.
+    source = conversations_mod.get_message(row["message_id"]) if row["message_id"] \
+        else None
+    extra = (source.metadata or {}) if source else {}
+    platform = conversation.platform if conversation else "telegram"
     return {"id": row["id"], "conversation_id": row["conversation_id"],
             "contact_id": row["contact_id"],
             "contact_name": contact.display_name if contact else "?",
             "peer_id": conversation.external_id if conversation else None,
+            "platform": platform, "channel": channels.for_platform(platform).name,
+            "subject": extra.get("subject", ""), "account": extra.get("account"),
+            "external_message_id": source.external_id if source else None,
             "options": options, "context_summary": row["context_summary"],
             "status": row["status"], "created_at": row["created_at"]}

@@ -182,8 +182,9 @@ pages[''] = {
         const suggestions = data.suggestions.length ? data.suggestions.map((s) => `
             <a class="row" href="#/inbox">
                 <div class="grow">
-                    <div class="title">${esc(s.contact_name)}</div>
-                    <div class="sub clip">${esc(s.context_summary || s.options[0] || '')}</div>
+                    <div class="title">${esc(s.contact_name)}
+                        ${s.channel === 'email' ? '<span class="badge">письмо</span>' : ''}</div>
+                    <div class="sub clip">${esc(s.subject || s.context_summary || s.options[0] || '')}</div>
                 </div>
                 <div class="when">${ago(s.created_at)}</div>
             </a>`).join('') : empty('Новых сообщений нет');
@@ -301,7 +302,10 @@ pages.inbox = {
             ? suggestions.suggestions.map((s) => `
                 <div class="card" style="margin-bottom:12px" data-suggestion="${esc(s.id)}">
                     <div class="bar" style="margin-bottom:8px">
-                        <div class="grow"><h3>${esc(s.contact_name)}</h3>
+                        <div class="grow">
+                            <h3>${esc(s.contact_name)}
+                                ${s.channel === 'email' ? '<span class="badge">письмо</span>' : ''}</h3>
+                            ${s.subject ? `<div class="title">${esc(s.subject)}</div>` : ''}
                             <div class="muted">${esc(s.context_summary || '')}</div></div>
                         <div class="when">${ago(s.created_at)}</div>
                     </div>
@@ -855,8 +859,8 @@ pages.notifications = {
 pages.settings = {
     title: 'Настройки',
     async render() {
-        const [health, permissions] = await Promise.all([
-            api.get('/health'), api.get('/permissions'),
+        const [health, permissions, mail] = await Promise.all([
+            api.get('/health'), api.get('/permissions'), api.get('/mail'),
         ]);
         state.security = health.security;
 
@@ -889,6 +893,9 @@ pages.settings = {
                     отправляет всегда владелец. Автоотправка не включена.</div>
             </div>
 
+            <h2>Почта</h2>
+            ${mailSection(mail)}
+
             <h2>Права на действия</h2>
             <div class="list">${rows}</div>
 
@@ -917,6 +924,12 @@ pages.settings = {
                 render();
             });
         });
+        root.querySelector('#check-mail')?.addEventListener('click', async (event) => {
+            event.target.disabled = true;
+            event.target.textContent = 'Проверяю…';
+            await api.post('/mail/check');
+            render();
+        });
         root.querySelector('#save-token').addEventListener('click', () => {
             token.set(root.querySelector('#token').value.trim());
             render();
@@ -927,6 +940,32 @@ pages.settings = {
         });
     },
 };
+
+function mailSection(mail) {
+    if (!mail.enabled) {
+        return `<div class="card muted">Ящики не подключены. Добавьте
+            <b>MAIL_ACCOUNTS</b> и логин с паролем приложения в окружение ядра —
+            письма попадут в те же «Входящие», что и сообщения.</div>`;
+    }
+    const last = mail.last || {};
+    const boxes = mail.accounts.map((a) => `
+        <div class="row"><div class="grow">
+            <div class="title">${esc(a.address)}</div>
+            <div class="sub">${esc(a.name)}</div>
+        </div></div>`).join('');
+
+    const report = last.at
+        ? `Последняя проверка ${ago(last.at)}: новых ${last.new || 0},
+           пропущено рассылок ${last.skipped || 0}${(last.errors || []).length
+            ? ', ошибки: ' + esc(last.errors.join('; ')) : ''}`
+        : `Проверка каждые ${Math.round(mail.poll_seconds / 60)} мин, ещё не было.`;
+
+    return `<div class="list">${boxes}</div>
+        <div class="bar" style="margin-top:12px">
+            <div class="grow muted">${report}</div>
+            <button class="btn" id="check-mail">Проверить сейчас</button>
+        </div>`;
+}
 
 function securityNotice() {
     if (state.security?.auth !== 'open') return '';

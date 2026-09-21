@@ -172,6 +172,10 @@ class E:
     TELEGRAM_MESSAGE_SENT = "telegram.message.sent"
     MESSAGE_RECEIVED = "message.received"
     MESSAGE_TRANSCRIBED = "message.transcribed"
+    # email
+    EMAIL_RECEIVED = "email.message.received"
+    EMAIL_SENT = "email.message.sent"
+    EMAIL_SKIPPED = "email.message.skipped"
     # core pipeline
     INTENT_DETECTED = "intent.detected"
     RESPONSE_GENERATED = "response.generated"

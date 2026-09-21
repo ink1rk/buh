@@ -167,6 +167,10 @@ def add_message(message, bus=None):
     return message, True
 
 
+def get_message(message_id):
+    return _msg(db.one("SELECT * FROM conv_messages WHERE id=?", (message_id,)))
+
+
 def messages(conversation_id, limit=40, before=None):
     sql = "SELECT * FROM conv_messages WHERE conversation_id=?"
     params = [conversation_id]

@@ -28,6 +28,7 @@ class Integration:
 | Интеграция | Тип | Проверка | Обязательна |
 |---|---|---|---|
 | `database` | storage | запрос к SQLite + счётчики таблиц | да |
+| `email` | email | вход в каждый ящик по IMAP | нет |
 | `llm.local` | llm | `GET /api/tags` у Ollama | да |
 | `llm.gateway` | llm | `GET /v1/models` у шлюза | да |
 | `telegram.bot` | messaging | `getMe` через прокси | да |
