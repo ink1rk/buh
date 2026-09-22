@@ -82,9 +82,10 @@ export function TaskPanel({
             options={optionsOf(task.status, TASK_NEXT[task.status] ?? [], (value) =>
               te("taskStatus", value),
             )}
-            onChange={(event) =>
-              write.mutate(() => mutations.updateTask(projectId, task.id, { status: event.target.value }))
-            }
+            onChange={(event) => {
+              const status = event.target.value;
+              write.mutate(() => mutations.updateTask(projectId, task.id, { status }));
+            }}
           />
           <Select
             aria-label={t("projects.priority")}
@@ -93,32 +94,31 @@ export function TaskPanel({
               value,
               label: te("priority", value),
             }))}
-            onChange={(event) =>
-              write.mutate(() =>
-                mutations.updateTask(projectId, task.id, { priority: event.target.value }),
-              )
-            }
+            onChange={(event) => {
+              const priority = event.target.value;
+              write.mutate(() => mutations.updateTask(projectId, task.id, { priority }));
+            }}
           />
           <Select
             aria-label={t("projects.assignee")}
             value={task.assignee_id ?? ""}
             placeholder={t("projects.assignee")}
             options={(employees ?? []).map((item) => ({ value: item.id, label: item.full_name }))}
-            onChange={(event) =>
+            onChange={(event) => {
+              const assigneeId = event.target.value || null;
               write.mutate(() =>
-                mutations.updateTask(projectId, task.id, { assignee_id: event.target.value || null }),
-              )
-            }
+                mutations.updateTask(projectId, task.id, { assignee_id: assigneeId }),
+              );
+            }}
           />
           <Input
             aria-label={t("projects.due")}
             type="date"
             value={task.due_date ?? ""}
-            onChange={(event) =>
-              write.mutate(() =>
-                mutations.updateTask(projectId, task.id, { due_date: event.target.value || null }),
-              )
-            }
+            onChange={(event) => {
+              const due = event.target.value || null;
+              write.mutate(() => mutations.updateTask(projectId, task.id, { due_date: due }));
+            }}
           />
         </div>
         <Textarea
@@ -127,10 +127,9 @@ export function TaskPanel({
           key={task.description}
           rows={3}
           onBlur={(event) => {
-            if (event.target.value === task.description) return;
-            write.mutate(() =>
-              mutations.updateTask(projectId, task.id, { description: event.target.value }),
-            );
+            const description = event.target.value;
+            if (description === task.description) return;
+            write.mutate(() => mutations.updateTask(projectId, task.id, { description }));
           }}
         />
         <section>
