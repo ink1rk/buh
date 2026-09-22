@@ -410,17 +410,35 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
                   <td className="py-1.5 pr-2 font-mono text-xs">{task.label}</td>
                   <td className="py-1.5 pr-2">{task.title}</td>
                   <td className="py-1.5 pr-2">
-                    <Select
-                      value={task.status}
-                      options={optionsOf(task.status, TASK_NEXT[task.status] ?? [], (value) =>
-                        te("taskStatus", value),
+                    <div className="flex items-center gap-1">
+                      <Select
+                        value={task.status}
+                        options={optionsOf(task.status, TASK_NEXT[task.status] ?? [], (value) =>
+                          te("taskStatus", value),
+                        )}
+                        onChange={(event) => {
+                          const next = event.currentTarget.value;
+                          write.mutate(() =>
+                            mutations.updateTask(projectId, task.id, { status: next }),
+                          );
+                        }}
+                      />
+                      {(TASK_NEXT[task.status] ?? [])[0] && (
+                        <Button
+                          size="sm"
+                          data-testid={`advance-${task.label}`}
+                          onClick={() => {
+                            const next = (TASK_NEXT[task.status] ?? [])[0];
+                            if (!next) return;
+                            write.mutate(() =>
+                              mutations.updateTask(projectId, task.id, { status: next }),
+                            );
+                          }}
+                        >
+                          {te("taskStatus", (TASK_NEXT[task.status] ?? [])[0] ?? "")}
+                        </Button>
                       )}
-                      onChange={(event) =>
-                        write.mutate(() =>
-                          mutations.updateTask(projectId, task.id, { status: event.target.value }),
-                        )
-                      }
-                    />
+                    </div>
                   </td>
                   <td className="py-1.5 pr-2 text-muted">{task.assignee_name ?? "—"}</td>
                   <td className="py-1.5 tabular-nums">{task.progress_pct}%</td>
