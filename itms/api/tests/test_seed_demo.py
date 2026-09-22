@@ -10,6 +10,7 @@ from itms.core.db import session_scope
 from itms.models.catalog import DeviceModel, Manufacturer
 from itms.models.datacenter import Rack, RackMount
 from itms.models.diagram import Diagram
+from itms.models.floorplan import Floorplan, FloorplanItem
 from itms.models.network import Connection, Device, Interface, Prefix
 from itms.models.power import (
     PowerFeed,
@@ -40,6 +41,8 @@ async def test_seed_demo_builds_network_topology() -> None:
         assert await count(Connection) == 4
         assert await count(Prefix) == 3
         assert await count(Diagram) == 2
+        assert await count(Floorplan) == 1
+        assert await count(FloorplanItem) == 2
         power_diagram = (
             await session.execute(select(Diagram).where(Diagram.name == "Питание серверной"))
         ).scalar_one()

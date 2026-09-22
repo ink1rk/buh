@@ -37,6 +37,7 @@ from itms.models.enums import (
     VlanMode,
     ZeroUSide,
 )
+from itms.models.floorplan import Floorplan
 from itms.models.network import Interface
 from itms.models.projects import Project
 from itms.models.transition import PlannedChange, StateSnapshot
@@ -47,6 +48,7 @@ from itms.services import (
     device_service,
     diagram_service,
     directory_service,
+    floorplan_service,
     ipam_service,
     location_service,
     network_service,
@@ -102,6 +104,7 @@ async def seed_demo() -> None:
             await _ensure_demo_project(session)
             await _ensure_demo_power(session, server_room.id)
             await _ensure_demo_power_diagram(session, server_room.id)
+            await _ensure_demo_floorplan(session, server_room.id)
             await _ensure_demo_transition(session)
             if seeded:
                 print("Демонстрационные данные уже есть")
@@ -548,6 +551,31 @@ async def _ensure_demo_power_diagram(session: AsyncSession, server_room_id: uuid
             "autofill": True,
         },
     )
+
+
+async def _ensure_demo_floorplan(session: AsyncSession, server_room_id: uuid.UUID) -> None:
+    """План серверной: стойка R1 и щит ЩС-1 в миллиметрах, без пересечения."""
+    existing = (
+        await session.execute(select(Floorplan.id).where(Floorplan.name == "План серверной"))
+    ).scalar_one_or_none()
+    if existing:
+        return
+    rack = await _ci_by_code(session, "R1")
+    panel = await _ci_by_code(session, "PN-1")
+    if rack is None or panel is None:
+        return
+    view = await floorplan_service.create_plan(
+        session,
+        {
+            "name": "План серверной",
+            "location_id": server_room_id,
+            "width_mm": 8000,
+            "height_mm": 5000,
+        },
+    )
+    plan_id = view["plan"]["id"]
+    await floorplan_service.place_item(session, plan_id, {"ci_id": rack.id, "x": 1200, "y": 1500})
+    await floorplan_service.place_item(session, plan_id, {"ci_id": panel.id, "x": 5200, "y": 400})
 
 
 async def _ensure_demo_transition(session: AsyncSession) -> None:
