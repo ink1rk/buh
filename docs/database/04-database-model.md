@@ -183,6 +183,7 @@ CREATE TABLE ci (
   is_managed_externally boolean NOT NULL DEFAULT false,
   last_synced_at timestamptz,
   valid_from date, valid_to date,
+  archived_at timestamptz,        -- архивирование вместо удаления
   search_tsv tsvector
   -- + Timestamp, Actor, SoftDelete, Version
 );
@@ -202,6 +203,8 @@ CREATE UNIQUE INDEX uq_ci_external ON ci(source_system, external_id)
 ### 5.2 Граф связей
 
 ```sql
+-- Внимание: значения POWERED_BY здесь нет и не будет.
+-- Электрическая топология описывается только через power_node + power_link.
 CREATE TYPE relation_type AS ENUM (
   'DEPENDS_ON','RUNS_ON','MEMBER_OF','PART_OF','CONNECTED_TO','USES_STORAGE',
   'BACKED_UP_BY','REPLICATES_TO','MANAGES','SERVES','RELATES_TO');
@@ -261,8 +264,10 @@ CREATE TABLE device_model (
   is_full_depth boolean NOT NULL DEFAULT true,
   depth_mm integer, weight_kg numeric(6,2),
   psu_count smallint NOT NULL DEFAULT 1,
-  power_draw_w integer,          -- типовое потребление
-  power_max_w integer,           -- максимальное (шильдик)
+  power_nameplate_w integer,     -- номинальное (типовое) потребление
+  power_max_w integer,           -- максимальное (шильдик БП)
+  power_factor numeric(4,3),     -- cos φ по паспорту
+  utilization_factor numeric(4,3), -- коэффициент использования по классу оборудования
   airflow text,
   UNIQUE (manufacturer_id, model)
 );
@@ -290,7 +295,8 @@ CREATE TABLE device (
   firmware text, os_version text,
   purchase_date date, warranty_until date,
   psu_count smallint NOT NULL DEFAULT 1,
-  power_draw_w integer,               -- переопределяет модель, если измерено
+  power_nameplate_w integer,          -- переопределяет модель для конкретного экземпляра
+  power_max_w integer,
   notes text
 );
 CREATE UNIQUE INDEX uq_device_serial ON device(lower(serial_number)) WHERE serial_number IS NOT NULL;
@@ -495,30 +501,70 @@ CREATE TABLE floorplan_item (
 
 ## 8. Power
 
+> Электрическая топология хранится **только** в `power_node` + `power_link`.
+> Перечисление `relation_type` не содержит `POWERED_BY`; питание не может быть описано через `ci_relation`.
+
 ```sql
+-- Ветка питания (луч) — самостоятельная сущность, а не атрибут
+CREATE TABLE power_feed (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,                                   -- «Луч A»
+  side feed_side NOT NULL,                              -- A | B | SINGLE
+  root_node_id uuid NOT NULL REFERENCES power_node(id) ON DELETE RESTRICT,
+  location_id uuid REFERENCES location(id) ON DELETE SET NULL,
+  is_protected boolean NOT NULL DEFAULT false,          -- UPS/ДГУ на ветке
+  description text,
+  UNIQUE (location_id, name)
+);
+
 CREATE TABLE power_node (
   id uuid PRIMARY KEY REFERENCES ci(id) ON DELETE CASCADE,
   node_type power_node_type NOT NULL,
   parent_device_id uuid REFERENCES ci(id) ON DELETE CASCADE,  -- для PSU: чей блок питания
   rack_id uuid REFERENCES rack(id) ON DELETE SET NULL,
+  feed_id uuid REFERENCES power_feed(id) ON DELETE SET NULL,
   feed_side feed_side NOT NULL DEFAULT 'SINGLE',
+  -- электрические параметры
   voltage_v numeric(6,1),
   phases smallint NOT NULL DEFAULT 1 CHECK (phases IN (1,3)),
   phase_label phase_label,
-  rated_power_w integer,            -- номинал/шильдик
-  rated_current_a numeric(7,2),     -- номинал автомата/линии
+  rated_current_a numeric(7,2),     -- номинал автомата/линии/PDU/ввода
+  breaker_curve text CHECK (breaker_curve IN ('B','C','D')),
+  breaker_poles text CHECK (breaker_poles IN ('1P','1P+N','3P','3P+N')),
+  cable_spec text,                  -- '5×6 мм², ВВГнг'
+  cable_length_m numeric(6,2),
+  cable_ampacity_a numeric(7,2),    -- допустимый ток кабеля
+  derating_factor numeric(4,3) NOT NULL DEFAULT 0.8,
   power_factor numeric(4,3),        -- cos φ
   efficiency numeric(4,3),          -- КПД (UPS, PSU)
-  max_load_w integer,               -- предельно допустимая нагрузка
-  derating_factor numeric(4,3) NOT NULL DEFAULT 0.8,  -- для автоматов: длительная нагрузка
-  measured_load_w integer,          -- фактическое измерение, если есть
-  ups_capacity_va integer, ups_battery_minutes smallint,
-  outlet_type text,                 -- C13, C19, Schuko
-  outlet_count smallint,
-  notes text
+  -- мощность: четыре независимые величины
+  power_nameplate_w integer,        -- номинальная (паспорт)
+  power_max_w integer,              -- максимальная (пик/шильдик)
+  max_load_w integer,               -- предельно допустимая нагрузка узла
+  -- (расчётная живёт в power_node_computed, фактическая — в power_measurement)
+  ups_capacity_va integer, ups_capacity_w integer, ups_battery_minutes smallint,
+  outlet_type text, outlet_count smallint,
+  notes text,
+  CONSTRAINT ck_power_single_phase_label
+    CHECK (phases <> 1 OR node_type IN ('INPUT','PANEL') OR phase_label IS NOT NULL)
 );
 CREATE INDEX ix_power_node_type ON power_node(node_type);
 CREATE INDEX ix_power_node_rack ON power_node(rack_id);
+CREATE INDEX ix_power_node_feed ON power_node(feed_id);
+
+-- История фактических измерений: значение + когда + чем + кто
+CREATE TABLE power_measurement (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  node_id uuid NOT NULL REFERENCES power_node(id) ON DELETE CASCADE,
+  measured_at timestamptz NOT NULL,
+  power_w integer, current_a numeric(7,2), voltage_v numeric(6,1),
+  power_factor numeric(4,3), phase_label phase_label,
+  source text NOT NULL CHECK (source IN ('MANUAL','PDU','UPS','METER','IMPORT','MONITORING')),
+  measured_by uuid REFERENCES employee(id) ON DELETE SET NULL,
+  instrument text, note text,
+  is_peak boolean NOT NULL DEFAULT false
+);
+CREATE INDEX ix_power_measurement_node_time ON power_measurement(node_id, measured_at DESC);
 
 CREATE TABLE power_link (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -540,14 +586,24 @@ CREATE INDEX ix_power_link_target ON power_link(target_node_id);
 CREATE TABLE power_node_computed (
   node_id uuid PRIMARY KEY REFERENCES power_node(id) ON DELETE CASCADE,
   scenario_id uuid REFERENCES power_scenario(id) ON DELETE CASCADE,
-  connected_load_w integer NOT NULL DEFAULT 0,     -- сумма шильдиков потомков
-  estimated_load_w integer NOT NULL DEFAULT 0,     -- расчётная (с коэффициентами)
-  measured_load_w integer,
-  load_by_phase jsonb NOT NULL DEFAULT '{}'::jsonb,
-  utilisation numeric(5,2),                        -- % от max_load_w
+  nameplate_load_w integer NOT NULL DEFAULT 0,     -- сумма номиналов потомков
+  peak_load_w integer NOT NULL DEFAULT 0,          -- сумма максимумов
+  estimated_load_w integer NOT NULL DEFAULT 0,     -- расчётная (с коэффициентами и потерями)
+  measured_load_w integer,                         -- из последних актуальных измерений
+  measured_at timestamptz,                         -- дата самого старого использованного замера
+  measured_coverage_pct numeric(5,2),              -- доля нагрузки, покрытой измерениями
+  value_source text NOT NULL DEFAULT 'ESTIMATE'
+    CHECK (value_source IN ('MEASUREMENT','ESTIMATE','NAMEPLATE','MIXED')),
+  load_by_phase jsonb NOT NULL DEFAULT '{}'::jsonb,   -- {"L1":{"w":…,"a":…}, …}
+  current_a numeric(7,2),
+  phase_disbalance_pct numeric(5,2),
+  utilisation numeric(5,2),                        -- % от допустимой нагрузки
   headroom_w integer,
-  redundancy_ok boolean,
-  calculation_trace jsonb NOT NULL DEFAULT '[]'::jsonb,  -- шаги расчёта
+  failover_verdict text CHECK (failover_verdict IN
+    ('RESILIENT','AT_RISK','SINGLE_FEED','SAME_FEED','UNKNOWN')),
+  failover_detail jsonb NOT NULL DEFAULT '{}'::jsonb,
+  calculation_trace jsonb NOT NULL DEFAULT '[]'::jsonb,  -- шаги расчёта с источниками значений
+  warnings jsonb NOT NULL DEFAULT '[]'::jsonb,
   computed_at timestamptz NOT NULL DEFAULT now(),
   formula_version smallint NOT NULL DEFAULT 1
 );
@@ -944,11 +1000,18 @@ CREATE TABLE audit_log (
   entity_type text NOT NULL,
   entity_id uuid NOT NULL,
   entity_label text,
-  action text NOT NULL,          -- CREATE | UPDATE | DELETE | RESTORE | LINK | UNLINK | STATUS | APPLY
-  change_id uuid REFERENCES change(id) ON DELETE SET NULL,
+  action text NOT NULL,          -- CREATE | UPDATE | DELETE | ARCHIVE | RESTORE | LINK | UNLINK | STATUS | APPLY
+  -- происхождение изменения (provenance): кто, почему и в рамках чего
+  change_id uuid,                -- FK на change добавляется в Phase 6
+  project_id uuid,               -- FK на project добавляется в Phase 5
+  task_id uuid,                  -- FK на task добавляется в Phase 5
+  document_id uuid REFERENCES document(id) ON DELETE SET NULL,
+  reason text,
   comment text,
   source text                     -- api | ui | job | import
 ) PARTITION BY RANGE (occurred_at);
+CREATE INDEX ix_audit_provenance ON audit_log(change_id) WHERE change_id IS NOT NULL;
+CREATE INDEX ix_audit_project ON audit_log(project_id) WHERE project_id IS NOT NULL;
 
 CREATE INDEX ix_audit_entity ON audit_log(entity_type, entity_id, occurred_at DESC);
 CREATE INDEX ix_audit_actor ON audit_log(actor_id, occurred_at DESC);
@@ -1115,3 +1178,7 @@ CREATE TABLE diagram_edge (
 | Дерево локаций без циклов | Триггер пересчёта `path` + проверка префикса |
 | Один `rack_mount` на объект | `UNIQUE (ci_id)` |
 | Неизменяемость аудита | Отзыв прав `UPDATE/DELETE` у роли приложения |
+| Питание не дублируется логической связью | В `relation_type` отсутствует `POWERED_BY`; сервисный слой отклоняет связь между двумя узлами питания |
+| Однофазный потребитель имеет фазу | `CHECK` на `power_node` |
+| Критические объекты не удаляются физически | Запрет в сервисном слое: доступны только `RETIRED` и архивирование |
+| Происхождение изменения | Колонки `change_id`, `project_id`, `task_id`, `document_id`, `reason` в `audit_log`; обязательны для критичных полей |
