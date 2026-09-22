@@ -166,3 +166,22 @@ def test_a_batch_touches_the_device(device):
 
 def test_an_empty_batch_is_not_an_error(device):
     assert ingest.ingest_batch({}, device[0]["id"])["accepted"] == 0
+
+
+def test_a_misspelled_section_is_named_in_the_answer(device):
+    """Ярлык собирается руками: опечатка не должна выглядеть удачей."""
+    report = ingest.ingest_batch(
+        {"samples": [{"metric": "steps", "value": 900, "start": at(0, 9)}],
+         "health": [{"metric": "steps", "value": 900, "start": at(0, 9)}]},
+        device[0]["id"])
+
+    assert report["accepted"] == 1
+    assert report["ignored"] == ["samples"]
+
+
+def test_a_correct_packet_says_nothing_about_ignored_sections(device):
+    report = ingest.ingest_batch(
+        {"health": [{"metric": "steps", "value": 900, "start": at(0, 9)}]},
+        device[0]["id"])
+
+    assert "ignored" not in report

@@ -293,6 +293,10 @@ def ingest_state(state, device_id):
 
 
 # --- всё разом -----------------------------------------------------------
+KNOWN_SECTIONS = {"calls", "messages", "health", "workouts", "state", "data",
+                  "device", "device_id", "sent_at", "timezone"}
+
+
 def ingest_batch(payload, device_id=None):
     """Один запрос ярлыка — один пакет со всем, что накопилось.
 
@@ -322,4 +326,9 @@ def ingest_batch(payload, device_id=None):
         store.touch_device(device_id)
     result["accepted"] = sum(section.get("new", 0) for section in result.values()
                              if isinstance(section, dict))
+    # Ярлыки собираются руками, и опечатка в названии раздела иначе выглядела бы
+    # удачей: мост ответил бы «принято 0» и промолчал о причине.
+    unknown = sorted(set(payload) - KNOWN_SECTIONS)
+    if unknown:
+        result["ignored"] = unknown
     return result
