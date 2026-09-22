@@ -181,6 +181,14 @@ async def meta() -> MetaResponse:
         support_lines=[e.value for e in SupportLine],
         user_roles=[e.value for e in UserRole],
         audit_actions=[e.value for e in AuditAction],
+        import_targets=[e.value for e in ImportTarget],
+        import_fields={
+            target.value: list(fields) for target, fields in import_service.FIELD_ALIASES.items()
+        },
+        import_required_fields={
+            target.value: list(fields)
+            for target, fields in import_service.REQUIRED_FIELDS.items()
+        },
         power_defaults={
             "voltage_single_v": settings.power_voltage_single_v,
             "voltage_three_v": settings.power_voltage_three_v,

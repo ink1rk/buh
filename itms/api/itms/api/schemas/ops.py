@@ -125,4 +125,7 @@ class MetaResponse(BaseModel):
     support_lines: list[str]
     user_roles: list[str]
     audit_actions: list[str]
+    import_targets: list[str]
+    import_fields: dict[str, list[str]]
+    import_required_fields: dict[str, list[str]]
     power_defaults: dict[str, float | int]

@@ -1,0 +1,124 @@
+name: itms
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-itms}
+      POSTGRES_USER: ${POSTGRES_USER:-itms}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-itms}
+      POSTGRES_INITDB_ARGS: "--locale=ru_RU.UTF-8 --encoding=UTF8"
+      LANG: ru_RU.utf8
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-itms} -d ${POSTGRES_DB:-itms}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-itms}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-itms-secret-key}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+
+  # Разовая инициализация: бакет для файлов с включённым версионированием документов.
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set itms http://minio:9000 ${S3_ACCESS_KEY:-itms} ${S3_SECRET_KEY:-itms-secret-key} &&
+      mc mb --ignore-existing itms/${S3_BUCKET:-itms} &&
+      mc version enable itms/${S3_BUCKET:-itms} &&
+      echo 'Хранилище готово'"
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment: &api-env
+      ITMS_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-itms}:${POSTGRES_PASSWORD:-itms}@postgres:5432/${POSTGRES_DB:-itms}
+      ITMS_REDIS_URL: redis://redis:6379/0
+      ITMS_S3_ENDPOINT: http://minio:9000
+      ITMS_S3_BUCKET: ${S3_BUCKET:-itms}
+      ITMS_S3_ACCESS_KEY: ${S3_ACCESS_KEY:-itms}
+      ITMS_S3_SECRET_KEY: ${S3_SECRET_KEY:-itms-secret-key}
+      ITMS_ENV: ${ITMS_ENV:-prod}
+      ITMS_COOKIE_SECURE: ${ITMS_COOKIE_SECURE:-false}
+      ITMS_CORS_ORIGINS: '["${PUBLIC_URL:-http://localhost:8080}"]'
+      ITMS_BOOTSTRAP_OWNER_EMAIL: ${OWNER_EMAIL:-owner@itms.local}
+      ITMS_BOOTSTRAP_OWNER_PASSWORD: ${OWNER_PASSWORD:-}
+      ITMS_BOOTSTRAP_OWNER_NAME: ${OWNER_NAME:-Владелец системы}
+    command: >
+      /bin/sh -c "alembic upgrade head &&
+      python -m itms.cli bootstrap &&
+      uvicorn itms.main:app --host 0.0.0.0 --port 8000 --proxy-headers"
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+  worker:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment: *api-env
+    command: ["arq", "worker.worker.WorkerSettings"]
+
+  web:
+    build:
+      context: ../web
+      args:
+        VITE_API_BASE: ${VITE_API_BASE:-/api/v1}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
