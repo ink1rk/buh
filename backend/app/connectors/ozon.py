@@ -15,6 +15,7 @@ from app.connectors.base import (
     ApiCredentials,
     BankConnector,
     ParsedStatement,
+    RawOperation,
     StatementParseError,
 )
 from app.connectors.open_banking import (
@@ -25,8 +26,32 @@ from app.connectors.pdf_statement import parse_pdf_statement
 from app.connectors.tabular import read_csv_rows, read_xlsx_rows, rows_to_statement
 
 # Ozon pays part of its cashback in bonus points. Those are not rubles and must
-# never reach the ledger, or net worth silently inflates.
-BONUS_MARKERS = ("балл", "бонус", "point", "ozon бал")
+# never reach the ledger, or net worth silently inflates. The bank marks them by
+# currency, and that is the only signal worth trusting: the description of a
+# genuine ruble purchase routinely mentions points ("оплачено 500 баллами и
+# 1200 ₽"), and matching on that text deleted the rubles along with them.
+BONUS_CURRENCIES = frozenset(
+    {"BONUS", "BONUSES", "PNT", "PT", "POINT", "POINTS", "БАЛЛ", "БАЛЛЫ", "OZB"}
+)
+# A whole category of nothing but points. Equality, never substring: the
+# category "Бонусная программа" is charged in rubles.
+BONUS_CATEGORIES = frozenset(
+    {
+        "балл",
+        "баллы",
+        "баллы ozon",
+        "ozon баллы",
+        "бонус",
+        "бонусы",
+        "bonus",
+        "bonuses",
+        "point",
+        "points",
+        "начисление баллов",
+        "списание баллов",
+        "кэшбэк баллами",
+    }
+)
 
 INSTRUCTIONS = (
     "Как получить выписку: приложение Ozon Банк → «Профиль» → «Выписки и справки» → "
@@ -86,13 +111,19 @@ class OzonBankConnector(BankConnector):
         return _drop_bonus_operations(statement)
 
 
+def _is_points(operation: RawOperation) -> bool:
+    if operation.currency.strip().upper() in BONUS_CURRENCIES:
+        return True
+    category = " ".join(operation.bank_category.lower().replace("ё", "е").split())
+    return category in BONUS_CATEGORIES
+
+
 def _drop_bonus_operations(statement: ParsedStatement) -> ParsedStatement:
     """Remove loyalty-point operations, which are not money."""
     kept = []
     dropped = 0
     for operation in statement.operations:
-        haystack = f"{operation.currency} {operation.description} {operation.bank_category}".lower()
-        if any(marker in haystack for marker in BONUS_MARKERS):
+        if _is_points(operation):
             dropped += 1
             continue
         kept.append(operation)

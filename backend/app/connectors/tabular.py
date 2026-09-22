@@ -12,6 +12,7 @@ from __future__ import annotations
 import codecs
 import csv
 import io
+from datetime import date
 from typing import Any
 
 from app.connectors.base import (
@@ -202,12 +203,32 @@ def _text(row: list[Any], mapping: dict[str, int], field: str) -> str:
     return "" if value is None else str(value).strip()
 
 
+def _closing_balance(
+    balances: list[tuple[date, int, float]], dates: list[date]
+) -> float | None:
+    """The balance after the latest operation, not after the last row.
+
+    Ozon and Tinkoff export newest first, so the bottom row of the file is the
+    oldest operation — and its balance is weeks stale. Reading it as the closing
+    balance overwrote the account with a number from the past.
+    """
+    if not balances:
+        return None
+    latest = max(day for day, _, _ in balances)
+    newest_first = dates[0] > dates[-1]
+    same_day = sorted(
+        ((index, value) for day, index, value in balances if day == latest),
+        reverse=not newest_first,
+    )
+    return same_day[0][1]
+
+
 def rows_to_statement(rows: list[list[Any]]) -> ParsedStatement:
     """Turn spreadsheet rows into a `ParsedStatement`."""
     header_index, mapping = detect_columns(rows)
     statement = ParsedStatement()
     unreadable = 0
-    last_balance: float | None = None
+    balances: list[tuple[date, int, float]] = []
 
     for row in rows[header_index + 1 :]:
         if not any(str(cell).strip() for cell in row if cell is not None):
@@ -244,7 +265,7 @@ def rows_to_statement(rows: list[list[Any]]) -> ParsedStatement:
         )
         balance = parse_money(_cell(row, mapping, "balance"))
         if balance is not None:
-            last_balance = balance
+            balances.append((occurred_on, len(statement.operations) - 1, balance))
 
     if not statement.operations:
         raise StatementParseError(
@@ -254,7 +275,7 @@ def rows_to_statement(rows: list[list[Any]]) -> ParsedStatement:
     dates = [op.occurred_on for op in statement.operations]
     statement.period_from = min(dates)
     statement.period_to = max(dates)
-    statement.closing_balance = last_balance
+    statement.closing_balance = _closing_balance(balances, dates)
     if unreadable:
         statement.warnings.append(f"Пропущено нечитаемых строк: {unreadable}")
     return statement

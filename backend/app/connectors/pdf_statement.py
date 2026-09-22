@@ -28,6 +28,53 @@ _TRAILING_AMOUNT = re.compile(
     re.IGNORECASE,
 )
 _SIGNED = re.compile(r"^[+\-\u2212\u2013]")
+# Statement furniture: totals, carried-over balances, page headers. These lines
+# can begin with a date — a period reads as one ("01.09.2026 — 30.09.2026
+# Поступления 50 000 ₽") — and taken for operations they invent money that was
+# never spent, twice over: once in the ledger, once in the balance.
+_SUMMARY = re.compile(
+    r"(итого|всего|входящ\w*\s+остат\w*|исходящ\w*\s+остат\w*|остаток\s+на|"
+    r"оборот\w*|сумма\s+(?:пополнен|списан|операц)\w*|поступлени\w*\s+за|"
+    r"списани\w*\s+за|продолжение|перенос\w*\s+с\s+предыдущ\w*|"
+    r"balance\s+(?:brought|carried)|total)",
+    re.IGNORECASE,
+)
+_PERIOD_LINE = re.compile(
+    r"^\s*\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}\s*(?:—|–|-|по)\s*\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}"
+)
+# A PDF loses the debit/credit columns, so an unsigned amount says nothing about
+# direction on its own. The wording usually does.
+_INCOME_WORDS = (
+    "зачислен",
+    "поступлен",
+    "пополнен",
+    "возврат",
+    "кэшбэк",
+    "кешбэк",
+    "зарплат",
+    "аванс",
+    "процент",
+    "депозит",
+    "внесен",
+    "перевод от",
+    "credit",
+    "refund",
+    "salary",
+)
+_EXPENSE_WORDS = (
+    "оплата",
+    "покупка",
+    "списан",
+    "перевод на",
+    "снятие",
+    "комисси",
+    "платеж",
+    "штраф",
+    "подписка",
+    "debit",
+    "payment",
+    "purchase",
+)
 _PERIOD = re.compile(
     r"(?:с|за период с|период)\s+(\d{2}[.\-/]\d{2}[.\-/]\d{4})\s*(?:по|-|—)\s*(\d{2}[.\-/]\d{2}[.\-/]\d{4})",
     re.IGNORECASE,
@@ -53,6 +100,16 @@ def extract_pdf_text(data: bytes) -> str:
         raise StatementParseError(f"Не удалось прочитать PDF: {exc}") from exc
 
 
+def _direction(description: str) -> int:
+    """+1 income, -1 expense, 0 — the wording gives nothing away."""
+    text = description.lower().replace("ё", "е")
+    if any(word in text for word in _INCOME_WORDS):
+        return 1
+    if any(word in text for word in _EXPENSE_WORDS):
+        return -1
+    return 0
+
+
 def parse_pdf_statement(data: bytes) -> ParsedStatement:
     text = extract_pdf_text(data)
     if not text.strip():
@@ -62,7 +119,8 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
         )
 
     statement = ParsedStatement()
-    unsigned = 0
+    unsigned = guessed = totals = 0
+    any_signed = False
 
     for line in text.splitlines():
         line = line.strip()
@@ -73,6 +131,9 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
             continue
         occurred_on = parse_statement_date(date_match.group(1))
         if occurred_on is None:
+            continue
+        if _SUMMARY.search(line) or _PERIOD_LINE.match(line):
+            totals += 1
             continue
 
         body = line[date_match.end() :].strip()
@@ -91,11 +152,17 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
         amount = parse_money(raw_amount)
         if amount is None or amount == 0:
             continue
-        if not _SIGNED.match(raw_amount):
-            unsigned += 1
-            amount = -abs(amount)
 
         description = re.sub(r"\s{2,}", " ", body).strip(" ·|-—")
+        if _SIGNED.match(raw_amount):
+            any_signed = True
+        else:
+            unsigned += 1
+            direction = _direction(description)
+            if direction == 0:
+                guessed += 1
+            amount = abs(amount) * (1 if direction > 0 else -1)
+
         statement.operations.append(
             RawOperation(
                 occurred_on=occurred_on,
@@ -112,6 +179,16 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
             "Попробуйте выгрузить выписку в CSV или XLSX."
         )
 
+    if not any_signed and guessed * 2 > len(statement.operations):
+        # Ни знаков, ни понятных формулировок: такой файл банк печатал в две
+        # колонки, и в тексте от них ничего не осталось. Записать всё расходом
+        # — значит испортить и историю, и капитал.
+        raise StatementParseError(
+            f"В этом PDF у операций нет ни знака, ни понятного описания "
+            f"({guessed} из {len(statement.operations)}), поэтому непонятно, "
+            "где приход, а где расход. Выгрузите выписку в CSV или XLSX."
+        )
+
     dates = [op.occurred_on for op in statement.operations]
     statement.period_from = min(dates)
     statement.period_to = max(dates)
@@ -121,10 +198,14 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
         statement.period_from = parse_statement_date(period.group(1)) or statement.period_from
         statement.period_to = parse_statement_date(period.group(2)) or statement.period_to
 
+    if totals:
+        statement.warnings.append(
+            f"Строк с итогами и остатками пропущено: {totals} (это не операции)."
+        )
     if unsigned:
         statement.warnings.append(
-            f"У {unsigned} операций в PDF не было знака — они записаны как расходы. "
-            "Проверьте их на странице «Банки»."
+            f"У {unsigned} операций в PDF не было знака — направление определено "
+            f"по описанию, из них наугад: {guessed}. Проверьте их на странице «Банки»."
         )
     statement.warnings.append("PDF разобран эвристически; CSV или XLSX точнее.")
     return statement

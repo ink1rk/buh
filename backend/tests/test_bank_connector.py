@@ -535,3 +535,136 @@ async def test_access_token_is_never_returned(client: AsyncClient):
     assert body["has_credentials"] is True
     assert "super-secret" not in created.text
     assert "access_token" not in body
+
+
+# --- ways to quietly corrupt money -----------------------------------------
+
+
+NEWEST_FIRST_CSV = """Дата операции;Сумма операции в валюте счёта;Валюта;Описание операции;Остаток после операции
+31.03.2026;-100,00 ₽;RUB;Кофе;226 000,00
+01.03.2026;-50,00 ₽;RUB;Булочка;10 000,00
+"""
+
+
+@pytest.mark.asyncio
+async def test_two_cards_of_one_bank_keep_their_own_history(db: AsyncSession):
+    """Одна и та же покупка бывает на двух картах: день, место и сумма совпали.
+
+    Отпечаток жил в рамках провайдера, а колонка уникальна на всю базу, — и
+    операции второй карты молча записывались в дубли первой.
+    """
+    first = await _connection(db)
+    second = await _connection(db)
+    statement = get_connector("ozon").parse_statement(_csv_bytes(), "march.csv")
+
+    one = await ingest_statement(db, first, statement, source_name="march.csv")
+    two = await ingest_statement(
+        db,
+        second,
+        get_connector("ozon").parse_statement(_csv_bytes(), "march.csv"),
+        source_name="march.csv",
+    )
+
+    assert one.imported_count == 5
+    assert two.imported_count == 5, "вторая карта потеряла свои операции"
+    assert two.duplicate_count == 0
+    operations = list((await db.execute(select(BankOperation))).scalars())
+    assert len({op.connection_id for op in operations}) == 2
+
+
+def test_the_closing_balance_comes_from_the_latest_operation():
+    """Ozon выгружает свежее сверху, и нижняя строка файла — самая старая."""
+    statement = rows_to_statement(read_csv_rows(NEWEST_FIRST_CSV.encode()))
+
+    assert statement.closing_balance == 226000.0
+
+
+@pytest.mark.asyncio
+async def test_an_older_statement_does_not_roll_the_balance_back(db: AsyncSession):
+    connection = await _connection(db)
+    connector = get_connector("ozon")
+    await ingest_statement(
+        db, connection, connector.parse_statement(_csv_bytes(), "march.csv"),
+        source_name="march.csv",
+    )
+    account = await db.get(Account, connection.account_id)
+    fresh = account.balance
+
+    old = """Дата операции;Сумма операции в валюте счёта;Валюта;Описание операции;Остаток после операции
+05.01.2026;-700,00 ₽;RUB;Аптека;9 300,00
+"""
+    run = await ingest_statement(
+        db, connection, connector.parse_statement(old.encode(), "january.csv"),
+        source_name="january.csv",
+    )
+
+    assert run.imported_count == 1, "старые операции всё равно нужно записать"
+    assert account.balance == fresh, "остаток откатился в январь"
+    assert "остаток" in run.warnings_json
+
+
+def test_a_ruble_purchase_partly_paid_with_points_survives():
+    """«Оплачено 500 баллами и 1200 ₽» — это настоящие 1200 рублей."""
+    csv = """Дата операции;Сумма операции в валюте счёта;Валюта;Категория;Описание операции
+10.03.2026;-1 200,00 ₽;RUB;Покупки;Ozon заказ, оплачено 500 баллами и 1200 ₽
+11.03.2026;+300,00;БАЛЛЫ;Баллы;Начислен кэшбэк
+12.03.2026;-90,00 ₽;RUB;Бонусная программа;Плата за подписку Premium
+"""
+    statement = get_connector("ozon").parse_statement(csv.encode(), "march.csv")
+
+    kept = {op.description for op in statement.operations}
+    assert len(statement.operations) == 2, kept
+    assert any("оплачено 500 баллами" in d for d in kept)
+    assert any("Premium" in d for d in kept)
+
+def _pdf_text(monkeypatch, lines: tuple[str, ...]) -> None:
+    """Подменить только текстовый слой: шрифты reportlab не знают кириллицу."""
+    from app.connectors import pdf_statement
+
+    monkeypatch.setattr(pdf_statement, "extract_pdf_text", lambda data: "\n".join(lines))
+
+
+def test_pdf_totals_do_not_become_operations(monkeypatch):
+    """Итоги и остатки начинаются с даты, но деньгами не являются.
+
+    Записанные как операции, они удваивают траты: сначала в истории, потом в
+    остатке.
+    """
+    _pdf_text(monkeypatch, (
+        "Выписка по счёту Ozon Банк",
+        "01.03.2026 - 31.03.2026 Поступления 50 000,00 ₽",
+        "01.03.2026 Входящий остаток 12 345,00 ₽",
+        "12.03.2026 Пятёрочка -1 234,56 ₽",
+        "31.03.2026 Итого списаний 1 234,56 ₽",
+        "31.03.2026 Исходящий остаток 11 110,44 ₽",
+    ))
+
+    statement = get_connector("ozon").parse_statement(b"%PDF-1.4", "statement.pdf")
+
+    assert [op.amount for op in statement.operations] == [-1234.56]
+    assert any("итогами" in w for w in statement.warnings)
+
+
+def test_pdf_income_without_a_sign_is_not_turned_into_a_loss(monkeypatch):
+    """Без знака направление читается из формулировки, а не назначается."""
+    _pdf_text(monkeypatch, (
+        "Выписка",
+        "13.03.2026 Зачисление зарплаты 180 000,00 ₽",
+        "14.03.2026 Оплата Surf Coffee 450,00 ₽",
+    ))
+
+    statement = get_connector("ozon").parse_statement(b"%PDF-1.4", "statement.pdf")
+
+    assert [op.amount for op in statement.operations] == [180000.0, -450.0]
+
+
+def test_a_pdf_that_hides_the_direction_is_refused(monkeypatch):
+    """Две колонки банк напечатал, а в тексте от них ничего не осталось."""
+    _pdf_text(monkeypatch, (
+        "Выписка",
+        "12.03.2026 ТОРГОВАЯ ТОЧКА 1 234,56 ₽",
+        "13.03.2026 ООО РОМАШКА 180 000,00 ₽",
+    ))
+
+    with pytest.raises(StatementParseError, match="CSV"):
+        get_connector("ozon").parse_statement(b"%PDF-1.4", "statement.pdf")

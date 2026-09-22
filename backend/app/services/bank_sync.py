@@ -34,15 +34,22 @@ def _normalize(text: str) -> str:
     return _WHITESPACE.sub(" ", text.strip().lower().replace("ё", "е"))
 
 
-def _base_fingerprint(provider: str, operation: RawOperation) -> str:
-    """Stable identity for an operation, independent of import order."""
+def _base_fingerprint(connection: BankConnection, operation: RawOperation) -> str:
+    """Stable identity for an operation, independent of import order.
+
+    Scoped to the connection, because the same purchase can genuinely happen on
+    two cards of the same bank: same day, same shop, same amount. The column is
+    globally unique, so a provider-wide identity would let the first card's
+    record silently swallow the second card's.
+    """
+    scope = f"{connection.provider}|{connection.id}"
     if operation.external_id:
-        payload = f"{provider}|id|{operation.external_id}"
+        payload = f"{scope}|id|{operation.external_id}"
         return hashlib.sha256(payload.encode()).hexdigest()[:40]
 
     payload = "|".join(
         [
-            provider,
+            scope,
             operation.occurred_on.isoformat(),
             str(round(operation.amount * 100)),
             operation.currency.upper(),
@@ -52,7 +59,7 @@ def _base_fingerprint(provider: str, operation: RawOperation) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()[:40]
 
 
-def _fingerprints(provider: str, operations: list[RawOperation]) -> list[str]:
+def _fingerprints(connection: BankConnection, operations: list[RawOperation]) -> list[str]:
     """Suffix repeated identities with an occurrence index.
 
     Two identical coffees on the same day are two real operations, but the same
@@ -62,7 +69,7 @@ def _fingerprints(provider: str, operations: list[RawOperation]) -> list[str]:
     seen: dict[str, int] = {}
     result = []
     for operation in operations:
-        base = _base_fingerprint(provider, operation)
+        base = _base_fingerprint(connection, operation)
         index = seen.get(base, 0)
         seen[base] = index + 1
         result.append(f"{base}#{index}")
@@ -94,13 +101,18 @@ async def ingest_statement(
     account = await db.get(Account, connection.account_id) if connection.account_id else None
     warnings = list(statement.warnings)
 
-    fingerprints = _fingerprints(connection.provider, statement.operations)
-    existing = set()
-    if fingerprints:
+    fingerprints = _fingerprints(connection, statement.operations)
+    existing: set[str] = set()
+    # SQLite allows a few hundred bound parameters per statement, and a year of
+    # card history is thousands of rows, so ask in batches.
+    for batch in (fingerprints[i : i + 400] for i in range(0, len(fingerprints), 400)):
         rows = await db.execute(
-            select(BankOperation.fingerprint).where(BankOperation.fingerprint.in_(fingerprints))
+            select(BankOperation.fingerprint).where(
+                BankOperation.connection_id == connection.id,
+                BankOperation.fingerprint.in_(batch),
+            )
         )
-        existing = set(rows.scalars())
+        existing.update(rows.scalars())
 
     run = BankImport(
         connection_id=connection.id,
@@ -181,9 +193,23 @@ async def ingest_statement(
             "Операции в другой валюте записаны как есть: " + ", ".join(sorted(foreign_currency))
         )
 
+    stale = bool(
+        statement.period_to
+        and connection.last_operation_on
+        and statement.period_to < connection.last_operation_on
+    )
     if account:
-        # The bank's own closing balance beats our arithmetic whenever we have it.
-        if statement.closing_balance is not None:
+        # The bank's own closing balance beats our arithmetic whenever we have
+        # it — unless the statement ends before what we already know about, in
+        # which case its balance is from the past. Refuse rather than guess:
+        # arithmetic on old operations is no better, since the balance we hold
+        # already accounts for them.
+        if stale:
+            warnings.append(
+                "Выписка заканчивается раньше уже загруженных операций "
+                f"({statement.period_to:%d.%m.%Y}), поэтому остаток по счёту не менялся."
+            )
+        elif statement.closing_balance is not None:
             account.balance = statement.closing_balance
         elif net_amount:
             account.balance += net_amount
