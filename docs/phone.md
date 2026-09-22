@@ -235,7 +235,7 @@ MCP_PHONE_TOKEN=<PHONE_MCP_TOKEN моста>
 
 ```json
 {"mcpServers": {"jarvis-phone": {
-  "command": "/opt/assistant/venv/bin/python",
+  "command": "/opt/assistant/.venv/bin/python",
   "args": ["-m", "phone", "--stdio"],
   "env": {"PHONE_DB": "/opt/assistant/phone.db"}}}}
 ```
@@ -254,16 +254,23 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=assistant
+User=cursor
 WorkingDirectory=/opt/assistant
 EnvironmentFile=/etc/assistant-phone.env
-ExecStart=/opt/assistant/venv/bin/python -m phone
+ExecStart=/opt/assistant/.venv/bin/python -m phone
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+Токен спрашивается у всех и всегда. Поблажки «с самой машины можно без
+токена» здесь быть не может: мост слушает только loopback, а наружу его
+выставляет прокси — значит запрос с улицы приходит к мосту с адресом
+`127.0.0.1` и получал бы поблажку даром, вместе со здоровьем и геопозицией.
+По той же причине пустой токен в настройках закрывает вход, а не открывает:
+забытая строка в `/etc/assistant-phone.env` не должна означать открытый мост.
 
 nginx выставляет наружу только приём:
 

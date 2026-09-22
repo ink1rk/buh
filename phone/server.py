@@ -32,10 +32,6 @@ def create_app(testing=False):
         _start_housekeeping()
 
     # -- доступ ----------------------------------------------------------
-    def loopback(request):
-        client = getattr(request, "client", None)
-        return client is not None and client.host in ("127.0.0.1", "::1", "localhost")
-
     def bearer(request):
         header = request.headers.get("authorization", "")
         if header.lower().startswith("bearer "):
@@ -43,9 +39,15 @@ def create_app(testing=False):
         return request.headers.get("x-assistant-token", "").strip()
 
     def allowed(request, expected):
-        """Пусто в настройках — доступ только с самой машины, не для всех."""
-        if loopback(request):
-            return True
+        """Токен спрашивается всегда, откуда бы запрос ни пришёл.
+
+        Поблажки «с самой машины можно без токена» здесь быть не может. Мост
+        слушает только loopback, а наружу его выставляет обратный прокси —
+        значит запрос с улицы приходит к нам с адресом 127.0.0.1 и поблажку
+        получал бы даром, вместе со здоровьем и геопозицией владельца.
+
+        Пустой токен в настройках поэтому закрывает вход, а не открывает.
+        """
         if not expected:
             return False
         return hmac.compare_digest(bearer(request), expected)

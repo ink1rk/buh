@@ -37,6 +37,40 @@ def test_a_stranger_cannot_enrol_a_device(client):
     assert answer.status_code == 401
 
 
+def test_coming_from_the_local_address_grants_nothing(monkeypatch):
+    """Мост стоит за прокси, и оттуда все запросы выглядят местными.
+
+    Сервис слушает только loopback, поэтому запрос с улицы приходит к нему с
+    адресом 127.0.0.1. Поблажка «со своей машины можно без токена» отдала бы
+    незнакомцу и здоровье, и геопозицию, и право ставить устройства на учёт.
+    """
+    from phone import server
+    monkeypatch.setattr(server, "config", dataclasses.replace(
+        config, enroll_token="enroll-secret", mcp_token="mcp-secret"))
+    local = TestClient(server.create_app(testing=True),
+                       client=("127.0.0.1", 50000))
+
+    assert local.post("/v1/devices/register",
+                      json={"name": "чужой телефон"}).status_code == 401
+    assert local.get("/v1/devices").status_code == 401
+    assert local.post("/mcp", json={"jsonrpc": "2.0", "id": 1,
+                                    "method": "tools/list"}).status_code == 401
+
+
+def test_an_unset_token_closes_the_door_rather_than_opening_it(monkeypatch):
+    """Забытая настройка не должна превращаться в открытый вход."""
+    from phone import server
+    monkeypatch.setattr(server, "config", dataclasses.replace(
+        config, enroll_token="", mcp_token=""))
+    open_bridge = TestClient(server.create_app(testing=True),
+                             client=("127.0.0.1", 50000))
+
+    assert open_bridge.post("/v1/devices/register",
+                            json={"name": "телефон"}).status_code == 401
+    assert open_bridge.post("/mcp", json={"jsonrpc": "2.0", "id": 1,
+                                          "method": "tools/list"}).status_code == 401
+
+
 def test_the_token_is_shown_once_and_then_only_its_hash(phone):
     client, token, device_id = phone
 
