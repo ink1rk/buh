@@ -8,22 +8,41 @@ import {
 import { api, type Provenance } from "./client";
 import type {
   AuditLog,
+  CableRoute,
   Ci,
+  ConnectionResult,
+  ConnectionRow,
   Dashboard,
+  Device,
+  DeviceModel,
+  DeviceRow,
   DocumentDetail,
   DocumentSummary,
   DocumentVersion,
   Employee,
+  FreePortsRow,
   ImportJob,
+  InterfaceRow,
+  IpAddress,
+  IpAddressRow,
   LocationNode,
   LocationRow,
+  Manufacturer,
   Meta,
   Page,
+  PortUsage,
+  PrefixDetail,
+  PrefixRow,
   ProvenanceEntry,
+  RedundancyGroup,
   RelatedMap,
   Responsibility,
   SearchResponse,
   SessionUser,
+  TraceResult,
+  VlanRow,
+  Vrf,
+  WarrantyRow,
   WorkloadRow,
 } from "./types";
 
@@ -48,6 +67,24 @@ export const keys = {
   audit: (params: unknown) => ["audit", params] as const,
   search: (q: string) => ["search", q] as const,
   importJob: (id: string) => ["imports", id] as const,
+  manufacturers: ["catalog", "manufacturers"] as const,
+  models: (params: unknown) => ["catalog", "models", params] as const,
+  model: (id: string) => ["catalog", "models", id] as const,
+  devices: (params: unknown) => ["devices", "list", params] as const,
+  device: (id: string) => ["devices", id] as const,
+  deviceInterfaces: (id: string) => ["devices", id, "interfaces"] as const,
+  devicePorts: (id: string) => ["devices", id, "ports"] as const,
+  warranty: (days: number) => ["devices", "warranty", days] as const,
+  connections: (params: unknown) => ["network", "connections", params] as const,
+  trace: (id: string) => ["network", "trace", id] as const,
+  routes: ["network", "routes"] as const,
+  freePorts: ["network", "free-ports"] as const,
+  redundancy: ["network", "redundancy"] as const,
+  vrfs: ["ipam", "vrfs"] as const,
+  vlans: (params: unknown) => ["ipam", "vlans", params] as const,
+  prefixes: (params: unknown) => ["ipam", "prefixes", params] as const,
+  prefix: (id: string) => ["ipam", "prefixes", id] as const,
+  addresses: (params: unknown) => ["ipam", "addresses", params] as const,
 };
 
 export function useSession() {
@@ -237,6 +274,163 @@ export function useImportJob(id: string | null) {
   });
 }
 
+export function useManufacturers() {
+  return useQuery({
+    queryKey: keys.manufacturers,
+    queryFn: () => api.get<Manufacturer[]>("/catalog/manufacturers"),
+  });
+}
+
+export interface ModelListParams {
+  q?: string;
+  manufacturer_id?: string;
+  role?: string;
+  limit: number;
+  offset: number;
+}
+
+export function useDeviceModels(params: ModelListParams) {
+  return useQuery({
+    queryKey: keys.models(params),
+    queryFn: () => api.get<Page<DeviceModel>>("/catalog/models", params),
+    placeholderData: (previous) => previous,
+  });
+}
+
+export interface DeviceListParams {
+  q?: string;
+  role?: string[];
+  location_id?: string;
+  warranty_days?: number;
+  limit: number;
+  offset: number;
+}
+
+export function useDevices(params: DeviceListParams) {
+  return useQuery({
+    queryKey: keys.devices(params),
+    queryFn: () => api.get<Page<DeviceRow>>("/devices", params),
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** У объекта может не быть инженерного профиля — 404 здесь ожидаем и не повторяем запрос. */
+export function useDevice(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.device(id ?? ""),
+    queryFn: () => api.get<Device>(`/devices/${id}`),
+    enabled: Boolean(id),
+    retry: false,
+  });
+}
+
+export function useDeviceInterfaces(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.deviceInterfaces(id ?? ""),
+    queryFn: () => api.get<InterfaceRow[]>(`/devices/${id}/interfaces`),
+    enabled: Boolean(id),
+  });
+}
+
+export function usePortUsage(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.devicePorts(id ?? ""),
+    queryFn: () => api.get<PortUsage>(`/devices/${id}/ports`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useWarranty(days: number) {
+  return useQuery({
+    queryKey: keys.warranty(days),
+    queryFn: () => api.get<WarrantyRow[]>("/devices/warranty", { days }),
+  });
+}
+
+export interface ConnectionListParams {
+  q?: string;
+  ci_id?: string;
+  status?: string[];
+  limit: number;
+  offset: number;
+}
+
+export function useConnections(params: ConnectionListParams) {
+  return useQuery({
+    queryKey: keys.connections(params),
+    queryFn: () => api.get<Page<ConnectionRow>>("/network/connections", params),
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useTrace(interfaceId: string | null) {
+  return useQuery({
+    queryKey: keys.trace(interfaceId ?? ""),
+    queryFn: () => api.get<TraceResult>(`/network/interfaces/${interfaceId}/trace`),
+    enabled: Boolean(interfaceId),
+  });
+}
+
+export function useRoutes() {
+  return useQuery({ queryKey: keys.routes, queryFn: () => api.get<CableRoute[]>("/network/routes") });
+}
+
+export function useFreePorts() {
+  return useQuery({
+    queryKey: keys.freePorts,
+    queryFn: () => api.get<FreePortsRow[]>("/network/reports/free-ports"),
+  });
+}
+
+export function useRedundancy() {
+  return useQuery({
+    queryKey: keys.redundancy,
+    queryFn: () => api.get<RedundancyGroup[]>("/network/reports/redundancy"),
+  });
+}
+
+export function useVrfs() {
+  return useQuery({ queryKey: keys.vrfs, queryFn: () => api.get<Vrf[]>("/ipam/vrfs") });
+}
+
+export function useVlans(params: { q?: string; site_id?: string }) {
+  return useQuery({
+    queryKey: keys.vlans(params),
+    queryFn: () => api.get<VlanRow[]>("/ipam/vlans", params),
+  });
+}
+
+export function usePrefixes(params: { q?: string; vrf_id?: string }) {
+  return useQuery({
+    queryKey: keys.prefixes(params),
+    queryFn: () => api.get<PrefixRow[]>("/ipam/prefixes", params),
+  });
+}
+
+export function usePrefix(id: string | null) {
+  return useQuery({
+    queryKey: keys.prefix(id ?? ""),
+    queryFn: () => api.get<PrefixDetail>(`/ipam/prefixes/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export interface AddressListParams {
+  q?: string;
+  ci_id?: string;
+  prefix_id?: string;
+  limit: number;
+  offset: number;
+}
+
+export function useAddresses(params: AddressListParams) {
+  return useQuery({
+    queryKey: keys.addresses(params),
+    queryFn: () => api.get<Page<IpAddressRow>>("/ipam/addresses", params),
+    placeholderData: (previous) => previous,
+  });
+}
+
 /**
  * Мутация, которая после успеха сбрасывает перечисленные ветки кэша.
  * Дашборд и история зависят почти от любой записи, поэтому инвалидация явная.
@@ -313,4 +507,46 @@ export const mutations = {
     api.patch<ImportJob>(`/imports/${id}/mapping`, { mapping }),
   validateImport: (id: string) => api.post<ImportJob>(`/imports/${id}/validate`),
   applyImport: (id: string) => api.post<ImportJob>(`/imports/${id}/apply`),
+
+  createManufacturer: (body: Record<string, unknown>) =>
+    api.post<Manufacturer>("/catalog/manufacturers", body),
+  updateManufacturer: (id: string, body: Record<string, unknown>) =>
+    api.patch<Manufacturer>(`/catalog/manufacturers/${id}`, body),
+  createModel: (body: Record<string, unknown>) => api.post<DeviceModel>("/catalog/models", body),
+  updateModel: (id: string, body: Record<string, unknown>) =>
+    api.patch<DeviceModel>(`/catalog/models/${id}`, body),
+  deleteModel: (id: string) => api.delete<{ ok: boolean }>(`/catalog/models/${id}`),
+  addPortTemplate: (modelId: string, body: Record<string, unknown>) =>
+    api.post(`/catalog/models/${modelId}/port-templates`, body),
+  deletePortTemplate: (id: string) => api.delete<{ ok: boolean }>(`/catalog/port-templates/${id}`),
+
+  saveDevice: (ciId: string, body: Record<string, unknown>, provenance?: Provenance) =>
+    api.put<Device>(`/devices/${ciId}`, body, provenance),
+  createInterface: (ciId: string, body: Record<string, unknown>, provenance?: Provenance) =>
+    api.post<InterfaceRow[]>(`/devices/${ciId}/interfaces`, body, provenance),
+  createInterfacesFromModel: (ciId: string) =>
+    api.post<InterfaceRow[]>(`/devices/${ciId}/interfaces/from-model`),
+  updateInterface: (id: string, body: Record<string, unknown>, provenance?: Provenance) =>
+    api.patch<InterfaceRow>(`/interfaces/${id}`, body, provenance),
+  deleteInterface: (id: string, provenance?: Provenance) =>
+    api.delete<{ ok: boolean }>(`/interfaces/${id}`, provenance),
+
+  createConnection: (body: Record<string, unknown>, provenance?: Provenance) =>
+    api.post<ConnectionResult>("/network/connections", body, provenance),
+  updateConnection: (id: string, body: Record<string, unknown>, provenance?: Provenance) =>
+    api.patch<ConnectionResult>(`/network/connections/${id}`, body, provenance),
+  deleteConnection: (id: string, provenance?: Provenance) =>
+    api.delete<{ ok: boolean }>(`/network/connections/${id}`, provenance),
+  createRoute: (body: Record<string, unknown>) => api.post<CableRoute>("/network/routes", body),
+
+  createVlan: (body: Record<string, unknown>) => api.post<VlanRow>("/ipam/vlans", body),
+  updateVlan: (id: string, body: Record<string, unknown>) =>
+    api.patch<VlanRow>(`/ipam/vlans/${id}`, body),
+  createPrefix: (body: Record<string, unknown>) => api.post<PrefixRow>("/ipam/prefixes", body),
+  updatePrefix: (id: string, body: Record<string, unknown>) =>
+    api.patch<PrefixRow>(`/ipam/prefixes/${id}`, body),
+  createAddress: (body: Record<string, unknown>) => api.post<IpAddress>("/ipam/addresses", body),
+  updateAddress: (id: string, body: Record<string, unknown>) =>
+    api.patch<IpAddress>(`/ipam/addresses/${id}`, body),
+  deleteAddress: (id: string) => api.delete<{ ok: boolean }>(`/ipam/addresses/${id}`),
 };

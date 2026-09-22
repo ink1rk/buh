@@ -10,7 +10,19 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from itms.api.deps import base_context
-from itms.api.routers import auth, ci, directory, documents, files, locations, ops
+from itms.api.routers import (
+    auth,
+    catalog,
+    ci,
+    devices,
+    directory,
+    documents,
+    files,
+    ipam,
+    locations,
+    network,
+    ops,
+)
 from itms.core.config import settings
 from itms.core.context import set_context
 from itms.core.db import dispose_engine, get_engine
@@ -80,6 +92,11 @@ app.include_router(auth.router, prefix=prefix)
 app.include_router(ci.router, prefix=prefix)
 app.include_router(ci.relations_router, prefix=prefix)
 app.include_router(locations.router, prefix=prefix)
+app.include_router(catalog.router, prefix=prefix)
+app.include_router(devices.router, prefix=prefix)
+app.include_router(devices.interfaces_router, prefix=prefix)
+app.include_router(network.router, prefix=prefix)
+app.include_router(ipam.router, prefix=prefix)
 app.include_router(directory.router, prefix=prefix)
 app.include_router(documents.router, prefix=prefix)
 app.include_router(files.router, prefix=prefix)

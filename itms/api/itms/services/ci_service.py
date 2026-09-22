@@ -4,7 +4,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
 
@@ -17,7 +17,7 @@ from itms.core.errors import Conflict, Invalid, NotFound
 from itms.domain import lifecycle
 from itms.domain.locations import PATH_SEPARATOR
 from itms.domain.relations import detect_cycle, group_of, validate_relation
-from itms.domain.search import ci_document
+from itms.domain.search import ci_document, normalize_keywords
 from itms.models.audit import AuditChange, AuditLog
 from itms.models.cmdb import Ci, CiRelation, CiTag, Location, Tag
 from itms.models.documents import DocumentLink
@@ -169,6 +169,18 @@ async def reindex(session: AsyncSession, ci: Ci) -> None:
             await session.execute(select(Location.path).where(Location.id == ci.location_id))
         ).scalar_one_or_none()
     await search_service.index_entity(session, ci.id, ci_document(ci, location_path))
+
+
+async def reindex_with_keywords(
+    session: AsyncSession, ci: Ci, location_path: str | None, extra_keywords: list[str | None]
+) -> None:
+    """Индексация с инженерными идентификаторами: IP, MAC, hostname, имена портов.
+
+    Сетевой слой знает про них, CMDB-ядро — нет, поэтому ключи передаются снаружи.
+    """
+    document = ci_document(ci, location_path)
+    merged = normalize_keywords([document.keywords, *extra_keywords])
+    await search_service.index_entity(session, ci.id, replace(document, keywords=merged))
 
 
 async def ensure_loaded(session: AsyncSession, ci: Ci) -> Ci:

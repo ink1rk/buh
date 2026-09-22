@@ -3,9 +3,13 @@ import {
   FileText,
   History,
   LayoutDashboard,
+  Layers,
   MapPin,
+  Network,
   PanelLeftClose,
   PanelLeftOpen,
+  Router,
+  Server,
   Settings,
   Upload,
   Users,
@@ -27,12 +31,16 @@ interface NavItem {
 const PRIMARY: NavItem[] = [
   { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
   { to: "/ci", labelKey: "nav.objects", icon: Boxes },
+  { to: "/devices", labelKey: "nav.devices", icon: Server },
+  { to: "/network", labelKey: "nav.network", icon: Network },
+  { to: "/ipam", labelKey: "nav.ipam", icon: Router },
   { to: "/locations", labelKey: "nav.locations", icon: MapPin },
   { to: "/documents", labelKey: "nav.documents", icon: FileText },
   { to: "/directory", labelKey: "nav.directory", icon: Users },
 ];
 
 const SECONDARY: NavItem[] = [
+  { to: "/catalog", labelKey: "nav.catalog", icon: Layers },
   { to: "/audit", labelKey: "nav.audit", icon: History },
   { to: "/imports", labelKey: "nav.imports", icon: Upload },
   { to: "/settings", labelKey: "nav.settings", icon: Settings },

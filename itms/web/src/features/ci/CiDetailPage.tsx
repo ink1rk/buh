@@ -1,6 +1,6 @@
 import { Archive, ArchiveRestore, ChevronLeft, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
 import type { Provenance } from "@/shared/api/client";
@@ -22,19 +22,22 @@ import { toast } from "@/shared/ui/toast";
 
 import { ConfirmDialog } from "../provenance/ReasonField";
 import { CiHistoryTab } from "./CiHistoryTab";
+import { CiNetworkTab } from "./CiNetworkTab";
 import { CiOverviewTab } from "./CiOverviewTab";
 import { CiRelationsTab } from "./CiRelationsTab";
 
-type Tab = "overview" | "related" | "documents" | "history";
+type Tab = "overview" | "network" | "related" | "documents" | "history";
 type PendingAction = "archive" | "restore" | "delete" | null;
 
 export function CiDetailPage() {
   const { t, te } = useI18n();
   const { ciId = "" } = useParams();
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
   const pushRecent = useUiStore((state) => state.pushRecent);
 
-  const [tab, setTab] = useState<Tab>("overview");
+  const tab = (params.get("tab") ?? "overview") as Tab;
+  const setTab = (next: Tab) => setParams({ tab: next }, { replace: true });
   const [action, setAction] = useState<PendingAction>(null);
 
   const { data: ci, isPending, isError, error } = useCi(ciId);
@@ -157,6 +160,7 @@ export function CiDetailPage() {
           onChange={(id) => setTab(id as Tab)}
           items={[
             { id: "overview", label: t("ci.overview") },
+            ...(ci.ci_type === "DEVICE" ? [{ id: "network", label: t("nav.network") }] : []),
             { id: "related", label: t("ci.related"), badge: relationCount },
             { id: "documents", label: t("ci.documents"), badge: documents?.length ?? 0 },
             { id: "history", label: t("ci.history") },
@@ -165,6 +169,7 @@ export function CiDetailPage() {
       </div>
 
       {tab === "overview" && <CiOverviewTab ci={ci} />}
+      {tab === "network" && ci.ci_type === "DEVICE" && <CiNetworkTab ciId={ci.id} />}
       {tab === "related" && <CiRelationsTab ciId={ci.id} />}
       {tab === "history" && <CiHistoryTab ciId={ci.id} />}
       {tab === "documents" && (
