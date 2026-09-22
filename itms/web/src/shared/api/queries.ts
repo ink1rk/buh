@@ -25,6 +25,7 @@ import type {
   RackSummary,
   PowerOverview,
   InboxItem,
+  NotificationList,
   ProjectSummary,
   ProjectView,
   TaskWork,
@@ -107,6 +108,7 @@ export const keys = {
   projects: ["projects"] as const,
   project: (id: string) => ["projects", id] as const,
   inbox: ["projects", "inbox"] as const,
+  notifications: ["notifications"] as const,
   taskWork: (projectId: string, taskId: string) => ["projects", projectId, "work", taskId] as const,
   power: ["power"] as const,
   transition: (id: string) => ["projects", id, "transition"] as const,
@@ -377,6 +379,14 @@ export function usePower() {
   });
 }
 
+export function useNotifications() {
+  return useQuery({
+    queryKey: keys.notifications,
+    queryFn: () => api.get<NotificationList>("/notifications"),
+    refetchInterval: 30_000,
+  });
+}
+
 export function useInbox() {
   return useQuery({
     queryKey: keys.inbox,
@@ -572,6 +582,8 @@ export const mutations = {
   login: (body: { email: string; password: string }) => api.post<SessionUser>("/auth/login", body),
   logout: () => api.post<{ ok: boolean }>("/auth/logout"),
   updateProfile: (body: Record<string, unknown>) => api.patch<SessionUser>("/auth/me", body),
+  readNotification: (id: string) => api.post<NotificationList>(`/notifications/${id}/read`),
+  readNotifications: () => api.post<NotificationList>("/notifications/read"),
   changePassword: (body: { current_password: string; new_password: string }) =>
     api.post<{ ok: boolean }>("/auth/password", body),
 

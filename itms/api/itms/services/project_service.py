@@ -52,7 +52,7 @@ from itms.models.projects import (
     TaskDependency,
     TimeEntry,
 )
-from itms.services import transition_service
+from itms.services import notification_service, transition_service
 
 _KEY = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,31}$")
 _OPEN = frozenset({TaskStatus.DONE, TaskStatus.CANCELLED})
@@ -512,6 +512,8 @@ async def add_task(
     )
     session.add(task)
     await session.flush()
+    if task.assignee_id:
+        await notification_service.task_assigned(session, task)
     return await project_view(session, project_id, persist_progress=True)
 
 
@@ -519,6 +521,8 @@ async def update_task(
     session: AsyncSession, project_id: uuid.UUID, task_id: uuid.UUID, data: dict[str, Any]
 ) -> dict[str, Any]:
     task = await _task(session, project_id, task_id)
+    previous_status = task.status
+    previous_assignee = task.assignee_id
     await _check_task_refs(session, project_id, task.id, data)
     if "title" in data and data["title"] is not None:
         title = data["title"].strip()
@@ -544,6 +548,12 @@ async def update_task(
         task.estimate_min = int(data["estimate_min"])
     _check_span(task.start_date, task.due_date)
     await session.flush()
+    if task.assignee_id and task.assignee_id != previous_assignee:
+        await notification_service.task_assigned(session, task)
+    if task.status != previous_status:
+        await notification_service.task_status(
+            session, task, previous_status.value, task.status.value
+        )
     return await project_view(session, project_id, persist_progress=True)
 
 
@@ -1172,7 +1182,7 @@ async def task_work(
 async def add_comment(
     session: AsyncSession, project_id: uuid.UUID, task_id: uuid.UUID, body: str
 ) -> dict[str, Any]:
-    await _task(session, project_id, task_id)
+    task = await _task(session, project_id, task_id)
     text_body = body.strip()
     if not text_body:
         raise Invalid("Комментарий пуст", code_hint="invalid")
@@ -1185,6 +1195,7 @@ async def add_comment(
         )
     )
     await session.flush()
+    await notification_service.task_comment(session, task, text_body)
     return await task_work(session, project_id, task_id)
 
 

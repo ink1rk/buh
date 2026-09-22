@@ -57,6 +57,7 @@ from itms.models.power import (
 )
 from itms.models.projects import (
     Milestone,
+    Notification,
     Phase,
     Project,
     ProjectCi,
@@ -107,6 +108,7 @@ __all__ = [
     "Location",
     "Manufacturer",
     "Milestone",
+    "Notification",
     "Organization",
     "OutboxEvent",
     "Phase",

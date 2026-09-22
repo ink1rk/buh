@@ -44,6 +44,15 @@ export const en: DeepPartial<Dictionary> = {
     language: "Language",
     commandPalette: "Command palette",
   },
+  notifications: {
+    title: "Notifications",
+    empty: "No notifications",
+    readAll: "Mark all read",
+    assigned: "Assignment",
+    status: "Status",
+    comment: "Comment",
+    mention: "Mention",
+  },
   auth: {
     title: "Sign in",
     email: "Email",

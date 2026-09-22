@@ -69,6 +69,15 @@ export const ru = {
     themeDark: "Тёмная тема",
     themeSystem: "Как в системе",
   },
+  notifications: {
+    title: "Уведомления",
+    empty: "Нет уведомлений",
+    readAll: "Прочитать все",
+    assigned: "Назначение",
+    status: "Статус",
+    comment: "Комментарий",
+    mention: "Упоминание",
+  },
   auth: {
     title: "Вход в систему",
     subtitle: "Единая модель инфраструктуры, документации и работ",

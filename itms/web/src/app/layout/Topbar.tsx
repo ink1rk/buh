@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, Monitor, Moon, Search, Sun } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
+import { NotificationBell } from "@/features/projects/NotificationBell";
 import { useI18n } from "@/i18n";
 import { describeError } from "@/shared/api/errors";
 import { keys, mutations, useApiMutation, useSession } from "@/shared/api/queries";
@@ -73,6 +74,7 @@ export function Topbar() {
         >
           {locale}
         </button>
+        <NotificationBell />
         <IconButton label={themeLabel} onClick={cycleTheme}>
           <ThemeIcon size={15} />
         </IconButton>

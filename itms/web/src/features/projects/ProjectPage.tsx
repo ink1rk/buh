@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
 import { describeError } from "@/shared/api/errors";
@@ -61,8 +61,13 @@ export function ProjectPage() {
   const { projectId } = useParams();
   const { t, te } = useI18n();
   const { data, isLoading } = useProject(projectId);
+  const [params] = useSearchParams();
+  const taskFromUrl = params.get("task");
   const [tab, setTab] = useState("overview");
-  const [openTask, setOpenTask] = useState<string | null>(null);
+  const [openTask, setOpenTask] = useState<string | null>(taskFromUrl);
+  useEffect(() => {
+    if (taskFromUrl) setOpenTask(taskFromUrl);
+  }, [taskFromUrl]);
   const moveDue = useProjectWrite(projectId ?? "");
 
   if (isLoading || !data || !projectId) {

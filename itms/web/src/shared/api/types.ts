@@ -745,6 +745,22 @@ export interface ProjectMilestone {
   completed_at: string | null;
 }
 
+export interface NotificationItem {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  project_id: string | null;
+  task_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationList {
+  unread: number;
+  items: NotificationItem[];
+}
+
 export interface InboxItem {
   id: string;
   project_id: string;

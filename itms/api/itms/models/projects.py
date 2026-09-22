@@ -253,6 +253,33 @@ class TaskComment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class Notification(Base):
+    """Сообщение внутри системы. Почта и мессенджеры подключаются к этой же записи позже."""
+
+    __tablename__ = "notification"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('assigned', 'status', 'comment', 'mention')",
+            name="kind",
+        ),
+        Index("ix_notification_user_created", "user_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False
+    )
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("project.id", ondelete="CASCADE")
+    )
+    task_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("task.id", ondelete="CASCADE"))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class TaskCheck(Base):
     """Пункт чеклиста. Прогресс задачи по статусу от него не зависит."""
 
