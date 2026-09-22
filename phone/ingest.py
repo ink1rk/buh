@@ -327,8 +327,10 @@ def ingest_state(state, device_id):
 
 
 # --- всё разом -----------------------------------------------------------
-KNOWN_SECTIONS = {"calls", "messages", "health", "workouts", "state", "data",
-                  "device", "device_id", "sent_at", "timezone"}
+# «samples» — самая вероятная опечатка: точка приёма замеров называется
+# /v1/samples, а раздел пакета — health. Принимаем оба имени.
+KNOWN_SECTIONS = {"calls", "messages", "health", "samples", "workouts", "state",
+                  "data", "device", "device_id", "sent_at", "timezone"}
 
 
 def ingest_batch(payload, device_id=None):
@@ -340,11 +342,13 @@ def ingest_batch(payload, device_id=None):
     """
     payload = payload or {}
     nested = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    health = payload.get("health") if "health" in payload else (
+        payload.get("samples") if "samples" in payload
+        else (payload if nested.get("metrics") else None))
     sections = (
         ("calls", payload.get("calls"), ingest_calls),
         ("messages", payload.get("messages"), ingest_messages),
-        ("health", payload.get("health") if "health" in payload
-         else (payload if nested.get("metrics") else None), ingest_health),
+        ("health", health, ingest_health),
         ("workouts", payload.get("workouts") if "workouts" in payload
          else nested.get("workouts"), ingest_workouts),
     )
@@ -373,7 +377,11 @@ def ingest_batch(payload, device_id=None):
                              if isinstance(section, dict))
     # Ярлыки собираются руками, и опечатка в названии раздела иначе выглядела бы
     # удачей: мост ответил бы «принято 0» и промолчал о причине.
-    unknown = sorted(set(payload) - KNOWN_SECTIONS)
+    unknown = set(payload) - KNOWN_SECTIONS
+    if "health" in payload and "samples" in payload:
+        # Два имени одного раздела в одном пакете: взяли health, и про второй
+        # надо сказать, иначе замеры пропали бы молча.
+        unknown.add("samples")
     if unknown:
-        result["ignored"] = unknown
+        result["ignored"] = sorted(unknown)
     return result

@@ -171,12 +171,12 @@ def test_an_empty_batch_is_not_an_error(device):
 def test_a_misspelled_section_is_named_in_the_answer(device):
     """Ярлык собирается руками: опечатка не должна выглядеть удачей."""
     report = ingest.ingest_batch(
-        {"samples": [{"metric": "steps", "value": 900, "start": at(0, 9)}],
+        {"heath": [{"metric": "steps", "value": 900, "start": at(0, 9)}],
          "health": [{"metric": "steps", "value": 900, "start": at(0, 9)}]},
         device[0]["id"])
 
     assert report["accepted"] == 1
-    assert report["ignored"] == ["samples"]
+    assert report["ignored"] == ["heath"]
 
 
 def test_a_correct_packet_says_nothing_about_ignored_sections(device):
@@ -261,3 +261,23 @@ def test_a_capped_read_keeps_the_newest_samples(device):
     assert len(got) == 10
     assert got[-1]["started_at"] == pytest.approx(now, abs=1), "свежий замер потерян"
     assert got[0]["started_at"] < got[-1]["started_at"], "порядок по времени"
+
+
+def test_samples_is_accepted_as_a_name_for_health(device):
+    """Точка приёма замеров называется /v1/samples — опечатка неизбежна."""
+    result = ingest.ingest_batch({"samples": [
+        {"metric": "steps", "value": 8200, "date": "2026-09-20"},
+    ]}, device[0]["id"])
+
+    assert result["accepted"] == 1
+    assert "ignored" not in result
+
+
+def test_both_names_at_once_do_not_lose_a_section_silently(device):
+    result = ingest.ingest_batch(
+        {"health": [{"metric": "steps", "value": 8200, "date": "2026-09-20"}],
+         "samples": [{"metric": "steps", "value": 300, "date": "2026-09-19"}]},
+        device[0]["id"])
+
+    assert result["accepted"] == 1
+    assert result["ignored"] == ["samples"]
