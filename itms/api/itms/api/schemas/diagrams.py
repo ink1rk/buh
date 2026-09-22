@@ -62,6 +62,9 @@ class DiagramNodeRead(BaseModel):
     device_role: str | None
     hostname: str | None
     mgmt_ip: str | None
+    power_node_type: str | None = None
+    inlet_w: int | None = None
+    limit_w: int | None = None
 
 
 class DiagramEdgeRead(BaseModel):
@@ -70,6 +73,7 @@ class DiagramEdgeRead(BaseModel):
     target_node_id: uuid.UUID
     connection_id: uuid.UUID | None
     relation_id: uuid.UUID | None
+    power_link_id: uuid.UUID | None = None
     label: str | None
     medium: str | None
     status: str | None

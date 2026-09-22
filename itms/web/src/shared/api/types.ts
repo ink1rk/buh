@@ -561,6 +561,9 @@ export interface DiagramNode {
   device_role: string | null;
   hostname: string | null;
   mgmt_ip: string | null;
+  power_node_type: string | null;
+  inlet_w: number | null;
+  limit_w: number | null;
 }
 
 export interface DiagramEdge {
@@ -569,6 +572,7 @@ export interface DiagramEdge {
   target_node_id: string;
   connection_id: string | null;
   relation_id: string | null;
+  power_link_id: string | null;
   label: string | null;
   medium: string | null;
   status: string | null;

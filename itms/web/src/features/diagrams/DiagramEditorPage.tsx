@@ -66,7 +66,8 @@ function AddNodeDialog({
   const [error, setError] = useState<string | null>(null);
   const list = useCiList({
     q: query,
-    ci_type: diagramType === "NETWORK" ? ["DEVICE"] : undefined,
+    ci_type:
+      diagramType === "NETWORK" ? ["DEVICE"] : diagramType === "POWER" ? ["POWER_NODE"] : undefined,
     limit: 20,
     offset: 0,
   });
@@ -289,7 +290,7 @@ function Editor({ diagramId }: { diagramId: string }) {
   const present = new Set(data.nodes.map((node) => node.ci_id).filter((id): id is string => Boolean(id)));
 
   return (
-    <div className="flex h-[calc(100dvh-7.5rem)] flex-col gap-3">
+    <div className="flex h-[calc(100dvh-7.5rem)] flex-col gap-3" data-testid="diagram-editor">
       <PageHeader
         title={data.diagram.name}
         subtitle={`${te("diagramType", data.diagram.diagram_type)} · ${t("diagrams.version", { version: data.diagram.version })}${dirty ? ` · ${t("diagrams.dirty")}` : ""}`}

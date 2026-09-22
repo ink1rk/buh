@@ -10,11 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from itms.core.errors import Conflict, NotFound
-from itms.domain.diagram import layered_layout
+from itms.domain.diagram import flow_layout, layered_layout
 from itms.models.cmdb import Ci, CiRelation, Location
 from itms.models.diagram import Diagram, DiagramEdge, DiagramNode
 from itms.models.enums import ConnectionStatus, DiagramNodeKind, DiagramType
 from itms.models.network import Connection, Device, Interface
+from itms.models.power import PowerLink
+from itms.services import power_service
 
 ACTIVE_CABLE = (
     ConnectionStatus.ACTIVE,
@@ -102,6 +104,8 @@ async def autofill(session: AsyncSession, diagram: Diagram) -> Diagram:
     )
     if diagram.diagram_type == DiagramType.NETWORK:
         stmt = stmt.where(Ci.ci_type == "DEVICE")
+    elif diagram.diagram_type == DiagramType.POWER:
+        stmt = stmt.where(Ci.ci_type == "POWER_NODE")
     cis = list((await session.execute(stmt.order_by(Ci.name))).scalars())
     present = {node.ci_id for node in await _nodes(session, diagram.id)}
     for ci in cis:
@@ -125,15 +129,21 @@ async def autofill(session: AsyncSession, diagram: Diagram) -> Diagram:
 
 async def autolayout(session: AsyncSession, diagram: Diagram) -> Diagram:
     nodes = await _nodes(session, diagram.id)
-    roles = await _roles(session, [node.ci_id for node in nodes if node.ci_id])
-    types = await _ci_types(session, [node.ci_id for node in nodes if node.ci_id])
-    positions = layered_layout(
-        [
-            (node.id, types.get(node.ci_id) if node.ci_id else None,
-             roles.get(node.ci_id) if node.ci_id else None)
-            for node in nodes
-        ]
-    )
+    if diagram.diagram_type == DiagramType.POWER:
+        positions = await _power_positions(session, nodes)
+    else:
+        roles = await _roles(session, [node.ci_id for node in nodes if node.ci_id])
+        types = await _ci_types(session, [node.ci_id for node in nodes if node.ci_id])
+        positions = layered_layout(
+            [
+                (
+                    node.id,
+                    types.get(node.ci_id) if node.ci_id else None,
+                    roles.get(node.ci_id) if node.ci_id else None,
+                )
+                for node in nodes
+            ]
+        )
     for node in nodes:
         x, y = positions[node.id]
         node.x = x
@@ -154,15 +164,20 @@ async def sync_edges(session: AsyncSession, diagram: Diagram) -> int:
         return 0
     present = (
         await session.execute(
-            select(DiagramEdge.connection_id, DiagramEdge.relation_id).where(
-                DiagramEdge.diagram_id == diagram.id
-            )
+            select(
+                DiagramEdge.connection_id,
+                DiagramEdge.relation_id,
+                DiagramEdge.power_link_id,
+            ).where(DiagramEdge.diagram_id == diagram.id)
         )
     ).all()
     created = 0
     if diagram.diagram_type == DiagramType.NETWORK:
         taken = {row[0] for row in present if row[0] is not None}
         created += await _sync_cables(session, diagram.id, by_ci, taken)
+    elif diagram.diagram_type == DiagramType.POWER:
+        taken = {row[2] for row in present if row[2] is not None}
+        created += await _sync_power(session, diagram.id, by_ci, taken)
     else:
         taken = {row[1] for row in present if row[1] is not None}
         created += await _sync_relations(session, diagram.id, by_ci, taken)
@@ -208,6 +223,56 @@ async def _sync_cables(
     return created
 
 
+async def _sync_power(
+    session: AsyncSession,
+    diagram_id: uuid.UUID,
+    by_ci: dict[uuid.UUID, DiagramNode],
+    taken: set[Any],
+) -> int:
+    rows = await session.execute(
+        select(PowerLink.id, PowerLink.source_node_id, PowerLink.target_node_id).where(
+            PowerLink.source_node_id.in_(by_ci),
+            PowerLink.target_node_id.in_(by_ci),
+        )
+    )
+    created = 0
+    for link_id, source_id, target_id in rows:
+        if link_id in taken or source_id not in by_ci or target_id not in by_ci:
+            continue
+        session.add(
+            DiagramEdge(
+                diagram_id=diagram_id,
+                power_link_id=link_id,
+                source_node_id=by_ci[source_id].id,
+                target_node_id=by_ci[target_id].id,
+            )
+        )
+        created += 1
+    if created:
+        await session.flush()
+    return created
+
+
+async def _power_positions(
+    session: AsyncSession, nodes: list[DiagramNode]
+) -> dict[uuid.UUID, tuple[float, float]]:
+    by_ci = {node.ci_id: node.id for node in nodes if node.ci_id}
+    if not by_ci:
+        return flow_layout([node.id for node in nodes], [])
+    links = await session.execute(
+        select(PowerLink.source_node_id, PowerLink.target_node_id).where(
+            PowerLink.source_node_id.in_(by_ci),
+            PowerLink.target_node_id.in_(by_ci),
+        )
+    )
+    edges = [
+        (by_ci[source], by_ci[target])
+        for source, target in links
+        if source in by_ci and target in by_ci
+    ]
+    return flow_layout([node.id for node in nodes], edges)
+
+
 async def _sync_relations(
     session: AsyncSession,
     diagram_id: uuid.UUID,
@@ -238,9 +303,7 @@ async def _sync_relations(
     return created
 
 
-async def add_node(
-    session: AsyncSession, diagram_id: uuid.UUID, ci_id: uuid.UUID
-) -> DiagramNode:
+async def add_node(session: AsyncSession, diagram_id: uuid.UUID, ci_id: uuid.UUID) -> DiagramNode:
     diagram = await get_diagram(session, diagram_id)
     ci = await session.get(Ci, ci_id)
     if ci is None or ci.deleted_at is not None:
@@ -309,9 +372,7 @@ async def save_layout(
 async def _roles(session: AsyncSession, ci_ids: list[uuid.UUID]) -> dict[uuid.UUID, str]:
     if not ci_ids:
         return {}
-    rows = await session.execute(
-        select(Device.id, Device.device_role).where(Device.id.in_(ci_ids))
-    )
+    rows = await session.execute(select(Device.id, Device.device_role).where(Device.id.in_(ci_ids)))
     return {ci_id: role.value if hasattr(role, "value") else str(role) for ci_id, role in rows}
 
 
@@ -341,9 +402,7 @@ async def full_diagram(session: AsyncSession, diagram_id: uuid.UUID) -> dict[str
 
     edges = list(
         (
-            await session.execute(
-                select(DiagramEdge).where(DiagramEdge.diagram_id == diagram.id)
-            )
+            await session.execute(select(DiagramEdge).where(DiagramEdge.diagram_id == diagram.id))
         ).scalars()
     )
     cable_ids = [edge.connection_id for edge in edges if edge.connection_id]
@@ -351,12 +410,18 @@ async def full_diagram(session: AsyncSession, diagram_id: uuid.UUID) -> dict[str
     relations = await _relation_facts(
         session, [edge.relation_id for edge in edges if edge.relation_id]
     )
+    power = await _power_facts(session, diagram)
 
     return {
         "diagram": diagram,
         "nodes": [
-            _node_payload(node, ci_rows.get(node.ci_id) if node.ci_id else None,
-                          devices.get(node.ci_id) if node.ci_id else None, roles)
+            _node_payload(
+                node,
+                ci_rows.get(node.ci_id) if node.ci_id else None,
+                devices.get(node.ci_id) if node.ci_id else None,
+                roles,
+                power.get(node.ci_id) if node.ci_id else None,
+            )
             for node in nodes
         ],
         "edges": [_edge_payload(edge, cables, relations) for edge in edges],
@@ -364,7 +429,11 @@ async def full_diagram(session: AsyncSession, diagram_id: uuid.UUID) -> dict[str
 
 
 def _node_payload(
-    node: DiagramNode, ci: Ci | None, device: Device | None, roles: dict[uuid.UUID, str]
+    node: DiagramNode,
+    ci: Ci | None,
+    device: Device | None,
+    roles: dict[uuid.UUID, str],
+    power: dict[str, Any] | None,
 ) -> dict[str, Any]:
     return {
         "id": node.id,
@@ -380,12 +449,20 @@ def _node_payload(
         "device_role": roles.get(node.ci_id) if node.ci_id else None,
         "hostname": device.hostname if device else None,
         "mgmt_ip": str(device.mgmt_ip) if device and device.mgmt_ip else None,
+        "power_node_type": power["node_type"] if power else None,
+        "inlet_w": power["inlet_w"] if power else None,
+        "limit_w": power["limit_w"] if power else None,
     }
 
 
-async def _cable_facts(
-    session: AsyncSession, ids: list[uuid.UUID]
-) -> dict[uuid.UUID, Connection]:
+async def _power_facts(session: AsyncSession, diagram: Diagram) -> dict[uuid.UUID, dict[str, Any]]:
+    if diagram.diagram_type != DiagramType.POWER:
+        return {}
+    overview = await power_service.overview(session)
+    return {node["id"]: node for node in overview["nodes"]}
+
+
+async def _cable_facts(session: AsyncSession, ids: list[uuid.UUID]) -> dict[uuid.UUID, Connection]:
     if not ids:
         return {}
     rows = await session.execute(select(Connection).where(Connection.id.in_(ids)))
@@ -414,6 +491,7 @@ def _edge_payload(
         "target_node_id": edge.target_node_id,
         "connection_id": edge.connection_id,
         "relation_id": edge.relation_id,
+        "power_link_id": edge.power_link_id,
         "label": cable.label if cable else (relation.rel_type if relation else None),
         "medium": cable.medium if cable else None,
         "status": cable.status if cable else None,

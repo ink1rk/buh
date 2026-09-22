@@ -16,9 +16,22 @@ import type { FlowEdge, FlowNode } from "./diagramView";
 
 const HANDLE = "!h-1.5 !w-1.5 !border-0 !bg-transparent !opacity-0";
 
+function formatKw(watts: number): string {
+  return `${(watts / 1000).toLocaleString("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} кВт`;
+}
+
 function DeviceNode({ data, selected }: NodeProps<FlowNode>) {
   const { te } = useI18n();
-  const role = data.role ? te("deviceRole", data.role) : data.ciType ? te("ciType", data.ciType) : null;
+  const role = data.powerNodeType
+    ? te("powerNodeType", data.powerNodeType)
+    : data.role
+      ? te("deviceRole", data.role)
+      : data.ciType
+        ? te("ciType", data.ciType)
+        : null;
   const border =
     data.criticality === "CRITICAL"
       ? "border-l-[rgb(var(--danger))]"
@@ -33,6 +46,8 @@ function DeviceNode({ data, selected }: NodeProps<FlowNode>) {
         border,
         selected && "ring-2 ring-[rgb(var(--accent))]",
       )}
+      data-testid="diagram-node"
+      data-code={data.code ?? ""}
     >
       <Handle id="in-top" type="target" position={Position.Top} className={HANDLE} />
       <Handle id="out-top" type="source" position={Position.Top} className={HANDLE} />
@@ -53,6 +68,7 @@ function DeviceNode({ data, selected }: NodeProps<FlowNode>) {
       <p className="mt-1 truncate font-mono text-[11px] text-muted">{data.code ?? "—"}</p>
       <p className="truncate text-[11px] text-muted">
         {role ?? "—"}
+        {data.inletW != null ? ` · ${formatKw(data.inletW)}` : ""}
         {data.mgmtIp ? ` · ${data.mgmtIp}` : data.hostname ? ` · ${data.hostname}` : ""}
       </p>
     </div>

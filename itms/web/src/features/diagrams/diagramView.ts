@@ -15,6 +15,8 @@ export interface DiagramNodeData extends Record<string, unknown> {
   mgmtIp: string | null;
   ciId: string | null;
   ciType: string | null;
+  powerNodeType: string | null;
+  inletW: number | null;
 }
 
 export interface CableEdgeData extends Record<string, unknown> {
@@ -64,6 +66,8 @@ export function toFlow(nodes: DiagramNode[], edges: DiagramEdge[]): {
       mgmtIp: node.mgmt_ip,
       ciId: node.ci_id,
       ciType: node.ci_type,
+      powerNodeType: node.power_node_type,
+      inletW: node.inlet_w,
     },
   }));
   const byId = new Map(flowNodes.map((node) => [node.id, node]));

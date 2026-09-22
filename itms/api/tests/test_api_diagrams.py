@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from httpx import AsyncClient
 
-from itms.domain.diagram import layered_layout
+from itms.domain.diagram import flow_layout, layered_layout
 
 pytestmark = pytest.mark.anyio
 
@@ -19,6 +19,11 @@ def test_layered_layout_keeps_core_above_servers() -> None:
         ]
     )
     assert positions["sw"][1] < positions["panel"][1] < positions["srv"][1]
+
+
+def test_flow_layout_puts_the_source_above_the_load() -> None:
+    positions = flow_layout(["inlet", "panel", "load"], [("inlet", "panel"), ("panel", "load")])
+    assert positions["inlet"][1] < positions["panel"][1] < positions["load"][1]
 
 
 async def _location(
@@ -110,3 +115,62 @@ async def test_diagram_follows_cables_and_layout_version(client: AsyncClient, ap
     after = (await client.get(f"{api}/diagrams/{diagram_id}")).json()
     assert [node["ci_id"] for node in after["nodes"]] == [switch_id]
     assert after["edges"] == []
+
+
+async def test_power_diagram_follows_power_links(client: AsyncClient, api: str) -> None:
+    site = await _location(client, api, "Площадка", "SITE")
+    building = await _location(client, api, "Корпус", "BUILDING", site)
+    room = await _location(client, api, "Щитовая", "ROOM", building)
+    inlet = await client.post(
+        f"{api}/power/nodes",
+        json={
+            "name": "Ввод",
+            "code": "D-IN",
+            "node_type": "INPUT",
+            "location_id": room,
+            "phases": 3,
+            "max_load_w": 10000,
+        },
+    )
+    assert inlet.status_code == 201, inlet.text
+    load = await client.post(
+        f"{api}/power/nodes",
+        json={
+            "name": "Нагрузка",
+            "code": "D-LD",
+            "node_type": "GENERIC_LOAD",
+            "location_id": room,
+            "phases": 3,
+            "phase_label": "L1L2L3",
+            "power_nameplate_w": 1000,
+            "utilization": 1,
+        },
+    )
+    assert load.status_code == 201, load.text
+    linked = await client.post(
+        f"{api}/power/links",
+        json={"source_node_id": inlet.json()["id"], "target_node_id": load.json()["id"]},
+    )
+    assert linked.status_code == 201, linked.text
+
+    created = await client.post(
+        f"{api}/diagrams",
+        json={
+            "name": "Питание щитовой",
+            "diagram_type": "POWER",
+            "location_id": room,
+            "autofill": True,
+        },
+    )
+    assert created.status_code == 201, created.text
+    full = await client.get(f"{api}/diagrams/{created.json()['id']}")
+    assert full.status_code == 200, full.text
+    body = full.json()
+    assert {node["code"] for node in body["nodes"]} == {"D-IN", "D-LD"}
+    source = next(node for node in body["nodes"] if node["code"] == "D-IN")
+    target = next(node for node in body["nodes"] if node["code"] == "D-LD")
+    assert source["y"] < target["y"]
+    assert source["power_node_type"] == "INPUT"
+    assert source["inlet_w"] == 1000
+    assert body["edges"][0]["power_link_id"] == linked.json()["id"]
+    assert body["edges"][0]["connection_id"] is None

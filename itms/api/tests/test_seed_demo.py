@@ -20,7 +20,7 @@ from itms.models.power import (
 )
 from itms.models.projects import Project, Task, TaskDependency
 from itms.models.transition import ChangeItem, PlannedChange, StateSnapshot
-from itms.services import network_service, power_service, project_service
+from itms.services import diagram_service, network_service, power_service, project_service
 
 pytestmark = pytest.mark.anyio
 
@@ -39,7 +39,16 @@ async def test_seed_demo_builds_network_topology() -> None:
         assert await count(Device) == 5
         assert await count(Connection) == 4
         assert await count(Prefix) == 3
-        assert await count(Diagram) == 1
+        assert await count(Diagram) == 2
+        power_diagram = (
+            await session.execute(select(Diagram).where(Diagram.name == "Питание серверной"))
+        ).scalar_one()
+        drawn = await diagram_service.full_diagram(session, power_diagram.id)
+        inlet_node = next(node for node in drawn["nodes"] if node["code"] == "IN-1")
+        load_node = next(node for node in drawn["nodes"] if node["code"] == "GL-1")
+        assert inlet_node["y"] < load_node["y"]
+        assert inlet_node["inlet_w"] > 16800
+        assert any(edge["power_link_id"] for edge in drawn["edges"])
         assert await count(Rack) == 1
         assert await count(RackMount) == 4
         assert await count(Project) == 1

@@ -793,6 +793,7 @@ export const ru = {
     diagramType: {
       NETWORK: "Сеть",
       LOGICAL: "Логическая",
+      POWER: "Питание",
     },
     environment: { PROD: "Продуктив", TEST: "Тест", DEV: "Разработка", DR: "Резервная площадка" },
     locationType: {
