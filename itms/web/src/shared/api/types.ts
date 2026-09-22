@@ -880,6 +880,61 @@ export interface PowerOverview {
   scenarios: PowerScenarioRow[];
 }
 
+export interface TransitionGap {
+  rule: string;
+  level: string;
+  message: string;
+}
+
+export interface TransitionView {
+  live: {
+    input_id: string | null;
+    input_name: string | null;
+    input_code: string | null;
+    estimated_w: number | null;
+    nameplate_w: number | null;
+    limit_w: number | null;
+    headroom_w: number | null;
+    target_w: number | null;
+    deficit_w: number | null;
+    required_w: number | null;
+    recommended_w: number | null;
+    added_w: number | null;
+  };
+  snapshots: Array<{
+    id: string;
+    name: string;
+    checksum: string;
+    taken_at: string;
+    estimated_w: number | null;
+    limit_w: number | null;
+    headroom_w: number | null;
+    target_w: number | null;
+    deficit_w: number | null;
+  }>;
+  plans: Array<{
+    id: string;
+    name: string;
+    status: string;
+    applied_at: string | null;
+    gap: TransitionGap[];
+    items: Array<{
+      id: string;
+      operation: string;
+      entity_type: string;
+      entity_id: string | null;
+      payload: {
+        summary?: string;
+        fields?: { max_load_w?: number; rated_current_a?: number };
+        before?: { max_load_w?: number; rated_current_a?: number | null };
+      };
+      apply_status: string;
+      order_index: number;
+    }>;
+  }>;
+  gap: TransitionGap[];
+}
+
 export interface ImportJob {
   id: string;
   target: string;

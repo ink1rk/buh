@@ -39,6 +39,7 @@ from itms.models.enums import (
 )
 from itms.models.network import Interface
 from itms.models.projects import Project
+from itms.models.transition import PlannedChange, StateSnapshot
 from itms.services import (
     auth_service,
     catalog_service,
@@ -52,6 +53,7 @@ from itms.services import (
     power_service,
     project_service,
     rack_service,
+    transition_service,
 )
 
 USAGE = """Команды:
@@ -99,6 +101,7 @@ async def seed_demo() -> None:
             await _ensure_demo_rack(session, server_room.id)
             await _ensure_demo_project(session)
             await _ensure_demo_power(session, server_room.id)
+            await _ensure_demo_transition(session)
             if seeded:
                 print("Демонстрационные данные уже есть")
                 return
@@ -525,6 +528,32 @@ async def _ensure_demo_power(session: AsyncSession, server_room_id: uuid.UUID) -
             ],
         },
     )
+
+
+async def _ensure_demo_transition(session: AsyncSession) -> None:
+    """Снимок текущего ввода и черновик плана 3×50 А. К модели план не применяется."""
+    project = (
+        await session.execute(select(Project).where(Project.key == "PWR"))
+    ).scalar_one_or_none()
+    if project is None:
+        return
+    snap = (
+        await session.execute(
+            select(StateSnapshot.id).where(StateSnapshot.project_id == project.id)
+        )
+    ).scalar_one_or_none()
+    if snap is None:
+        await transition_service.take_snapshot(session, project.id, "Текущее состояние")
+    plan = (
+        await session.execute(
+            select(PlannedChange.id).where(
+                PlannedChange.project_id == project.id,
+                PlannedChange.status != "CANCELLED",
+            )
+        )
+    ).scalar_one_or_none()
+    if plan is None:
+        await transition_service.build_plan(session, project.id)
 
 
 async def _ensure_demo_rack(session: AsyncSession, server_room_id: uuid.UUID) -> None:

@@ -48,6 +48,7 @@ import type {
   SearchResponse,
   SessionUser,
   TraceResult,
+  TransitionView,
   VlanRow,
   Vrf,
   WarrantyRow,
@@ -100,6 +101,7 @@ export const keys = {
   projects: ["projects"] as const,
   project: (id: string) => ["projects", id] as const,
   power: ["power"] as const,
+  transition: (id: string) => ["projects", id, "transition"] as const,
 };
 
 export function useSession() {
@@ -363,6 +365,14 @@ export function useProject(id: string | undefined) {
   return useQuery({
     queryKey: keys.project(id ?? ""),
     queryFn: () => api.get<ProjectView>(`/projects/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useTransition(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.transition(id ?? ""),
+    queryFn: () => api.get<TransitionView>(`/projects/${id}/transition`),
     enabled: Boolean(id),
   });
 }
@@ -661,6 +671,13 @@ export const mutations = {
     api.post<ProjectView>(`/projects/${id}/members`, body),
   addTime: (id: string, taskId: string, body: Record<string, unknown>) =>
     api.post<ProjectView>(`/projects/${id}/tasks/${taskId}/time`, body),
+  takeSnapshot: (id: string, name: string) =>
+    api.post(`/projects/${id}/snapshots`, { name }),
+  buildPlan: (id: string) => api.post<TransitionView>(`/projects/${id}/plans`),
+  applyPlan: (id: string, planId: string, provenance?: Provenance) =>
+    api.post<TransitionView>(`/projects/${id}/plans/${planId}/apply`, undefined, provenance),
+  rollbackPlan: (id: string, planId: string, provenance?: Provenance) =>
+    api.post<TransitionView>(`/projects/${id}/plans/${planId}/rollback`, undefined, provenance),
 
   createRack: (body: Record<string, unknown>) => api.post<RackElevation>("/racks", body),
   placeMount: (rackId: string, body: Record<string, unknown>, provenance?: Provenance) =>

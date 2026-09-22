@@ -298,6 +298,7 @@ def assess_health(
     budget_planned: float | None,
     budget_actual: float | None,
     last_activity: date | None,
+    power_deficit: bool = False,
 ) -> Health:
     """Каждое правило возвращает уровень и объяснение. Итог — худший из вкладов."""
     findings: list[Finding] = []
@@ -354,6 +355,15 @@ def assess_health(
                 rule="budget",
                 level=HealthStatus.AT_RISK.value,
                 message="Фактический бюджет превышает план больше чем на 10%",
+                entity_ids=(),
+            )
+        )
+    if power_deficit and project_status == ProjectStatus.IN_PROGRESS:
+        findings.append(
+            Finding(
+                rule="power_deficit",
+                level=HealthStatus.AT_RISK.value,
+                message="Прогноз нагрузки выше предела ввода",
                 entity_ids=(),
             )
         )
