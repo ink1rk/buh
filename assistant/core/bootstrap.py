@@ -1,0 +1,148 @@
+#!/usr/bin/env python3
+"""Wiring.
+
+One place builds the object graph — bus, permissions, actions, notifications,
+LLM registry, agents, context resolver, integrations — and hands it to whoever
+needs it. Interfaces (HTTP API, Telegram) import the container, never each
+other's internals.
+"""
+import threading
+import time
+
+from agents.communication import CommunicationAgent
+from agents.personal import PersonalAgent
+from domain.enrichment import Enricher
+from providers.calendar import CalendarActionProvider
+from providers.email import EmailActionProvider
+from providers.mcp import McpActionProvider
+from providers.telegram import TelegramActionProvider
+
+from . import audit, db
+from .actions import ActionEngine
+from .agents import AgentRegistry
+from .config import config
+from .context import ContextResolver
+from .events import EventBus
+from .calendarwatch import CalendarWatcher
+from .integrations import (CalendarIntegration, DatabaseIntegration,
+                           EmailIntegration, FinanceIntegration,
+                           GatewayLLMIntegration, IntegrationRegistry,
+                           LocalLLMIntegration, McpIntegration,
+                           TelegramBotIntegration, TelegramUserIntegration)
+from .llm import GatewayProvider, LLMRegistry, LocalProvider
+from .mailwatch import MailWatcher
+from .mcp import McpRegistry
+from .notifications import NotificationEngine
+from .permissions import PermissionEngine
+
+
+class Core:
+    """The assembled system. Built once per process."""
+
+    def __init__(self, skills=None, start_workers=True):
+        db.migrate()
+
+        self.bus = EventBus()
+        audit.subscribe(self.bus)
+
+        self.llm = LLMRegistry()
+        self.permissions = PermissionEngine()
+        self.notifications = NotificationEngine(self.bus)
+        # Внешние сервисы, подключённые по MCP: мост с телефоном и всё, что
+        # появится потом. Ядро знает только адрес и токен каждого.
+        self.mcp = McpRegistry()
+        self.actions = ActionEngine(self.bus, self.permissions,
+                                    providers=[TelegramActionProvider(),
+                                               EmailActionProvider(),
+                                               CalendarActionProvider(),
+                                               McpActionProvider(self.mcp)],
+                                    notifier=self.notifications)
+        self.resolver = ContextResolver(permissions=self.permissions)
+        self.enricher = Enricher(self.llm, self.bus)
+
+        self.agents = AgentRegistry()
+        self.communication = CommunicationAgent(self.llm, self.resolver)
+        self.agents.register(self.communication)
+        self.personal = None
+        if skills is not None:
+            self.personal = PersonalAgent(self.llm, skills)
+            self.agents.register(self.personal, fallback=True)
+
+        local, gateway = LocalProvider(), GatewayProvider()
+        # Опрос почты собирается раньше реестра: он же и отвечает на вопрос
+        # о здоровье ящиков, не входя в них лишний раз.
+        self.mail = MailWatcher(self)
+        self.integrations = IntegrationRegistry(self.bus, [
+            DatabaseIntegration(), LocalLLMIntegration(local),
+            GatewayLLMIntegration(gateway), TelegramBotIntegration(),
+            TelegramUserIntegration(), EmailIntegration(self.mail),
+            CalendarIntegration(), FinanceIntegration()]
+            + [McpIntegration(client) for client in self.mcp.clients.values()])
+
+        self.calendar = CalendarWatcher(self)
+        # Резолвер спрашивает расписание у кэша, а не у сети: ответ владельцу
+        # не должен ждать CalDAV.
+        self.resolver.schedule = self.calendar.upcoming
+        self._stop = threading.Event()
+        if start_workers:
+            self._start_workers()
+            self.mail.start()
+            self.calendar.start()
+
+    def attach_skills(self, skills):
+        """Legacy skills arrive after import; register the generalist then."""
+        self.personal = PersonalAgent(self.llm, skills)
+        self.agents.register(self.personal, fallback=True)
+        return self.personal
+
+    # -- background housekeeping ----------------------------------------
+    def _start_workers(self):
+        threading.Thread(target=self._housekeeping, daemon=True,
+                         name="core-housekeeping").start()
+
+    def _housekeeping(self):
+        from domain import commitments as commitments_mod
+        while not self._stop.wait(60):
+            try:
+                self.actions.expire_stale()
+                commitments_mod.mark_overdue(self.bus)
+            except Exception as e:
+                print("housekeeping failed:", e)
+            try:
+                if int(time.time()) % 300 < 60:
+                    self.integrations.check()
+            except Exception as e:
+                print("integration check failed:", e)
+
+    def health(self):
+        from . import security
+
+        checks = self.integrations.check()
+        broken = [c for c in checks if c["status"] in ("ERROR",) and c["required"]]
+        return {"status": "degraded" if broken else "ok",
+                "integrations": checks,
+                "agents": self.agents.describe(),
+                "response_mode": config.response_mode,
+                "security": security.mode(),
+                "assistant": config.assistant_name}
+
+    def stop(self):
+        self._stop.set()
+        self.mail.stop()
+        self.calendar.stop()
+        self.bus.stop()
+
+
+_core = None
+_lock = threading.Lock()
+
+
+def get_core(skills=None):
+    global _core
+    if _core is None:
+        with _lock:
+            if _core is None:
+                _core = Core(skills=skills)
+    elif skills is not None and _core.personal is None:
+        _core.attach_skills(skills)
+    return _core

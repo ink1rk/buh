@@ -72,6 +72,49 @@ class ScenarioResult(BaseModel):
     recommendations: list[str]
 
 
+class ReviewSlice(BaseModel):
+    category: str
+    name: str
+    amount: float
+    per_month: float
+    share: float
+    color: str = ""
+
+
+class ReviewPlace(BaseModel):
+    name: str
+    amount: float
+    per_month: float
+    share: float
+    months: int
+    category: str
+
+
+class ReviewNote(BaseModel):
+    title: str
+    body: str
+    tone: str = "neutral"
+
+
+class StatementReview(BaseModel):
+    """Разбор выписки по полным месяцам, а не по обрывку текущего."""
+
+    ready: bool = False
+    headline: str = ""
+    period_from: str | None = None
+    period_to: str | None = None
+    months: int = 0
+    earned_month: float = 0
+    spent_month: float = 0
+    refunds_month: float = 0
+    left_month: float = 0
+    savings_rate: float | None = None
+    transfers_month: float = 0
+    categories: list[ReviewSlice] = Field(default_factory=list)
+    counterparties: list[ReviewPlace] = Field(default_factory=list)
+    advice: list[ReviewNote] = Field(default_factory=list)
+
+
 class AnalyticsBundle(BaseModel):
     timeseries: list[TimeSeriesPoint]
     by_category: list[CategorySlice]

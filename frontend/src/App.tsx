@@ -8,6 +8,7 @@ import { CashflowPage } from '@/pages/CashflowPage'
 import { DebtsPage } from '@/pages/DebtsPage'
 import { SubscriptionsPage } from '@/pages/SubscriptionsPage'
 import { CalendarPage } from '@/pages/CalendarPage'
+import { ConnectionsPage } from '@/pages/ConnectionsPage'
 import { InvestmentsPage } from '@/pages/InvestmentsPage'
 import { AchievementsPage } from '@/pages/AchievementsPage'
 import { PurchasePage } from '@/pages/PurchasePage'
@@ -15,7 +16,9 @@ import { SettingsPage } from '@/pages/SettingsPage'
 import { ScenariosPage } from '@/pages/ScenariosPage'
 import { NetWorthPage } from '@/pages/NetWorthPage'
 import { TimelinePage } from '@/pages/TimelinePage'
+import { OperationsPage } from '@/pages/OperationsPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { BudgetPage } from '@/pages/BudgetPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,11 +38,14 @@ export default function App() {
             <Route index element={<DashboardPage />} />
             <Route path="networth" element={<NetWorthPage />} />
             <Route path="timeline" element={<TimelinePage />} />
+            <Route path="operations" element={<OperationsPage />} />
+            <Route path="budget" element={<BudgetPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="goals" element={<GoalsPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="cashflow" element={<CashflowPage />} />
             <Route path="calendar" element={<CalendarPage />} />
+            <Route path="connections" element={<ConnectionsPage />} />
             <Route path="debts" element={<DebtsPage />} />
             <Route path="subscriptions" element={<SubscriptionsPage />} />
             <Route path="investments" element={<InvestmentsPage />} />

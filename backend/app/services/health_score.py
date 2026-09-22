@@ -25,6 +25,16 @@ def _clamp(v: float, lo: float = 0, hi: float = 100) -> float:
 
 
 def compute_health(data: HealthInputs) -> FinancialHealth:
+    if not any((data.monthly_income, data.monthly_expense, data.emergency_fund,
+                data.total_debt, data.investments)):
+        # Оценка, посчитанная из нулей, — это приговор человеку, о котором
+        # ничего не известно. «48 из 100, требует внимания» на пустой базе
+        # выглядит выводом, а на деле не значит ничего.
+        return FinancialHealth(
+            score=0, label="Пока не о чем судить", factors=[], known=False,
+            summary="Добавьте операции или загрузите выписку — оценка появится, "
+                    "когда будет что оценивать.")
+
     income = max(data.monthly_income, 1.0)
     expense = max(data.monthly_expense, 0.0)
 

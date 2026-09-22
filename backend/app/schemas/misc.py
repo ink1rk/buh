@@ -29,6 +29,17 @@ class DebtOut(ORMModel):
     time_value_cost: float = 0
 
 
+class DebtUpdate(BaseModel):
+    person_name: str | None = None
+    direction: str | None = None
+    amount: float | None = None
+    remaining: float | None = None
+    due_date: date | None = None
+    return_probability: float | None = None
+    notes: str | None = None
+    is_active: bool | None = None
+
+
 class SubscriptionCreate(BaseModel):
     name: str
     amount: float
@@ -54,6 +65,18 @@ class SubscriptionOut(ORMModel):
     unused_days: int = 0
 
 
+class SubscriptionUpdate(BaseModel):
+    name: str | None = None
+    amount: float | None = None
+    billing_cycle: str | None = None
+    next_billing_date: date | None = None
+    category: str | None = None
+    icon: str | None = None
+    last_used_date: date | None = None
+    is_active: bool | None = None
+    notes: str | None = None
+
+
 class CalendarEventCreate(BaseModel):
     title: str
     event_type: str = "payment"
@@ -63,6 +86,8 @@ class CalendarEventCreate(BaseModel):
     color: str = "#a78bfa"
     notes: str = ""
     reminder_days_before: int = 3
+    source: str = ""
+    external_id: str = ""
 
 
 class CalendarEventOut(ORMModel):
@@ -76,6 +101,20 @@ class CalendarEventOut(ORMModel):
     notes: str
     is_completed: bool
     reminder_days_before: int
+    source: str = ""
+    external_id: str = ""
+
+
+class CalendarEventUpdate(BaseModel):
+    title: str | None = None
+    event_type: str | None = None
+    amount: float | None = None
+    event_date: date | None = None
+    recurrence: str | None = None
+    color: str | None = None
+    notes: str | None = None
+    is_completed: bool | None = None
+    reminder_days_before: int | None = None
 
 
 class InvestmentCreate(BaseModel):
@@ -101,6 +140,17 @@ class InvestmentOut(ORMModel):
     risk_score: float
     notes: str
     gain_pct: float = 0
+
+
+class InvestmentUpdate(BaseModel):
+    name: str | None = None
+    ticker: str | None = None
+    asset_class: str | None = None
+    value: float | None = None
+    cost_basis: float | None = None
+    expected_return: float | None = None
+    risk_score: float | None = None
+    notes: str | None = None
 
 
 class PortfolioAdvice(BaseModel):

@@ -27,11 +27,14 @@ from app.schemas.dashboard import (
     RitualEvening,
     RitualMorning,
 )
+from app.services.budget_service import declared_monthly_budget, glance as budget_glance
 from app.services.coach_engine import ensure_today_challenge
 from app.services.content_bank import quote_for_date, widget_for_date
 from app.services.health_score import HealthInputs, compute_health
 from app.services.insights_engine import generate_insights
+from app.services.review_engine import build_review
 from app.services.net_worth_service import build_net_worth
+from app.services.ledger import is_income, spending
 from app.services.proactive_engine import detect_behavior_patterns, generate_proactive_alerts
 
 
@@ -98,12 +101,8 @@ async def compute_balances(db: AsyncSession) -> DashboardBalances:
 
     # Income: only real inflows. Expense: consumption only — investments/savings/debt
     # moves are capital allocation, not lifestyle burn (critical for health score).
-    income = sum(t.amount for t in txs if t.amount > 0 and t.transaction_type == "income")
-    expense = sum(
-        abs(t.amount)
-        for t in txs
-        if t.amount < 0 and t.transaction_type in ("expense", "")
-    )
+    income = sum(t.amount for t in txs if is_income(t))
+    expense = sum(abs(t.amount) for t in spending(txs))
 
     liquid = sum(
         a.balance
@@ -146,7 +145,14 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
 
     emergency = balances.reserve + balances.savings
     debt_owing = balances.debts_owing
-    savings_rate = max(0, (balances.income_month - balances.expense_month) / max(profile.monthly_income, 1))
+    # Делить на объявленный в профиле доход нельзя: пока он не заполнен, в
+    # делителе оказывался один рубль, и норма сбережений выходила в
+    # 4 220 969%. Доход месяца известен из операций, а норма больше единицы не
+    # бывает.
+    income = profile.monthly_income or balances.income_month
+    savings_rate = (
+        min(1.0, max(0.0, (income - balances.expense_month) / income)) if income else 0.0
+    )
 
     # investment regularity: months with investment txs in last 6
     months_with_inv = set()
@@ -173,10 +179,30 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         )
     )
 
-    behavior_patterns = detect_behavior_patterns(txs)
-    insights = behavior_patterns + generate_insights(txs, subs, profile.monthly_income)
+    review = build_review(txs)
+    if review.ready and review.advice:
+        insights = [
+            {
+                "title": note.title,
+                "body": note.body,
+                "insight_type": "pattern",
+                "severity": "warning" if note.tone == "warning" else (
+                    "success" if note.tone == "positive" else "info"
+                ),
+                "category": "review",
+            }
+            for note in review.advice
+        ]
+    else:
+        behavior_patterns = detect_behavior_patterns(txs)
+        insights = behavior_patterns + generate_insights(txs, subs, profile.monthly_income)
     goals = list((await db.execute(select(Goal).where(Goal.is_active.is_(True)).order_by(Goal.priority))).scalars())
-    focus = f"Усиль цель «{goals[0].title}»" if goals else "Заведите первую финансовую цель"
+    if review.ready and len(review.advice) > 1:
+        focus = review.advice[1].title
+    elif goals:
+        focus = f"Усиль цель «{goals[0].title}»"
+    else:
+        focus = "Заведите первую финансовую цель"
 
     events = list((await db.execute(select(CalendarEvent))).scalars())
     net_worth = await build_net_worth(db)
@@ -189,8 +215,14 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         streak += 1
         cursor -= timedelta(days=1)
 
+    # Бюджетом расходы этого же месяца быть не могут: тогда сравнение сводится
+    # к «потрачено 100% того, что потрачено», и подсказка про перерасход
+    # появляется всегда. Сначала — сумма конвертов, иначе 75% объявленного
+    # дохода. Пока ни того ни другого нет, подсказку не показываем.
+    monthly_budget = await declared_monthly_budget(db, profile)
+    budget = await budget_glance(db, profile, balances.expense_month)
     proactive_alerts = generate_proactive_alerts(
-        txs, subs, events, profile.monthly_income, profile.monthly_income * 0.75 if profile.monthly_income else balances.expense_month
+        txs, subs, events, profile.monthly_income, monthly_budget,
     )
 
     challenge_row = await ensure_today_challenge(db)
@@ -230,7 +262,14 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         living_screen.append(LivingScreenLine(icon="alert-triangle", text=f"Через {(e.event_date - date.today()).days} дн. платёж «{e.title}» на {e.amount:,.0f} ₽".replace(",", " "), tone="warning"))
     if avg_goal_probability is not None:
         living_screen.append(LivingScreenLine(icon="bar-chart", text=f"Вероятность достижения целей — {avg_goal_probability:.0f}%", tone="neutral"))
-    living_screen.append(LivingScreenLine(icon="heart", text="Отличная работа. Продолжай в том же духе.", tone="positive"))
+    if review.ready and review.advice:
+        living_screen.append(
+            LivingScreenLine(icon="lightbulb", text=review.advice[0].title, tone="neutral")
+        )
+    else:
+        living_screen.append(
+            LivingScreenLine(icon="heart", text="Отличная работа. Продолжай в том же духе.", tone="positive")
+        )
 
     return DashboardOut(
         greeting=_period_greeting(now, profile.name),
@@ -248,6 +287,7 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         living_screen=living_screen,
         daily_challenge=daily_challenge,
         proactive_alerts=proactive_alerts,
+        budget=budget,
     )
 
 

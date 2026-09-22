@@ -18,17 +18,22 @@ from app.schemas.misc import (
     AchievementOut,
     CalendarEventCreate,
     CalendarEventOut,
+    CalendarEventUpdate,
     DebtCreate,
     DebtOut,
+    DebtUpdate,
     InvestmentCreate,
     InvestmentOut,
+    InvestmentUpdate,
     SubscriptionCreate,
     SubscriptionOut,
+    SubscriptionUpdate,
     UserProfileOut,
     UserProfileUpdate,
 )
 from app.services.dashboard_service import compute_balances, get_or_create_profile
 from app.services.export_service import export_csv, export_excel_bytes, export_json
+from app.services.reset import clean_slate
 from fastapi import File, UploadFile
 
 router = APIRouter(tags=["misc"])
@@ -47,6 +52,18 @@ async def update_profile(payload: UserProfileUpdate, db: AsyncSession = Depends(
         setattr(profile, k, v)
     await db.flush()
     return profile
+
+
+@router.post("/profile/clean-slate")
+async def profile_clean_slate(confirm: str = "", db: AsyncSession = Depends(get_db)):
+    """Стереть всё и начать со своих денег.
+
+    Спрашиваем слово вслух: восстановить стёртое неоткуда, а промахнуться
+    мимо кнопки легко.
+    """
+    if confirm != "стереть":
+        raise HTTPException(400, "нужно подтверждение: confirm=стереть")
+    return await clean_slate(db)
 
 
 # --- Debts ---
@@ -77,6 +94,29 @@ async def create_debt(payload: DebtCreate, db: AsyncSession = Depends(get_db)):
     return item
 
 
+@router.patch("/debts/{debt_id}", response_model=DebtOut)
+async def update_debt(debt_id: int, payload: DebtUpdate, db: AsyncSession = Depends(get_db)):
+    row = await db.get(Debt, debt_id)
+    if not row:
+        raise HTTPException(404, "Debt not found")
+    for k, v in payload.model_dump(exclude_unset=True).items():
+        setattr(row, k, v)
+    await db.flush()
+    item = DebtOut.model_validate(row)
+    item.time_value_cost = 0
+    return item
+
+
+@router.delete("/debts/{debt_id}", status_code=204)
+async def delete_debt(debt_id: int, db: AsyncSession = Depends(get_db)):
+    row = await db.get(Debt, debt_id)
+    if not row:
+        raise HTTPException(404, "Debt not found")
+    await db.delete(row)
+    await db.flush()
+    return Response(status_code=204)
+
+
 # --- Subscriptions ---
 @router.get("/subscriptions", response_model=list[SubscriptionOut])
 async def list_subscriptions(db: AsyncSession = Depends(get_db)):
@@ -100,6 +140,28 @@ async def create_subscription(payload: SubscriptionCreate, db: AsyncSession = De
     return item
 
 
+@router.patch("/subscriptions/{sub_id}", response_model=SubscriptionOut)
+async def update_subscription(sub_id: int, payload: SubscriptionUpdate, db: AsyncSession = Depends(get_db)):
+    row = await db.get(Subscription, sub_id)
+    if not row:
+        raise HTTPException(404, "Subscription not found")
+    for k, v in payload.model_dump(exclude_unset=True).items():
+        setattr(row, k, v)
+    await db.flush()
+    item = SubscriptionOut.model_validate(row)
+    return item
+
+
+@router.delete("/subscriptions/{sub_id}", status_code=204)
+async def delete_subscription(sub_id: int, db: AsyncSession = Depends(get_db)):
+    row = await db.get(Subscription, sub_id)
+    if not row:
+        raise HTTPException(404, "Subscription not found")
+    await db.delete(row)
+    await db.flush()
+    return Response(status_code=204)
+
+
 # --- Calendar ---
 @router.get("/calendar", response_model=list[CalendarEventOut])
 async def list_events(db: AsyncSession = Depends(get_db)):
@@ -113,6 +175,27 @@ async def create_event(payload: CalendarEventCreate, db: AsyncSession = Depends(
     db.add(row)
     await db.flush()
     return row
+
+
+@router.patch("/calendar/{event_id}", response_model=CalendarEventOut)
+async def update_event(event_id: int, payload: CalendarEventUpdate, db: AsyncSession = Depends(get_db)):
+    row = await db.get(CalendarEvent, event_id)
+    if not row:
+        raise HTTPException(404, "Event not found")
+    for k, v in payload.model_dump(exclude_unset=True).items():
+        setattr(row, k, v)
+    await db.flush()
+    return row
+
+
+@router.delete("/calendar/{event_id}", status_code=204)
+async def delete_event(event_id: int, db: AsyncSession = Depends(get_db)):
+    row = await db.get(CalendarEvent, event_id)
+    if not row:
+        raise HTTPException(404, "Event not found")
+    await db.delete(row)
+    await db.flush()
+    return Response(status_code=204)
 
 
 # --- Investments ---
@@ -135,6 +218,29 @@ async def create_investment(payload: InvestmentCreate, db: AsyncSession = Depend
     item = InvestmentOut.model_validate(row)
     item.gain_pct = 0
     return item
+
+
+@router.patch("/investments/{holding_id}", response_model=InvestmentOut)
+async def update_investment(holding_id: int, payload: InvestmentUpdate, db: AsyncSession = Depends(get_db)):
+    row = await db.get(InvestmentHolding, holding_id)
+    if not row:
+        raise HTTPException(404, "Investment not found")
+    for k, v in payload.model_dump(exclude_unset=True).items():
+        setattr(row, k, v)
+    await db.flush()
+    item = InvestmentOut.model_validate(row)
+    item.gain_pct = round((row.value - row.cost_basis) / max(row.cost_basis, 1) * 100, 2)
+    return item
+
+
+@router.delete("/investments/{holding_id}", status_code=204)
+async def delete_investment(holding_id: int, db: AsyncSession = Depends(get_db)):
+    row = await db.get(InvestmentHolding, holding_id)
+    if not row:
+        raise HTTPException(404, "Investment not found")
+    await db.delete(row)
+    await db.flush()
+    return Response(status_code=204)
 
 
 @router.get("/investments/advice")

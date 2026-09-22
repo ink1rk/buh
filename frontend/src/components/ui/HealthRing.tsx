@@ -4,17 +4,27 @@ import { cn } from '@/lib/utils'
 interface Props {
   score: number
   label: string
+  /** Ложь — оценивать нечего: число показывать нельзя, это был бы приговор. */
+  known?: boolean
   size?: number
   onClick?: () => void
   className?: string
 }
 
-export function HealthRing({ score, label, size = 180, onClick, className }: Props) {
+export function HealthRing({ score, label, known = true, size = 180, onClick, className }: Props) {
   const stroke = 12
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
-  const offset = c - (score / 100) * c
-  const color = score >= 85 ? '#34d399' : score >= 70 ? '#5eead4' : score >= 50 ? '#fbbf24' : '#f87171'
+  const offset = known ? c - (score / 100) * c : c
+  const color = !known
+    ? 'rgba(148,183,255,0.35)'
+    : score >= 85
+      ? '#34d399'
+      : score >= 70
+        ? '#5eead4'
+        : score >= 50
+          ? '#fbbf24'
+          : '#f87171'
 
   return (
     <button
@@ -53,8 +63,8 @@ export function HealthRing({ score, label, size = 180, onClick, className }: Pro
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
         >
-          {score}
-          <span className="text-lg text-[var(--text-soft)]">/100</span>
+          {known ? score : '—'}
+          {known && <span className="text-lg text-[var(--text-soft)]">/100</span>}
         </motion.span>
         <span className="text-sm text-[var(--text-soft)] group-hover:text-[var(--color-neon)] transition-colors">
           {label}

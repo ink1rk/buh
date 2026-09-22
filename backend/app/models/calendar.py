@@ -22,3 +22,5 @@ class CalendarEvent(Base, TimestampMixin):
     notes: Mapped[str] = mapped_column(Text, default="")
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     reminder_days_before: Mapped[int] = mapped_column(Integer, default=3)
+    source: Mapped[str] = mapped_column(String(32), default="")
+    external_id: Mapped[str] = mapped_column(String(200), default="")

@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+.venv-*/
 venv/
 *.egg-info/
 .pytest_cache/
@@ -15,6 +16,8 @@ dist/
 # Data & secrets
 database/*.db
 database/chroma/
+database/statements/
+phone/*.db
 backend/.env
 .env
 *.sqlite3
