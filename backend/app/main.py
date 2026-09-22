@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal, init_db
+from app.services.bank_sync import refresh_fingerprints
 from app.services.seed import seed_if_empty
 
 
@@ -16,10 +17,11 @@ def create_app(*, testing: bool = False) -> FastAPI:
     async def lifespan(_: FastAPI):
         if not testing:
             await init_db()
-            if settings.seed_demo:
-                async with AsyncSessionLocal() as session:
+            async with AsyncSessionLocal() as session:
+                await refresh_fingerprints(session)
+                if settings.seed_demo:
                     await seed_if_empty(session)
-                    await session.commit()
+                await session.commit()
         yield
 
     app = FastAPI(

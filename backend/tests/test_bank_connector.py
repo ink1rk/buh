@@ -29,7 +29,7 @@ from app.connectors.tabular import read_csv_rows, rows_to_statement
 from app.models.account import Account
 from app.models.connection import BankConnection, BankOperation
 from app.models.transaction import Transaction
-from app.services.bank_sync import ingest_statement
+from app.services.bank_sync import ingest_statement, refresh_fingerprints
 
 OZON_CSV = """Выписка по счёту Ozon Банк
 Клиент: Кирилл
@@ -646,6 +646,36 @@ async def test_one_statement_in_two_formats_is_one_history(db: AsyncSession, mon
     assert from_table.imported_count == 2
     assert (from_pdf.imported_count, from_pdf.duplicate_count) == (0, 2)
     assert len(list((await db.execute(select(Transaction))).scalars())) == 2
+
+
+@pytest.mark.asyncio
+async def test_history_written_by_the_old_rule_still_recognises_itself(db: AsyncSession):
+    """Отпечатки, записанные когда личностью служил номер банка.
+
+    Новое правило само по себе историю не чинит: пока в базе лежат старые
+    отпечатки, та же выписка снова выглядит новой. Пересчёт идёт при запуске.
+    """
+    connection = await _connection(db)
+    connector = get_connector("ozon")
+    csv = (
+        "Дата операции;Сумма операции;Описание операции\n"
+        "12.03.2026;-200,00;Surf Coffee\n"
+    )
+    await ingest_statement(
+        db, connection, connector.parse_statement(csv.encode(), "a.csv"), source_name="a"
+    )
+    stored = list((await db.execute(select(BankOperation))).scalars())
+    for operation in stored:
+        operation.fingerprint = "по-старому-от-номера-банка#0"
+    await db.flush()
+
+    assert await refresh_fingerprints(db) == 1
+    assert await refresh_fingerprints(db) == 0, "пересчёт повторяться не должен"
+
+    again = await ingest_statement(
+        db, connection, connector.parse_statement(csv.encode(), "b.csv"), source_name="b"
+    )
+    assert (again.imported_count, again.duplicate_count) == (0, 1)
 
 
 @pytest.mark.asyncio

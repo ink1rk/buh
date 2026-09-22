@@ -77,6 +77,49 @@ def _fingerprints(connection: BankConnection, operations: list[RawOperation]) ->
     return result
 
 
+async def refresh_fingerprints(db: AsyncSession) -> int:
+    """Пересчитать отпечатки уже загруженных операций по нынешнему правилу.
+
+    Раньше личностью операции служил номер банка, и отпечаток зависел от того,
+    в каком формате пришла выписка. Пока старые отпечатки лежат в базе, та же
+    выписка в другом формате снова выглядит новой — историю чинит не новый
+    код, а пересчёт того, что уже записано.
+
+    Идемпотентно: со второго раза пересчитывать нечего.
+    """
+    rows = list(
+        (
+            await db.execute(
+                select(BankOperation, BankConnection)
+                .join(BankConnection, BankConnection.id == BankOperation.connection_id)
+                .order_by(BankOperation.connection_id, BankOperation.id)
+            )
+        ).all()
+    )
+    seen: dict[str, int] = {}
+    changed = 0
+    for operation, connection in rows:
+        base = _base_fingerprint(
+            connection,
+            RawOperation(
+                occurred_on=operation.occurred_on,
+                amount=operation.amount,
+                description=operation.description,
+                currency=operation.currency,
+            ),
+        )
+        index = seen.get(base, 0)
+        seen[base] = index + 1
+        fingerprint = f"{base}#{index}"
+        if operation.fingerprint != fingerprint:
+            operation.fingerprint = fingerprint
+            changed += 1
+    if changed:
+        logger.info("Пересчитано отпечатков операций: %s", changed)
+        await db.flush()
+    return changed
+
+
 async def _known(
     db: AsyncSession,
     connection: BankConnection,
