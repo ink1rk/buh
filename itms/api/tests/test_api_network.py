@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 import pytest
 from httpx import AsyncClient
@@ -401,9 +402,10 @@ async def test_device_model_change_requires_provenance(client: AsyncClient, api:
     assert without_reason.status_code == 422
     assert without_reason.json()["error"]["code"] == "provenance_required"
 
+    reason = quote("Замена оборудования")
     with_reason = await client.put(
         f"{api}/devices/{ci_id}",
         json={"device_role": "L3_SWITCH", "device_model_id": second},
-        headers={"X-Reason": "%D0%97%D0%B0%D0%BC%D0%B5%D0%BD%D0%B0%20%D0%BE%D0%B1%D0%BE%D1%80%D1%83%D0%B4%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F"},
+        headers={"X-Reason": reason},
     )
     assert with_reason.status_code == 200, with_reason.text
