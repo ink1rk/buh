@@ -64,7 +64,7 @@ async def test_seed_demo_builds_network_topology() -> None:
         assert await count(PowerScenarioItem) == 3
         assert await count(StateSnapshot) == 1
         assert await count(PlannedChange) == 1
-        assert await count(ChangeItem) == 1
+        assert await count(ChangeItem) == 8
 
         view = await power_service.overview(session)
         inlet = next(row for row in view["nodes"] if row["code"] == "IN-1")

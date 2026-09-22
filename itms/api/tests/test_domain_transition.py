@@ -1,6 +1,6 @@
 """Контрольная сумма снимка стабильна, разрыв считается по пределу плана."""
 
-from itms.domain.transition import checksum, power_gap
+from itms.domain.transition import architecture_items, checksum, power_gap
 
 
 def test_checksum_ignores_key_order() -> None:
@@ -51,3 +51,32 @@ def test_gap_accepts_a_planned_3x50_input() -> None:
         "power_reserve": "OK",
     }
     assert "32,91 кВт" in applied[0].message
+
+
+def test_architecture_puts_the_new_ups_between_the_panel_and_the_pdu() -> None:
+    items = architecture_items(
+        location_id="room",
+        source_code="PN-1",
+        source_is_panel=True,
+        side_b_code="IN-B",
+    )
+    by_ref = {item["ref"]: item for item in items}
+    assert by_ref["R2"]["create"]["plan_x"] == 1200
+    assert by_ref["UPS-2"]["create"]["efficiency"] == 0.94
+    assert by_ref["PDU-R2-A"]["create"]["rack_ref"] == "R2"
+    assert by_ref["link-ups"]["connect"] == {"source_code": "PN-1", "target_ref": "UPS-2"}
+    assert by_ref["link-pdu-a"]["connect"]["source_ref"] == "UPS-2"
+    assert by_ref["link-pdu-b"]["connect"]["source_code"] == "IN-B"
+
+
+def test_architecture_uses_the_only_input_when_there_is_no_second_feed() -> None:
+    items = architecture_items(
+        location_id=None,
+        source_code="UPG-IN",
+        source_is_panel=False,
+        side_b_code=None,
+    )
+    by_ref = {item["ref"]: item for item in items}
+    assert "plan_x" not in by_ref["R2"]["create"]
+    assert by_ref["link-ups"]["connect"]["source_code"] == "UPG-IN"
+    assert by_ref["link-pdu-b"]["connect"]["source_code"] == "UPG-IN"

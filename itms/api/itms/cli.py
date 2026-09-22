@@ -604,6 +604,8 @@ async def _ensure_demo_transition(session: AsyncSession) -> None:
     ).scalar_one_or_none()
     if plan is None:
         await transition_service.build_plan(session, project.id)
+    else:
+        await transition_service.ensure_architecture(session, project.id)
 
 
 async def _ensure_demo_rack(session: AsyncSession, server_room_id: uuid.UUID) -> None:

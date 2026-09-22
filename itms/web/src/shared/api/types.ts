@@ -966,6 +966,7 @@ export interface TransitionView {
       entity_type: string;
       entity_id: string | null;
       payload: {
+        ref?: string;
         summary?: string;
         fields?: { max_load_w?: number; rated_current_a?: number };
         before?: { max_load_w?: number; rated_current_a?: number | null };

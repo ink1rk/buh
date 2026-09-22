@@ -658,7 +658,7 @@ export const ru = {
     plan: "План",
     takeSnapshot: "Зафиксировать срез",
     snapshotName: "Срез",
-    buildPlan: "Собрать план ввода",
+    buildPlan: "Собрать целевую схему",
     applyPlan: "Применить к модели",
     rollbackPlan: "Откатить",
     noForecast: "У проекта ещё нет прогноза нагрузки",
@@ -973,6 +973,14 @@ export const ru = {
       UNKNOWN: "Цепочка не заполнена",
     },
     milestoneStatus: { PLANNED: "Запланирована", REACHED: "Достигнута", MISSED: "Пропущена" },
+    changeOperation: {
+      CREATE: "Создать",
+      UPDATE: "Изменить",
+      DELETE: "Вывести",
+      MOVE: "Перенести",
+      CONNECT: "Подключить",
+      DISCONNECT: "Отключить",
+    },
     planStatus: {
       DRAFT: "Черновик",
       REVIEW: "На проверке",
