@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors import StatementParseError, available_providers, get_connector
 from app.core.database import get_db
+from app.core.security import EncryptionUnavailable
 from app.models.account import Account
 from app.models.connection import BankConnection, BankImport
 from app.schemas.connection import (
@@ -99,7 +100,10 @@ async def create_connection(payload: ConnectionCreate, db: AsyncSession = Depend
         external_account_id=payload.external_account_id.strip(),
     )
     if payload.access_token:
-        store_credentials(connection, payload.access_token)
+        try:
+            store_credentials(connection, payload.access_token)
+        except EncryptionUnavailable as exc:
+            raise HTTPException(400, str(exc)) from exc
     db.add(connection)
     await db.flush()
     await ensure_account(db, connection, payload.label)
@@ -119,7 +123,10 @@ async def update_connection(
     for key, value in data.items():
         setattr(connection, key, value)
     if access_token is not None:
-        store_credentials(connection, access_token)
+        try:
+            store_credentials(connection, access_token)
+        except EncryptionUnavailable as exc:
+            raise HTTPException(400, str(exc)) from exc
     await db.flush()
     return await _to_out(db, connection)
 
@@ -163,6 +170,9 @@ async def sync_connection(
     try:
         run = await sync_via_api(db, connection, since=payload.since, until=payload.until)
     except StatementParseError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except EncryptionUnavailable as exc:
+        # Иначе беда с ключом на нашей стороне выглядела бы как молчание банка.
         raise HTTPException(400, str(exc)) from exc
     except Exception as exc:
         raise HTTPException(502, f"Банк недоступен: {exc}") from exc

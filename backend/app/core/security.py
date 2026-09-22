@@ -17,17 +17,29 @@ def _derive_fernet(key: str) -> Fernet:
     return Fernet(base64.urlsafe_b64encode(digest))
 
 
+class EncryptionUnavailable(RuntimeError):
+    """Ключа нет, а секрет хранить негде."""
+
+
 def encrypt_text(plaintext: str) -> str:
+    """Зашифровать или отказаться — но не сложить секрет открытым текстом.
+
+    Тихий возврат исходной строки здесь был бы худшим из вариантов: значение
+    легло бы в колонку с названием `credentials_encrypted`, и одного её имени
+    хватило бы, чтобы больше никто никогда не проверил.
+    """
     settings = get_settings()
     if not settings.encryption_key:
-        return plaintext
+        raise EncryptionUnavailable(
+            "ENCRYPTION_KEY не настроен: храните доступ к банку только после "
+            "того, как ключ появится в окружении")
     return _derive_fernet(settings.encryption_key).encrypt(plaintext.encode()).decode()
 
 
 def decrypt_text(ciphertext: str) -> str:
     settings = get_settings()
     if not settings.encryption_key:
-        return ciphertext
+        raise EncryptionUnavailable("ENCRYPTION_KEY не настроен: расшифровать нечем")
     return _derive_fernet(settings.encryption_key).decrypt(ciphertext.encode()).decode()
 
 

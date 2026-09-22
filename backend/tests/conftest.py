@@ -22,6 +22,17 @@ from app.models.transaction import Transaction
 from app.models.user import UserProfile
 
 
+@pytest.fixture(autouse=True)
+def encryption_key(monkeypatch):
+    """В бою ключ настроен, и тесты должны жить в том же мире.
+
+    Тесты, которым нужен именно ненастроенный ключ, обнуляют его сами.
+    """
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "encryption_key", "test-encryption-key")
+
+
 @pytest.fixture(scope="session")
 def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     loop = asyncio.new_event_loop()

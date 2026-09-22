@@ -8,6 +8,7 @@ services:
       DEBUG: "false"
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       MCP_TOKEN: ${MCP_TOKEN:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
