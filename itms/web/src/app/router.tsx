@@ -14,6 +14,9 @@ import { DocumentDetailPage } from "@/features/documents/DocumentDetailPage";
 import { DocumentsPage } from "@/features/documents/DocumentsPage";
 import { FloorplanPage } from "@/features/floorplans/FloorplanPage";
 import { FloorplansPage } from "@/features/floorplans/FloorplansPage";
+import { DatacenterPage } from "@/features/infrastructure/DatacenterPage";
+import { InfraFrame } from "@/features/infrastructure/InfraFrame";
+import { InfrastructurePage } from "@/features/infrastructure/InfrastructurePage";
 import { ImportPage } from "@/features/imports/ImportPage";
 import { IpamPage } from "@/features/ipam/IpamPage";
 import { LocationsPage } from "@/features/locations/LocationsPage";
@@ -25,6 +28,7 @@ import { RackEditorPage } from "@/features/racks/RackEditorPage";
 import { RacksPage } from "@/features/racks/RacksPage";
 import { NetworkPage } from "@/features/network/NetworkPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { WorkPage } from "@/features/work/WorkPage";
 
 import { AppShell } from "./layout/AppShell";
 import { RequireAuth } from "./RequireAuth";
@@ -40,23 +44,31 @@ export const router = createBrowserRouter([
     children: [
       { path: "/", element: <Navigate to="/dashboard" replace /> },
       { path: "/dashboard", element: <DashboardPage /> },
-      { path: "/ci", element: <CiListPage /> },
+      { path: "/work", element: <WorkPage /> },
       { path: "/ci/:ciId", element: <CiDetailPage /> },
-      { path: "/devices", element: <DevicesPage /> },
-      { path: "/network", element: <NetworkPage /> },
-      { path: "/ipam", element: <IpamPage /> },
-      { path: "/diagrams", element: <DiagramsPage /> },
       { path: "/diagrams/:diagramId", element: <DiagramEditorPage /> },
-      { path: "/racks", element: <RacksPage /> },
       { path: "/racks/:rackId", element: <RackEditorPage /> },
-      { path: "/floorplans", element: <FloorplansPage /> },
       { path: "/floorplans/:planId", element: <FloorplanPage /> },
       { path: "/projects", element: <ProjectsPage /> },
       { path: "/analytics", element: <AnalyticsPage /> },
       { path: "/projects/:projectId", element: <ProjectPage /> },
-      { path: "/power", element: <PowerPage /> },
+      {
+        element: <InfraFrame />,
+        children: [
+          { path: "/infrastructure", element: <InfrastructurePage /> },
+          { path: "/datacenter", element: <DatacenterPage /> },
+          { path: "/ci", element: <CiListPage /> },
+          { path: "/devices", element: <DevicesPage /> },
+          { path: "/network", element: <NetworkPage /> },
+          { path: "/ipam", element: <IpamPage /> },
+          { path: "/diagrams", element: <DiagramsPage /> },
+          { path: "/racks", element: <RacksPage /> },
+          { path: "/floorplans", element: <FloorplansPage /> },
+          { path: "/locations", element: <LocationsPage /> },
+          { path: "/power", element: <PowerPage /> },
+        ],
+      },
       { path: "/catalog", element: <CatalogPage /> },
-      { path: "/locations", element: <LocationsPage /> },
       { path: "/documents", element: <DocumentsPage /> },
       { path: "/documents/:documentId", element: <DocumentDetailPage /> },
       { path: "/directory", element: <DirectoryPage /> },

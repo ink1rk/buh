@@ -27,6 +27,7 @@ import {
 import type { DiagramFull } from "@/shared/api/types";
 import { useDebounced } from "@/shared/hooks";
 import { useUiStore } from "@/shared/store/ui";
+import { Badge, toneFor } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { Dialog } from "@/shared/ui/Dialog";
 import { Field, Input } from "@/shared/ui/Field";
@@ -286,6 +287,24 @@ function Editor({ diagramId }: { diagramId: string }) {
   }
 
   const selected = nodes.find((node) => node.id === selectedId);
+  const relatedIds = (() => {
+    if (!selectedId) return null;
+    const ids = new Set<string>([selectedId]);
+    for (const edge of edges) {
+      if (edge.source === selectedId) ids.add(edge.target);
+      if (edge.target === selectedId) ids.add(edge.source);
+    }
+    return ids;
+  })();
+  const visibleNodes = relatedIds
+    ? nodes.map((node) => ({ ...node, style: relatedIds.has(node.id) ? undefined : { opacity: 0.28 } }))
+    : nodes;
+  const visibleEdges = relatedIds
+    ? edges.map((edge) => ({
+        ...edge,
+        style: relatedIds.has(edge.source) && relatedIds.has(edge.target) ? undefined : { opacity: 0.2 },
+      }))
+    : edges;
   const colorMode: ColorMode = theme === "system" ? "system" : theme;
   const present = new Set(data.nodes.map((node) => node.ci_id).filter((id): id is string => Boolean(id)));
 
@@ -348,8 +367,8 @@ function Editor({ diagramId }: { diagramId: string }) {
       )}
       <div className="surface relative min-h-0 flex-1 overflow-hidden rounded-lg">
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          nodes={visibleNodes}
+          edges={visibleEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           nodeTypes={diagramNodeTypes}
@@ -380,6 +399,37 @@ function Editor({ diagramId }: { diagramId: string }) {
           <Controls />
           <MiniMap pannable zoomable />
         </ReactFlow>
+        {selected?.data.ciId && (
+          <aside className="surface absolute top-3 right-3 w-64 rounded-lg p-3 shadow-pop">
+            <p className="text-[11px] font-medium tracking-wide text-muted uppercase">
+              {selected.data.code ?? selected.data.ciType}
+            </p>
+            <p className="mt-1 text-sm font-semibold">{selected.data.label}</p>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {selected.data.status && (
+                <Badge tone={toneFor("ciStatus", selected.data.status)}>
+                  {te("ciStatus", selected.data.status)}
+                </Badge>
+              )}
+              {selected.data.criticality && (
+                <Badge tone={toneFor("criticality", selected.data.criticality)}>
+                  {te("criticality", selected.data.criticality)}
+                </Badge>
+              )}
+            </div>
+            {(selected.data.hostname || selected.data.mgmtIp) && (
+              <p className="mt-2 font-mono text-xs text-muted">
+                {selected.data.hostname ?? selected.data.mgmtIp}
+              </p>
+            )}
+            {selected.data.inletW != null && (
+              <p className="mt-1 text-xs text-muted tabular-nums">{selected.data.inletW} Вт</p>
+            )}
+            <Button className="mt-3 w-full" onClick={() => navigate(`/ci/${selected.data.ciId}`)}>
+              {t("ci.title")}
+            </Button>
+          </aside>
+        )}
         <p className="pointer-events-none absolute bottom-2 left-2 text-[11px] text-muted">
           {t("diagrams.doubleClick")}
         </p>

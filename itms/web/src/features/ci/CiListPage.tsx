@@ -30,6 +30,8 @@ export function CiListPage() {
   const ciType = params.get("type") ?? "";
   const status = params.get("status") ?? "";
   const locationId = params.get("location") ?? "";
+  const criticality = params.get("criticality") ?? "";
+  const missing = params.get("missing") ?? "";
   const archived = params.get("archived") === "1";
   const sort = params.get("sort") ?? "name";
   const offset = Number(params.get("offset") ?? 0);
@@ -52,12 +54,15 @@ export function CiListPage() {
       ci_type: ciType ? [ciType] : undefined,
       status: status ? [status] : undefined,
       location_id: locationId || undefined,
+      criticality: criticality ? [criticality] : undefined,
+      without_owner: missing === "owner" ? true : undefined,
+      without_location: missing === "location" ? true : undefined,
       archived,
       sort,
       limit: PAGE_SIZE,
       offset,
     }),
-    [debouncedQ, ciType, status, locationId, archived, sort, offset],
+    [debouncedQ, ciType, status, locationId, criticality, missing, archived, sort, offset],
   );
 
   const { data, isFetching } = useCiList(query);
@@ -126,7 +131,7 @@ export function CiListPage() {
     },
   ];
 
-  const hasFilters = Boolean(q || ciType || status || locationId || archived);
+  const hasFilters = Boolean(q || ciType || status || locationId || criticality || missing || archived);
 
   return (
     <>
@@ -166,6 +171,16 @@ export function CiListPage() {
             options={(meta?.ci_statuses ?? []).map((value) => ({
               value,
               label: te("ciStatus", value),
+            }))}
+          />
+          <Select
+            value={criticality}
+            placeholder={`${t("ci.criticality")}: ${t("app.all")}`}
+            onChange={(event) => patch({ criticality: event.target.value })}
+            className="w-44"
+            options={(meta?.criticalities ?? []).map((value) => ({
+              value,
+              label: te("criticality", value),
             }))}
           />
           <Select

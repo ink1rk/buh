@@ -236,8 +236,18 @@ export function ProjectsPage() {
     {
       key: "progress",
       header: t("projects.progress"),
-      width: "90px",
-      render: (row) => <span className="tabular-nums">{row.progress_pct}%</span>,
+      width: "9rem",
+      render: (row) => (
+        <span className="flex items-center gap-2">
+          <span className="h-1 w-16 overflow-hidden rounded-full bg-[rgb(var(--surface-muted))]">
+            <span
+              className="block h-full rounded-full bg-[rgb(var(--accent))]"
+              style={{ width: `${Math.min(row.progress_pct, 100)}%` }}
+            />
+          </span>
+          <span className="tabular-nums">{row.progress_pct}%</span>
+        </span>
+      ),
     },
     {
       key: "open",

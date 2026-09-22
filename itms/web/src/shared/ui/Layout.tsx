@@ -16,7 +16,7 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn("surface shadow-card rounded-xl", className)}>
+    <section className={cn("surface shadow-card rounded-lg", className)}>
       {(title || actions) && (
         <header className="flex items-center justify-between gap-3 border-b border-app px-4 py-3">
           <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
@@ -40,7 +40,7 @@ export function PageHeader({
   return (
     <header className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-[1.65rem] leading-none font-semibold tracking-[-0.03em]">{title}</h1>
+        <h1 className="text-xl leading-tight font-semibold tracking-tight">{title}</h1>
         {subtitle && <p className="mt-1.5 max-w-2xl text-sm text-muted">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -66,9 +66,9 @@ export function Metric({
         ? "text-[rgb(var(--warn))]"
         : "text-app";
   return (
-    <div className="surface shadow-card rounded-xl px-4 py-3.5" title={hint}>
-      <p className="text-[0.7rem] font-medium tracking-[0.12em] text-muted uppercase">{label}</p>
-      <p className={cn("mt-2 text-[1.65rem] leading-none font-semibold tabular-nums tracking-tight", color)}>
+    <div className="surface shadow-card rounded-lg px-3.5 py-3" title={hint}>
+      <p className="text-[0.7rem] font-medium tracking-[0.08em] text-muted uppercase">{label}</p>
+      <p className={cn("mt-1.5 text-2xl leading-none font-semibold tabular-nums tracking-tight", color)}>
         {value}
       </p>
     </div>

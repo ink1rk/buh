@@ -157,6 +157,20 @@ async def test_critical_object_cannot_be_deleted(client: AsyncClient, api: str) 
     assert archived_listing.json()["total"] == 1
 
 
+async def test_ci_list_filters_criticality_and_missing_owner(client: AsyncClient, api: str) -> None:
+    critical = await client.post(
+        f"{api}/ci", json={"ci_type": "DEVICE", "name": "Критичный", "criticality": "CRITICAL"}
+    )
+    await client.post(
+        f"{api}/ci", json={"ci_type": "OTHER", "name": "Обычный", "criticality": "LOW"}
+    )
+    by_criticality = await client.get(f"{api}/ci", params={"criticality": "CRITICAL"})
+    assert by_criticality.status_code == 200
+    assert [item["id"] for item in by_criticality.json()["items"]] == [critical.json()["id"]]
+    missing = await client.get(f"{api}/ci", params={"without_owner": True})
+    assert missing.json()["total"] >= 2
+
+
 async def test_ordinary_object_can_be_soft_deleted(client: AsyncClient, api: str) -> None:
     created = await client.post(
         f"{api}/ci", json={"ci_type": "OTHER", "name": "Черновик", "criticality": "LOW"}

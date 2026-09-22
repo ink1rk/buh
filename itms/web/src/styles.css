@@ -24,9 +24,9 @@
   --border: 226 222 214;
   --text: 28 27 24;
   --text-muted: 112 107 99;
-  --accent: 14 110 102;
-  --accent-ink: 255 255 253;
-  --accent-soft: 222 238 234;
+  --accent: 37 90 214;
+  --accent-ink: 255 255 255;
+  --accent-soft: 226 234 252;
   --ok: 15 122 72;
   --warn: 156 96 8;
   --danger: 176 48 42;
@@ -35,21 +35,21 @@
 }
 
 .dark {
-  --bg: 11 12 14;
-  --surface: 20 22 26;
-  --surface-muted: 30 33 38;
-  --sidebar: 15 16 19;
-  --border: 46 49 56;
-  --text: 236 236 234;
-  --text-muted: 156 158 166;
-  --accent: 126 212 196;
-  --accent-ink: 10 28 26;
-  --accent-soft: 24 48 45;
-  --ok: 92 204 150;
-  --warn: 228 180 92;
-  --danger: 242 128 120;
-  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.04), 0 12px 32px rgb(0 0 0 / 0.28);
-  --shadow-pop: 0 28px 72px rgb(0 0 0 / 0.55);
+  --bg: 9 11 15;
+  --surface: 16 19 25;
+  --surface-muted: 22 26 34;
+  --sidebar: 12 14 19;
+  --border: 35 41 54;
+  --text: 232 235 242;
+  --text-muted: 148 156 172;
+  --accent: 56 112 246;
+  --accent-ink: 255 255 255;
+  --accent-soft: 22 36 68;
+  --ok: 74 186 132;
+  --warn: 214 164 72;
+  --danger: 224 96 96;
+  --shadow-card: 0 0 0 transparent;
+  --shadow-pop: 0 24px 64px rgb(0 0 0 / 0.5);
 }
 
 @layer base {

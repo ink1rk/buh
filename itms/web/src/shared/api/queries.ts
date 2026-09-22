@@ -150,6 +150,9 @@ export interface CiListParams {
   location_id?: string;
   owner_employee_id?: string;
   tag?: string[];
+  criticality?: string[];
+  without_owner?: boolean;
+  without_location?: boolean;
   archived?: boolean;
   sort?: string;
   limit: number;

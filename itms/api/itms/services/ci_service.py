@@ -21,7 +21,7 @@ from itms.domain.search import ci_document, normalize_keywords
 from itms.models.audit import AuditChange, AuditLog
 from itms.models.cmdb import Ci, CiRelation, CiTag, Location, Tag
 from itms.models.documents import DocumentLink
-from itms.models.enums import ACYCLIC_RELATIONS, CiStatus, CiType, RelationType
+from itms.models.enums import ACYCLIC_RELATIONS, CiStatus, CiType, Criticality, RelationType
 from itms.services import search_service
 
 
@@ -65,6 +65,9 @@ class CiFilter:
     include_sublocations: bool = True
     owner_employee_id: uuid.UUID | None = None
     tag: list[str] | None = None
+    criticality: list[Criticality] | None = None
+    without_owner: bool = False
+    without_location: bool = False
     archived: bool = False
     sort: str = "name"
     limit: int = 50
@@ -121,6 +124,12 @@ async def list_ci(session: AsyncSession, flt: CiFilter) -> tuple[list[Ci], int]:
         stmt = stmt.where(Ci.status.in_(flt.status))
     if flt.owner_employee_id:
         stmt = stmt.where(Ci.owner_employee_id == flt.owner_employee_id)
+    if flt.without_owner:
+        stmt = stmt.where(Ci.owner_employee_id.is_(None))
+    if flt.without_location:
+        stmt = stmt.where(Ci.location_id.is_(None))
+    if flt.criticality:
+        stmt = stmt.where(Ci.criticality.in_(flt.criticality))
     if flt.location_id:
         if flt.include_sublocations:
             ids = await _location_subtree_ids(session, flt.location_id)
