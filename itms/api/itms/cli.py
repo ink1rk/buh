@@ -559,17 +559,19 @@ async def _ensure_demo_transition(session: AsyncSession) -> None:
         return
     snap = (
         await session.execute(
-            select(StateSnapshot.id).where(StateSnapshot.project_id == project.id)
+            select(StateSnapshot.id).where(StateSnapshot.project_id == project.id).limit(1)
         )
     ).scalar_one_or_none()
     if snap is None:
         await transition_service.take_snapshot(session, project.id, "Текущее состояние")
     plan = (
         await session.execute(
-            select(PlannedChange.id).where(
+            select(PlannedChange.id)
+            .where(
                 PlannedChange.project_id == project.id,
                 PlannedChange.status != "CANCELLED",
             )
+            .limit(1)
         )
     ).scalar_one_or_none()
     if plan is None:
