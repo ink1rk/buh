@@ -176,6 +176,72 @@ def test_the_owner_can_silence_an_address():
     assert looks_personal("jobs@hh.ru", ["From"], settings())
 
 
+def test_gmail_explains_that_it_wants_an_app_password():
+    """Ответ Gmail на пароль аккаунта — самая частая ошибка настройки."""
+    from providers.email import login_problem
+
+    refusal = ("[ALERT] Application-specific password required: "
+               "https://support.google.com/accounts/answer/185833 (Failure)")
+    assert "пароль приложения" in login_problem(refusal)
+
+
+@pytest.mark.parametrize("refusal", [
+    "b'[AUTHENTICATIONFAILED] Invalid credentials'",
+    "Authentication failed.",
+    "b'Login failure or POP3/IMAP is disabled'",
+    "535 Username and Password not accepted",
+])
+def test_a_refused_login_is_explained_in_words(refusal):
+    from providers.email import login_problem
+
+    assert login_problem(refusal)
+
+
+@pytest.mark.parametrize("trouble", [
+    "timed out", "Connection reset by peer", "нет папки INBOX"])
+def test_troubles_other_than_access_are_not_mistaken_for_it(trouble):
+    """Иначе обрыв связи выглядел бы как неверный пароль и не повторялся."""
+    from providers.email import login_problem
+
+    assert login_problem(trouble) is None
+
+
+def test_a_wrong_password_is_not_retried(monkeypatch):
+    """Повтор не сделает пароль верным, зато провайдер заблокирует ящик."""
+    import imaplib
+
+    from core.actions import ProviderError
+
+    def refuse(*args, **kwargs):
+        raise imaplib.IMAP4.error(
+            "b'[AUTHENTICATIONFAILED] Invalid credentials (Failure)'")
+
+    monkeypatch.setattr(imaplib, "IMAP4_SSL", refuse)
+
+    with pytest.raises(ProviderError) as caught:
+        Mailbox(ACCOUNT, settings()).check()
+
+    assert caught.value.retryable is False
+    assert "логин или пароль не приняты" in str(caught.value)
+
+
+def test_a_network_failure_is_still_worth_retrying(monkeypatch):
+    """Обрыв связи — временная беда, в отличие от неверного пароля."""
+    import imaplib
+
+    from core.actions import ProviderError
+
+    def drop(*args, **kwargs):
+        raise OSError("Connection reset by peer")
+
+    monkeypatch.setattr(imaplib, "IMAP4_SSL", drop)
+
+    with pytest.raises(ProviderError) as caught:
+        Mailbox(ACCOUNT, settings()).check()
+
+    assert caught.value.retryable is True
+
+
 @pytest.mark.parametrize("address", [
     "echeck@1-ofd.ru", "receipt@shop.ru", "invoice@billing.com",
     "order-3312@market.ru", "noreply-service@bank.ru", "alerts@monitor.io"])

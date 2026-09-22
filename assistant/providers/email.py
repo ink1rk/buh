@@ -46,6 +46,35 @@ BULK_HEADERS = ("list-unsubscribe", "list-id", "list-post", "auto-submitted",
 MUTED_KEY = "email_muted_senders"
 ALLOWED_KEY = "email_allowed_senders"
 
+# Почтовые серверы отвечают на отказ по-своему и по-английски. Владельцу нужно
+# не это, а что именно поправить: самая частая ошибка — пароль аккаунта вместо
+# пароля приложения, и по ответу сервера её видно точно.
+LOGIN_PROBLEMS = (
+    ("application-specific password",
+     "нужен пароль приложения, а не пароль аккаунта "
+     "(Google Аккаунт → Безопасность → Пароли приложений)"),
+    ("imap access is disabled",
+     "в настройках ящика выключен доступ по IMAP"),
+    ("imap is disabled",
+     "в настройках ящика выключен доступ по IMAP"),
+    ("login via application password",
+     "нужен пароль приложения, а не пароль аккаунта"),
+    ("authenticationfailed", "логин или пароль не приняты"),
+    ("invalid credentials", "логин или пароль не приняты"),
+    ("authentication failed", "логин или пароль не приняты"),
+    ("login failure", "логин или пароль не приняты"),
+    ("username and password not accepted", "логин или пароль не приняты"),
+)
+
+
+def login_problem(error):
+    """Отказ на входе, переведённый в действие. None — дело не в доступе."""
+    text = str(error).lower()
+    for marker, advice in LOGIN_PROBLEMS:
+        if marker in text:
+            return advice
+    return None
+
 QUOTE_LINE = re.compile(r"^\s*(>|On .+ wrote:|\d{1,2}\.\d{1,2}\.\d{2,4}.*(писал|wrote))",
                         re.IGNORECASE)
 SIGNATURE = re.compile(r"^\s*(--\s*$|С уважением|Best regards|Sent from my)",
@@ -196,7 +225,16 @@ class Mailbox:
                                        ssl_context=ssl.create_default_context())
             client.login(self.account.user, self.account.password)
             return client
-        except (imaplib.IMAP4.error, OSError) as e:
+        except imaplib.IMAP4.error as e:
+            # Неверный пароль не станет верным от повтора, а настойчивые
+            # попытки входа провайдер считает подозрительными и блокирует ящик.
+            advice = login_problem(e)
+            if advice:
+                raise ProviderError(f"{self.account.name}: {advice}",
+                                    retryable=False) from e
+            raise ProviderError(f"IMAP {self.account.name}: {e}",
+                                retryable=True) from e
+        except OSError as e:
             raise ProviderError(f"IMAP {self.account.name}: {e}", retryable=True) from e
 
     def check(self):
@@ -360,8 +398,9 @@ class EmailActionProvider(ActionProvider):
                 server.login(account.user, account.password)
                 server.send_message(message)
         except smtplib.SMTPAuthenticationError as e:
-            raise ProviderError(f"SMTP {account.name}: не пускает — {e}",
-                                retryable=False) from e
+            raise ProviderError(
+                f"{account.name}: {login_problem(e) or 'логин или пароль не приняты'}",
+                retryable=False) from e
         except (smtplib.SMTPException, OSError) as e:
             raise ProviderError(f"SMTP {account.name}: {e}", retryable=True) from e
 

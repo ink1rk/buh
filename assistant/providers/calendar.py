@@ -249,8 +249,9 @@ class CalDAV:
         except httpx.HTTPError as e:
             raise ProviderError(f"caldav: {type(e).__name__}: {e}", retryable=True)
         if response.status_code in (401, 403):
-            raise ProviderError("caldav: не приняты логин или пароль приложения",
-                                retryable=False)
+            raise ProviderError(
+                f"{self.account.name}: логин или пароль не приняты "
+                "(нужен пароль приложения, а не пароль аккаунта)", retryable=False)
         if response.status_code >= 400:
             raise ProviderError(f"caldav: {response.status_code}", retryable=False)
         return response
