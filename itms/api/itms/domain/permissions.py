@@ -18,6 +18,8 @@ class Permission(StrEnum):
     CI_WRITE = "ci:write"
     CI_DELETE = "ci:delete"
     LOCATION_WRITE = "location:write"
+    CATALOG_WRITE = "catalog:write"
+    NETWORK_WRITE = "network:write"
     DIRECTORY_READ = "directory:read"
     DIRECTORY_WRITE = "directory:write"
     DOCUMENT_READ = "document:read"
@@ -45,6 +47,8 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
         {
             Permission.CI_WRITE,
             Permission.LOCATION_WRITE,
+            Permission.CATALOG_WRITE,
+            Permission.NETWORK_WRITE,
             Permission.DOCUMENT_WRITE,
             Permission.FILE_UPLOAD,
             Permission.EXPORT_RUN,

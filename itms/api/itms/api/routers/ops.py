@@ -24,18 +24,27 @@ from itms.models.enums import (
     CI_STATUS_TRANSITIONS,
     LOCATION_PARENTS,
     AuditAction,
+    CableCategory,
+    CableMedium,
     CiStatus,
     CiType,
+    ConnectionStatus,
     Criticality,
+    DeviceRole,
     DocumentKind,
     DocumentStatus,
     EmployeeStatus,
     Environment,
     ImportTarget,
+    InterfaceType,
+    IpRole,
+    IpStatus,
     LocationType,
+    PanelSide,
     RelationType,
     SupportLine,
     UserRole,
+    VlanMode,
 )
 from itms.services import audit_service, dashboard_service, import_service, search_service
 
@@ -189,6 +198,15 @@ async def meta() -> MetaResponse:
             target.value: list(fields)
             for target, fields in import_service.REQUIRED_FIELDS.items()
         },
+        device_roles=[e.value for e in DeviceRole],
+        interface_types=[e.value for e in InterfaceType],
+        cable_media=[e.value for e in CableMedium],
+        cable_categories=[e.value for e in CableCategory],
+        connection_statuses=[e.value for e in ConnectionStatus],
+        vlan_modes=[e.value for e in VlanMode],
+        ip_statuses=[e.value for e in IpStatus],
+        ip_roles=[e.value for e in IpRole],
+        panel_sides=[e.value for e in PanelSide],
         power_defaults={
             "voltage_single_v": settings.power_voltage_single_v,
             "voltage_three_v": settings.power_voltage_three_v,

@@ -116,6 +116,147 @@ ACYCLIC_RELATIONS = frozenset({RelationType.DEPENDS_ON, RelationType.PART_OF,
                                RelationType.MEMBER_OF})
 
 
+class DeviceRole(StrEnum):
+    """Роль устройства. Одна таблица device на все роли: набор полей совпадает на 95%."""
+
+    SERVER = "SERVER"
+    ROUTER = "ROUTER"
+    L3_SWITCH = "L3_SWITCH"
+    L2_SWITCH = "L2_SWITCH"
+    FIREWALL = "FIREWALL"
+    ACCESS_POINT = "ACCESS_POINT"
+    WLC = "WLC"
+    MODEM = "MODEM"
+    PATCH_PANEL = "PATCH_PANEL"
+    WALL_OUTLET = "WALL_OUTLET"
+    STORAGE = "STORAGE"
+    KVM = "KVM"
+    UPS = "UPS"
+    PDU = "PDU"
+    PRINTER = "PRINTER"
+    OTHER = "OTHER"
+
+
+#: Пассивное оборудование: линк проходит его насквозь через paired_interface_id.
+PASSIVE_DEVICE_ROLES = frozenset({DeviceRole.PATCH_PANEL, DeviceRole.WALL_OUTLET})
+
+
+class InterfaceType(StrEnum):
+    RJ45 = "RJ45"
+    SFP = "SFP"
+    SFP_PLUS = "SFP_PLUS"
+    SFP28 = "SFP28"
+    QSFP_PLUS = "QSFP_PLUS"
+    QSFP28 = "QSFP28"
+    LC = "LC"
+    SC = "SC"
+    CONSOLE = "CONSOLE"
+    USB = "USB"
+    WIRELESS = "WIRELESS"
+    VIRTUAL = "VIRTUAL"
+    LAG = "LAG"
+    VLAN_IF = "VLAN_IF"
+    OTHER = "OTHER"
+
+
+#: Логические интерфейсы: у них не бывает кабеля, но бывают адреса и VLAN.
+LOGICAL_INTERFACE_TYPES = frozenset(
+    {InterfaceType.VIRTUAL, InterfaceType.LAG, InterfaceType.VLAN_IF}
+)
+
+#: Физические порты, которые учитываются в отчёте «свободные порты».
+PATCHABLE_INTERFACE_TYPES = frozenset(
+    {
+        InterfaceType.RJ45,
+        InterfaceType.SFP,
+        InterfaceType.SFP_PLUS,
+        InterfaceType.SFP28,
+        InterfaceType.QSFP_PLUS,
+        InterfaceType.QSFP28,
+        InterfaceType.LC,
+        InterfaceType.SC,
+    }
+)
+
+
+class CableMedium(StrEnum):
+    COPPER = "COPPER"
+    FIBER = "FIBER"
+    COAX = "COAX"
+    WIRELESS = "WIRELESS"
+    OTHER = "OTHER"
+
+
+#: Какая среда физически подходит разъёму. Несовпадение — предупреждение, а не запрет.
+INTERFACE_MEDIA: dict[InterfaceType, frozenset[CableMedium]] = {
+    InterfaceType.RJ45: frozenset({CableMedium.COPPER}),
+    InterfaceType.SFP: frozenset({CableMedium.FIBER, CableMedium.COPPER}),
+    InterfaceType.SFP_PLUS: frozenset({CableMedium.FIBER, CableMedium.COPPER}),
+    InterfaceType.SFP28: frozenset({CableMedium.FIBER, CableMedium.COPPER}),
+    InterfaceType.QSFP_PLUS: frozenset({CableMedium.FIBER, CableMedium.COPPER}),
+    InterfaceType.QSFP28: frozenset({CableMedium.FIBER, CableMedium.COPPER}),
+    InterfaceType.LC: frozenset({CableMedium.FIBER}),
+    InterfaceType.SC: frozenset({CableMedium.FIBER}),
+    InterfaceType.CONSOLE: frozenset({CableMedium.COPPER}),
+    InterfaceType.USB: frozenset({CableMedium.COPPER}),
+    InterfaceType.WIRELESS: frozenset({CableMedium.WIRELESS}),
+    InterfaceType.OTHER: frozenset(CableMedium),
+}
+
+
+class CableCategory(StrEnum):
+    CAT5E = "CAT5E"
+    CAT6 = "CAT6"
+    CAT6A = "CAT6A"
+    CAT7 = "CAT7"
+    OM3 = "OM3"
+    OM4 = "OM4"
+    OM5 = "OM5"
+    OS2 = "OS2"
+    OTHER = "OTHER"
+
+
+class ConnectionStatus(StrEnum):
+    PLANNED = "PLANNED"
+    RESERVED = "RESERVED"
+    ACTIVE = "ACTIVE"
+    FAULTY = "FAULTY"
+    DECOMMISSIONED = "DECOMMISSIONED"
+
+
+#: Статусы, которые занимают порт: второй такой кабель на интерфейс завести нельзя.
+OCCUPYING_CONNECTION_STATUSES = frozenset(
+    {ConnectionStatus.ACTIVE, ConnectionStatus.RESERVED}
+)
+
+
+class PanelSide(StrEnum):
+    FRONT = "FRONT"
+    REAR = "REAR"
+
+
+class VlanMode(StrEnum):
+    ACCESS = "ACCESS"
+    TAGGED = "TAGGED"
+    NATIVE = "NATIVE"
+
+
+class IpStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    RESERVED = "RESERVED"
+    DHCP = "DHCP"
+    DEPRECATED = "DEPRECATED"
+
+
+class IpRole(StrEnum):
+    PRIMARY = "PRIMARY"
+    SECONDARY = "SECONDARY"
+    MANAGEMENT = "MANAGEMENT"
+    VIP = "VIP"
+    GATEWAY = "GATEWAY"
+    OTHER = "OTHER"
+
+
 class DocumentStatus(StrEnum):
     DRAFT = "DRAFT"
     IN_REVIEW = "IN_REVIEW"

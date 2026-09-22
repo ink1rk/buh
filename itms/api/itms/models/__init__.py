@@ -5,6 +5,7 @@
 
 from itms.models.audit import AuditChange, AuditLog
 from itms.models.base import Base
+from itms.models.catalog import DeviceModel, Manufacturer, PortTemplate
 from itms.models.cmdb import (
     Ci,
     CiRelation,
@@ -32,6 +33,17 @@ from itms.models.documents import (
     DocumentVersion,
     FileObject,
 )
+from itms.models.network import (
+    CableRoute,
+    Connection,
+    Device,
+    Interface,
+    InterfaceVlan,
+    IpAddress,
+    Prefix,
+    Vlan,
+    Vrf,
+)
 from itms.models.system import AppSetting, ImportJob, OutboxEvent
 
 __all__ = [
@@ -40,12 +52,16 @@ __all__ = [
     "AuditChange",
     "AuditLog",
     "Base",
+    "CableRoute",
     "Ci",
     "CiRelation",
     "CiTag",
+    "Connection",
     "CustomFieldDef",
     "CustomFieldValue",
     "Department",
+    "Device",
+    "DeviceModel",
     "Document",
     "DocumentFolder",
     "DocumentLink",
@@ -54,12 +70,20 @@ __all__ = [
     "EmployeeResponsibility",
     "FileObject",
     "ImportJob",
+    "Interface",
+    "InterfaceVlan",
+    "IpAddress",
     "Location",
+    "Manufacturer",
     "Organization",
     "OutboxEvent",
+    "PortTemplate",
+    "Prefix",
     "ResponsibilityArea",
     "SearchIndex",
     "Tag",
     "UserAccount",
     "UserSession",
+    "Vlan",
+    "Vrf",
 ]
