@@ -255,3 +255,78 @@ def test_due_parsing_understands_relative_hours():
 def test_due_parsing_gives_up_gracefully():
     assert parse_due("когда-нибудь") is None
     assert parse_due("") is None
+
+
+# --- день с людьми, без телефона -----------------------------------------
+def _at(hour, minute=0, day=21):
+    import datetime
+    from core.config import config
+    return datetime.datetime(2026, 9, day, hour, minute, tzinfo=config.tz).timestamp()
+
+
+def _say(platform, external, who, sender, hour, minute=0, day=21,
+        contact_id=None, title=None):
+    conversation = conversations_mod.get_or_create(
+        platform, external, contact_id=contact_id, title=title or who)
+    conversations_mod.add_message(conversations_mod.Message(
+        conversation_id=conversation.id, text="текст", sender_type=sender,
+        ts=_at(hour, minute, day=day)))
+    return conversation
+
+
+def test_someone_who_wrote_and_got_nothing_back_is_waiting():
+    from domain import people_day
+    contact = make("Саша")
+    _say("telegram", "1", "Саша", "CONTACT", hour=10, contact_id=contact.id)
+
+    [waiting] = people_day.snapshot(now=_at(15))["waiting"]
+
+    assert waiting["who"] == "Саша"
+    assert "Саша" in people_day.digest(now=_at(15))
+
+
+def test_your_reply_closes_the_debt():
+    from domain import people_day
+    contact = make("Саша")
+    _say("telegram", "1", "Саша", "CONTACT", hour=10, contact_id=contact.id)
+    _say("telegram", "1", "Саша", "OWNER", hour=11, contact_id=contact.id)
+
+    assert people_day.snapshot(now=_at(15))["waiting"] == []
+
+
+def test_a_message_from_an_hour_ago_is_not_a_debt_yet():
+    from domain import people_day
+    _say("telegram", "1", "Аня", "CONTACT", hour=14, minute=0)
+
+    assert people_day.snapshot(now=_at(15))["waiting"] == []
+
+
+def test_the_same_person_in_telegram_and_mail_is_one_debt():
+    from domain import people_day
+    contact = make("Саша")
+    _say("telegram", "1", "Саша", "CONTACT", hour=9, contact_id=contact.id)
+    _say("email", "sasha@example.com", "Саша", "CONTACT", hour=12,
+         contact_id=contact.id)
+
+    assert len(people_day.snapshot(now=_at(16))["waiting"]) == 1
+
+
+def test_talking_to_the_assistant_is_not_someone_waiting():
+    from domain import people_day
+    _say("telegram:bot", "owner", "Джарвис", "CONTACT", hour=9)
+
+    assert people_day.snapshot(now=_at(15))["waiting"] == []
+    assert people_day.digest(now=_at(15)) == ""
+
+
+def test_today_counts_messages_without_quoting_them():
+    from domain import people_day
+    _say("telegram", "1", "Саша", "CONTACT", hour=10)
+    _say("email", "a@b.c", "Аня", "OWNER", hour=11)
+
+    data = people_day.snapshot(now=_at(15))
+    text = people_day.context(now=_at(15))
+
+    assert data["incoming"] == 1 and data["outgoing"] == 1
+    assert "текст" not in text
+    assert "сегодня 1 входящих, 1 исходящих" in text

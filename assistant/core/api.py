@@ -12,6 +12,7 @@ from domain import contacts as contacts_mod
 from domain import conversations as conversations_mod
 from domain import episodes as episodes_mod
 from domain import memory as memory_mod
+from domain import people_day
 
 from . import audit, pipeline
 from .bootstrap import get_core
@@ -391,23 +392,11 @@ def _greeting(hour):
     return "Добрый вечер"
 
 
-def _phone_block(core):
-    """Телефон на главном экране — только если мост отвечает.
-
-    Обзор собирается на каждый заход, а телефон может молчать: его молчание
-    не должно превращаться в пустой экран.
-    """
-    from .mcp import McpError
-
-    if not core.mcp.names():
-        return None
-    try:
-        answer = core.mcp.call_tool("phone_today")
-    except McpError:
-        return None
-    data = answer.get("data") or {}
-    return {"text": answer.get("text", ""), "health": data.get("health", {}),
-            "attention": (data.get("attention") or [])[:5]}
+def _people_block():
+    """Кто писал и кто ждёт — из переписки, которая уже в ядре."""
+    data = people_day.snapshot()
+    data["text"] = people_day.digest(data)
+    return data
 
 
 @router.get("/overview")
@@ -450,7 +439,7 @@ def api_overview():
                       "i_owe": len(mine), "waiting": len(theirs),
                       "overdue": len(overdue)},
         "suggestions": suggestions,
-        "phone": _phone_block(core),
+        "people": _people_block(),
         "approvals": approvals,
         "i_owe": with_names(mine),
         "waiting": with_names(theirs),

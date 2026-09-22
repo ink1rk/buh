@@ -459,23 +459,24 @@ def weather_context():
         return f"(погода недоступна: {e})"
 
 
-def phone_context():
-    """Телефон и здоровье — через мост, подключённый по MCP.
+def people_context():
+    """Кто писал и кто ждёт — из переписки, которая уже лежит в ядре.
 
-    Мост считает нормы сам, поэтому сюда приезжает уже готовый человеческий
-    текст: модели нужно «спал на два часа меньше обычного», а не таблица
-    замеров, которую она пересчитает с ошибкой.
+    Телефон для этого не опрашиваем: Telegram и почта приходят сами.
     """
     try:
-        core = get_core()
-        if not core.mcp.names():
-            return ""
-        answer = cached("phone.today", 120,
-                        lambda: core.mcp.call_tool("phone_today"))
-        text = answer.get("text") or ""
-        return f"Телефон и здоровье. {text}" if text else ""
+        from domain import people_day
+        return people_day.context()
     except Exception as e:
-        return f"(мост с телефоном недоступен: {e})"
+        return f"(переписка недоступна: {e})"
+
+
+def people_line():
+    try:
+        from domain import people_day
+        return people_day.digest()
+    except Exception:
+        return ""
 
 
 def news_items(limit=6):
@@ -654,9 +655,7 @@ def compose_briefing(use_llm=True, fmt="html", evening=False, news_limit=6):
         news_data = news.context(news_limit)
     except Exception:
         news_block = news_data = ""
-    phone_line = phone_context().replace("Телефон и здоровье. ", "")
-    if phone_line.startswith("("):
-        phone_line = ""              # мост молчит — в брифинге об этом ни к чему
+    people = people_line()
     try:
         tg = tg_unread_data(limit=4)
         chats = tg.get("chats") or []
@@ -671,7 +670,7 @@ def compose_briefing(use_llm=True, fmt="html", evening=False, news_limit=6):
     if use_llm:
         lead = briefing_lead([f"Погода. {weather}", f"Финансы. {fin_line}", news_data,
                               f"Telegram. {tg_line}",
-                              f"Телефон и здоровье. {phone_line}" if phone_line else ""],
+                              f"Люди. {people}" if people else ""],
                              evening=evening)
 
     html = fmt == "html"
@@ -686,8 +685,8 @@ def compose_briefing(use_llm=True, fmt="html", evening=False, news_limit=6):
     if lead:
         out += [italic(lead), ""]
     out += [f"{weather_ico} {bold('Погода')}", weather, ""]
-    if phone_line:
-        out += [f"⌚ {bold('Самочувствие')}", phone_line, ""]
+    if people:
+        out += [f"💬 {bold('Люди')}", people, ""]
     out += [f"💰 {bold('Финансы')}", fin_line, ""]
     if news_block:
         out += [f"📰 {bold('Главное в новостях')}", news_block, ""]
@@ -712,9 +711,9 @@ def briefing_voice(evening=False, news_limit=4):
                      f"днём до {w['max']:.0f}, осадки {w['rain']:.0f} процентов.")
     except Exception:
         pass
-    phone_line = phone_context().replace("Телефон и здоровье. ", "")
-    if phone_line and not phone_line.startswith("("):
-        parts.append(phone_line.replace(";", ",") + ".")
+    people = people_line()
+    if people:
+        parts.append(people.replace(";", ",") + ".")
     try:
         fin = finance_data()
         parts.append(f"Капитал {money_voice(fin['current'])}, "
@@ -853,12 +852,18 @@ def context_blocks(intents, text=""):
         blocks.append(weather_context())
     if "news" in intents:
         blocks.append(news_context(8))
-    if "telegram" in intents:
-        blocks.append(tg_unread_context(12))
+    if "telegram" in intents or "health" in intents:
+        blocks.append(tg_unread_context(12) if "telegram" in intents else "")
+        blocks.append(people_context())
+    if "health" in intents:
+        # Сон, пульс и звонки с телефона сюда не приходят. Выдумывать их
+        # хуже, чем сказать, что данных нет.
+        blocks.append(
+            "Здоровье с часов и журнал звонков не отслеживаются: "
+            "телефон ничего не выгружает, и настраивать эту выгрузку не нужно. "
+            "Цифр сна, шагов и пульса нет — не придумывай их.")
     if "trading" in intents:
         blocks.append(channel_context(6, 24))
-    if "health" in intents:
-        blocks.append(phone_context())
     return [b for b in blocks if b]
 
 
