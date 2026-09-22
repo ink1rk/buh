@@ -18,6 +18,8 @@ class FinancialHealth(BaseModel):
     label: str
     factors: list[HealthFactor]
     summary: str
+    # Ложь: оценивать нечего. Число в этом случае показывать нельзя.
+    known: bool = True
 
 
 class DailyWidgetOut(ORMModel):

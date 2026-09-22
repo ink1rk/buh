@@ -188,6 +188,7 @@ export function DashboardPage() {
           <HealthRing
             score={data.health.score}
             label={data.health.label}
+            known={data.health.known}
             onClick={() => setHealthOpen(true)}
           />
           <p className="mt-3 max-w-xs text-center text-sm text-[var(--text-soft)]">{data.health.summary}</p>
@@ -299,7 +300,9 @@ export function DashboardPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="display text-xl font-semibold">Почему оценка {data.health.score}?</h3>
+                <h3 className="display text-xl font-semibold">
+                  {data.health.known ? `Почему оценка ${data.health.score}?` : 'Оценка появится позже'}
+                </h3>
                 <button type="button" onClick={() => setHealthOpen(false)} className="rounded-full p-2 hover:bg-white/10">
                   <X className="h-4 w-4" />
                 </button>

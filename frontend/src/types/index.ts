@@ -33,6 +33,7 @@ export interface FinancialHealth {
   label: string
   factors: HealthFactor[]
   summary: string
+  known: boolean
 }
 
 export interface Account {

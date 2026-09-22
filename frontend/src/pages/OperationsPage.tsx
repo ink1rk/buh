@@ -337,7 +337,9 @@ export function OperationsPage() {
                       {op.amount > 0 ? '+' : ''}
                       {formatMoney(op.amount)}
                     </div>
-                    <div className="flex shrink-0 gap-1 opacity-0 transition group-hover:opacity-100">
+                    {/* Не прячем под наведение: на касании наведения нет
+                        вовсе, а мышью в невидимую кнопку не целятся. */}
+                    <div className="flex shrink-0 gap-1 opacity-50 transition group-hover:opacity-100">
                       <button
                         type="button"
                         onClick={() => startEdit(op)}

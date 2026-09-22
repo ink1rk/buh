@@ -65,3 +65,27 @@ async def test_the_profile_keeps_the_person_and_drops_the_character(seeded_db):
     profile = (await seeded_db.execute(select(UserProfile))).scalars().first()
     assert profile.name == "Кирилл", "имя — про человека, а не про демонстрацию"
     assert profile.monthly_income == 0 and profile.dreams == ""
+
+
+@pytest.mark.asyncio
+async def test_an_empty_app_does_not_grade_a_person_it_knows_nothing_about(client, seeded_db):
+    """«48 из 100, требует внимания» на пустой базе — вывод из ничего."""
+    await clean_slate(seeded_db)
+    await seeded_db.commit()
+
+    health = (await client.get("/api/v1/dashboard")).json()["health"]
+
+    assert health["known"] is False
+    assert health["score"] == 0 and "не о чем судить" in health["label"]
+
+
+@pytest.mark.asyncio
+async def test_one_real_operation_is_enough_to_start_grading(client, seeded_db):
+    await clean_slate(seeded_db)
+    await seeded_db.commit()
+    await client.post("/api/v1/transactions", json={
+        "amount": -2500, "description": "Продукты"})
+
+    health = (await client.get("/api/v1/dashboard")).json()["health"]
+
+    assert health["known"] is True
