@@ -132,20 +132,66 @@ MERCHANT_CATEGORIES: dict[str, str] = {
     "тинькофф инвестиции": "investments", "бкс": "investments", "втб инвестиции": "investments",
 }
 
+# Эквайринг присылает название места латиницей и без пробелов в привычных
+# местах: «MAGNIT MM TYUSHINO MOSCOW RU», «Mos.Transport», «IMP_BELKACAR». По
+# русскому списку выше такие строки не опознаются, и год трат оседал в
+# «прочем»: каршеринг и продукты — это две самые большие статьи расходов.
+LATIN_MERCHANT_CATEGORIES: dict[str, str] = {
+    "magnit": "groceries", "magnoliya": "groceries", "pyaterochka": "groceries",
+    "perekrestok": "groceries", "perekryostok": "groceries", "vkusvill": "groceries",
+    "diksi": "groceries", "dixy": "groceries", "auchan": "groceries", "okey": "groceries",
+    "azbuka vkusa": "groceries", "verniy": "groceries", "vernyj": "groceries",
+    "krasnoe i beloe": "groceries", "bristol": "groceries", "samokat": "groceries",
+    "lavka": "groceries", "kuper": "groceries", "globus": "groceries",
+    "mos.transport": "transport", "mosgortrans": "transport", "metropoliten": "transport",
+    "troika": "transport", "delimobil": "transport", "belkacar": "transport",
+    "citydrive": "transport", "yandex.drive": "transport", "yandex drive": "transport",
+    "yandex.taxi": "transport", "yandex go": "transport", "citymobil": "transport",
+    "lukoil": "transport", "gazpromneft": "transport", "rosneft": "transport",
+    "tatneft": "transport", "neftmagistral": "transport", "parkovka": "transport",
+    "parking": "transport", "toll roads": "transport", "rzhd": "transport",
+    "aeroflot": "travel", "pobeda": "travel", "utair": "travel", "ostrovok": "travel",
+    "apteka": "health", "aptechn": "health", "rigla": "health", "gorzdrav": "health",
+    "zdravcity": "health", "invitro": "health", "gemotest": "health",
+    "cafe": "cafe", "kafe": "cafe", "coffee": "cafe", "kofe": "cafe", "kofejnya": "cafe",
+    "pizza": "cafe", "pizzeria": "cafe", "sushi": "cafe", "shaurma": "cafe",
+    "stolovaya": "cafe", "dodo": "cafe", "vkusno i tochka": "cafe", "tanuki": "restaurants",
+    "restoran": "restaurants",
+    "wildberries": "shopping", "aliexpress": "shopping", "megamarket": "shopping",
+    "detmir": "kids", "detskij mir": "kids",
+    "sportmaster": "clothes", "lamoda": "clothes", "gloria jeans": "clothes",
+    "eldorado": "gadgets", "citilink": "gadgets", "mvideo": "gadgets",
+    "leroy": "home", "petrovich": "home", "maksidom": "home", "vseinstrumenti": "home",
+    "letual": "beauty", "letoile": "beauty", "rive gauche": "beauty",
+    "zolotoe yabloko": "beauty",
+    "beeline": "utilities", "megafon": "utilities", "tele2": "utilities",
+    "rostelecom": "utilities", "mosenergo": "utilities", "mosvodokanal": "utilities",
+    "fines pdd": "taxes", "gibdd": "taxes", "shtraf": "taxes", "nalog": "taxes",
+    "litres": "education", "chitaj-gorod": "education", "skillbox": "education",
+}
+
+MERCHANT_CATEGORIES.update(LATIN_MERCHANT_CATEGORIES)
+
 # Wording that identifies the nature of the operation regardless of merchant.
 # (fragment, category, transaction_type)
 WORDING_RULES: tuple[tuple[str, str, str], ...] = (
+    # Банк пишет и «кэшбэк», и «кешбек»: без второго написания выплата
+    # лояльности числилась просто прочим доходом.
     ("кэшбэк", "cashback", "income"),
     ("кешбэк", "cashback", "income"),
+    ("кешбек", "cashback", "income"),
+    ("кэшбек", "cashback", "income"),
     ("cashback", "cashback", "income"),
     ("процент на остаток", "interest", "income"),
     ("проценты на остаток", "interest", "income"),
     ("выплата процентов", "interest", "income"),
     ("зарплата", "salary", "income"),
+    ("заработная плата", "salary", "income"),
     ("аванс", "salary", "income"),
     ("премия", "salary", "income"),
     ("возврат покупки", "refunds", "income"),
     ("возврат товара", "refunds", "income"),
+    ("возврат оплаты", "refunds", "income"),
     ("снятие наличных", "cash", "expense"),
     ("выдача наличных", "cash", "expense"),
     ("внесение наличных", "cash", "income"),

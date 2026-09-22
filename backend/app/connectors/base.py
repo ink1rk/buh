@@ -153,6 +153,68 @@ class ParsedStatement:
     warnings: list[str] = field(default_factory=list)
 
 
+# Выписка печатает свои итоги, и это единственный способ проверить разбор: если
+# сумма прочитанных операций не сходится с оборотом, значит часть строк
+# потерялась — а неполная выписка молча заводит неверную историю трат.
+STATED_LINES: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("credit", re.compile(r"итого\s+(?:зачислени|поступлени|приход)", re.IGNORECASE)),
+    ("debit", re.compile(r"итого\s+(?:списани|расход)", re.IGNORECASE)),
+    ("closing", re.compile(r"исходящ\w*\s+остат", re.IGNORECASE)),
+)
+# Отклонённые и ожидающие операции банк считает по-своему, поэтому мелкое
+# расхождение — замечание, а не отказ.
+STATED_TOLERANCE = 0.02
+# Итог берётся с конца строки. Разбирать её целиком нельзя: в «31.03.2026
+# Итого списаний 1 234,56 ₽» цифры даты слиплись бы с суммой в 310 миллиардов.
+_STATED_AMOUNT = re.compile(
+    r"(?P<amount>[-+\u2212]?\s?\d{1,3}(?:[\s\u00a0\u202f\u2009]\d{3})*(?:[.,]\d{1,2})?)"
+    r"\s*(?:₽|руб\.?|RUB)?\.?$",
+    re.IGNORECASE,
+)
+
+
+def stated_totals(texts: Any) -> dict[str, float]:
+    """Обороты и исходящий остаток, напечатанные в самой выписке."""
+    found: dict[str, float] = {}
+    for raw in texts:
+        text = " ".join(str(raw or "").split())
+        if not text:
+            continue
+        for name, pattern in STATED_LINES:
+            if name in found or not pattern.search(text):
+                continue
+            tail = _STATED_AMOUNT.search(text)
+            money = parse_money(tail.group("amount")) if tail else None
+            if money is not None:
+                found[name] = money
+    return found
+
+
+def check_against_stated(statement: ParsedStatement, stated: dict[str, float]) -> None:
+    read = {
+        "credit": sum(op.amount for op in statement.operations if op.amount > 0),
+        "debit": sum(-op.amount for op in statement.operations if op.amount < 0),
+    }
+    turnover = sum(stated.get(side, 0.0) for side in read)
+    gap = sum(abs(stated[side] - read[side]) for side in read if side in stated)
+    if not turnover or gap <= 1:
+        return
+
+    told = "; ".join(
+        f"{'зачислений' if side == 'credit' else 'списаний'}: "
+        f"в выписке {stated[side]:,.2f}, прочитано {read[side]:,.2f}".replace(",", " ")
+        for side in read
+        if side in stated
+    )
+    if gap > turnover * STATED_TOLERANCE:
+        raise StatementParseError(
+            f"Разбор не сходится с итогами самой выписки ({told}). Часть операций "
+            "потерялась, а неполная выписка — это неверная история трат. "
+            "Пришлите файл: нужно разобраться с его вёрсткой."
+        )
+    statement.warnings.append(f"Небольшое расхождение с итогами выписки ({told})")
+
+
 @dataclass(slots=True)
 class ApiCredentials:
     """Open-API credentials for a connection, decrypted for use."""

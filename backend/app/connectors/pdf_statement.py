@@ -13,12 +13,16 @@ from __future__ import annotations
 
 import re
 
+from datetime import date
+
 from app.connectors.base import (
     ParsedStatement,
     RawOperation,
     StatementParseError,
+    check_against_stated,
     parse_money,
     parse_statement_date,
+    stated_totals,
 )
 
 _DATE_PREFIX = re.compile(r"^\s*(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4})\s*(?:\d{2}:\d{2}(?::\d{2})?)?\s*")
@@ -111,16 +115,85 @@ def extract_pdf_text(data: bytes) -> str:
         raise StatementParseError(f"Не удалось прочитать PDF: {exc}") from exc
 
 
+# Номер документа стоит в строке сразу после даты и времени, а описание
+# начинается со следующей строки — поэтому голое одиннадцатизначное число
+# запросто оказывается концом строки с датой. Приняв его за сумму, разбор
+# заводил операции на миллиард рублей.
+_REFERENCE_DIGITS = 8
+
+
 def _is_money(raw: str, currency: str | None) -> bool:
     """Похоже ли хвостовое число на сумму, если валюту банк не напечатал.
 
-    Без якоря валюты концом строки легко оказывается номер страницы или
-    сноска. Деньги себя выдают: копейки, разряды или просто величина.
+    Без якоря валюты концом строки легко оказывается номер документа, страницы
+    или сноска. Деньги себя выдают: знак, копейки, разряды или величина,
+    которая ещё похожа на деньги.
     """
     if currency:
         return True
-    digits = re.sub(r"[^\d]", "", raw)
-    return bool(re.search(r"[.,]\d{1,2}$", raw)) or len(digits) >= 3
+    raw = raw.strip()
+    if re.search(r"[.,]\d{1,2}$", raw) or _SIGNED.match(raw):
+        return True
+    if re.search(rf"\d{_SPACE}\d", raw):
+        return True
+    return 3 <= len(re.sub(r"[^\d]", "", raw)) < _REFERENCE_DIGITS
+
+
+# Одна операция — не одна строка. Извлечённый из PDF текст переносит
+# назначение платежа как в вёрстке, а сумму печатает отдельной строкой уже
+# после переноса:
+#
+#     21.09.2026 18:51:01 13619554740 Оплата товаров по
+#     карте 4092 сумма 83.00
+#     в Mos.Transport
+#     - 83.00 ₽ - 83.00 ₽
+#
+# Пока сумма требовалась в строке с датой, из годовой выписки читалась
+# горстка операций, а остальные молча пропадали.
+_CURRENCY = r"(?:₽|руб\.?|RUB|Р)"
+_MONEY_BODY = rf"{_SIGN}(?:\d{{1,3}}(?:{_SPACE}\d{{3}})+|\d+)(?:[.,]\d{{1,2}})?"
+_MONEY_ONLY = re.compile(rf"^(?:{_MONEY_BODY}\s*{_CURRENCY}?\s*){{1,3}}$", re.IGNORECASE)
+_FIRST_MONEY = re.compile(rf"^(?P<amount>{_MONEY_BODY})", re.IGNORECASE)
+# Номер страницы — тоже строка из одних цифр. Деньги себя выдают копейками
+# или знаком валюты, и без такого признака строка суммой не считается.
+_MONEY_MARKS = re.compile(rf"[.,]\d{{1,2}}|{_CURRENCY}", re.IGNORECASE)
+_PAGE_NUMBER = re.compile(r"^\d{1,4}$")
+_HEADER_WORDS = (
+    "дата операции", "документ", "назначение платежа", "сумма операции",
+    "российские рубли", "валюта",
+)
+
+
+def _amount_of_money_line(line: str) -> str | None:
+    """Сумма, если строка состоит только из сумм (левая — в валюте счёта)."""
+    if not _MONEY_ONLY.match(line) or not _MONEY_MARKS.search(line):
+        return None
+    first = _FIRST_MONEY.match(line)
+    return first.group("amount").strip() if first else None
+
+
+def _is_furniture(line: str) -> bool:
+    """Шапка колонок или номер страницы посреди операции."""
+    if _PAGE_NUMBER.match(line):
+        return True
+    rest = line.lower()
+    for word in _HEADER_WORDS:
+        rest = rest.replace(word, " ")
+    return not rest.strip()
+
+
+def _trailing_amounts(body: str) -> tuple[list[str], str]:
+    """Суммы, напечатанные в конце строки, и остаток строки без них."""
+    amounts: list[str] = []
+    while len(amounts) < 2:
+        match = _TRAILING_AMOUNT.search(body)
+        if not match:
+            break
+        if not _is_money(match.group("amount"), match.group("currency")):
+            break
+        amounts.insert(0, match.group("amount").strip())
+        body = body[: match.start()].strip()
+    return amounts, body
 
 
 def _direction(description: str) -> int:
@@ -147,43 +220,55 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
     # приход, видно только по файлу целиком.
     rows: list[tuple] = []
 
+    # Операция, у которой сумма ещё не встретилась: ждёт своих строк переноса.
+    started: tuple[date, list[str], str] | None = None
+
+    def keep(occurred_on: date, raw_amount: str, body: str, source: str) -> None:
+        amount = parse_money(raw_amount)
+        if amount is None or amount == 0:
+            return
+        description = re.sub(r"\s{2,}", " ", body).strip(" ·|-—")
+        rows.append((occurred_on, amount, bool(_SIGNED.match(raw_amount)),
+                     description, source))
+
     for line in text.splitlines():
         line = line.strip()
         if not line:
             continue
+
         date_match = _DATE_PREFIX.match(line)
-        if not date_match:
-            continue
-        occurred_on = parse_statement_date(date_match.group(1))
-        if occurred_on is None:
-            continue
-        if _SUMMARY.search(line) or _PERIOD_LINE.match(line):
-            totals += 1
+        occurred_on = parse_statement_date(date_match.group(1)) if date_match else None
+
+        if occurred_on is not None:
+            if started:
+                # Предыдущая операция так и не дождалась суммы.
+                dated_without_amount += 1
+                started = None
+            if _SUMMARY.search(line) or _PERIOD_LINE.match(line):
+                totals += 1
+                continue
+            body = line[date_match.end() :].strip()
+            # With two trailing amounts the rightmost one is the running balance.
+            amounts, body = _trailing_amounts(body)
+            if amounts:
+                keep(occurred_on, amounts[0], body, line)
+            else:
+                started = (occurred_on, [body] if body else [], line)
             continue
 
-        body = line[date_match.end() :].strip()
-        amounts: list[str] = []
-        while len(amounts) < 2:
-            amount_match = _TRAILING_AMOUNT.search(body)
-            if not amount_match:
-                break
-            if not _is_money(amount_match.group("amount"), amount_match.group("currency")):
-                break
-            amounts.insert(0, amount_match.group("amount").strip())
-            body = body[: amount_match.start()].strip()
-        if not amounts:
-            dated_without_amount += 1
+        if not started:
             continue
 
-        # With two trailing amounts the rightmost one is the running balance.
-        raw_amount = amounts[0]
-        amount = parse_money(raw_amount)
-        if amount is None or amount == 0:
-            continue
+        money = _amount_of_money_line(line)
+        if money is not None:
+            began, parts, source = started
+            keep(began, money, " ".join(parts), source)
+            started = None
+        elif not _is_furniture(line):
+            started[1].append(line)
 
-        description = re.sub(r"\s{2,}", " ", body).strip(" ·|-—")
-        rows.append((occurred_on, amount, bool(_SIGNED.match(raw_amount)),
-                     description, line))
+    if started:
+        dated_without_amount += 1
 
     # Если где-то в файле минусы есть, банк помечает ими списания — и строка
     # без знака означает приход. Иначе зарплата в такой выписке становится
@@ -241,6 +326,10 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
     dates = [op.occurred_on for op in statement.operations]
     statement.period_from = min(dates)
     statement.period_to = max(dates)
+
+    stated = stated_totals(text.splitlines())
+    statement.closing_balance = stated.get("closing")
+    check_against_stated(statement, stated)
 
     period = _PERIOD.search(text)
     if period:

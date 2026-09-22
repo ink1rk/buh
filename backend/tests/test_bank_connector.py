@@ -186,6 +186,116 @@ def test_parses_xlsx_statement():
     assert statement.operations[0].mcc == "5411"
 
 
+def _paged_xlsx(pages: list[list[list[object]]]) -> bytes:
+    """Выписка, переведённая из PDF: лист на страницу и ложный размер листа.
+
+    Так выглядит годовая выписка Ozon Банка: 288 листов по странице, шапка
+    повторена на каждой, а в описании листа стоит `A1` — размер, которому
+    нельзя верить.
+    """
+    import re
+    import zipfile
+
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    workbook.remove(workbook.active)
+    for index, rows in enumerate(pages, 1):
+        sheet = workbook.create_sheet(f"Sheet{index}")
+        for row in rows:
+            sheet.append(row)
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+
+    spoiled = io.BytesIO()
+    with zipfile.ZipFile(buffer) as source, zipfile.ZipFile(spoiled, "w") as target:
+        for item in source.infolist():
+            data = source.read(item.filename)
+            if item.filename.startswith("xl/worksheets/"):
+                data = re.sub(rb'<dimension ref="[^"]+"\s*/>', b'<dimension ref="A1"/>', data)
+            target.writestr(item, data)
+    return spoiled.getvalue()
+
+
+OZON_HEADER = ["Дата операции", "Документ", "Назначение платежа", "Сумма операции"]
+
+
+def _ozon_pages() -> list[list[list[object]]]:
+    return [
+        [
+            ["ООО «ОЗОН Банк»"],
+            ["Входящий остаток: 142.30 ₽"],
+            OZON_HEADER,
+            [None, None, None, "Российские рубли", "Валюта"],
+            ["21.09.2026 18:51:01", "13619554740", "Оплата товаров по", "- 83.00 ₽", "- 83.00 ₽"],
+            [None, None, "карте 4092 сумма 83.00"],
+            [None, None, "в Mos.Transport"],
+            [None, None, "MOSKVA RU дата 2026-"],
+            [None, None, "09-21 время 18:16:16"],
+            ["1"],
+        ],
+        [
+            OZON_HEADER,
+            # На последних страницах конвертер вставляет лишнюю колонку.
+            ["20.09.2026 10:00:00", "4428324788", None, "Перевод клиенту Банка.",
+             "+ 5 000.00 ₽", "+ 5 000.00 ₽"],
+            [None, None, None, "Отправитель: Валентина. Без НДС."],
+            ["Итого зачислений за период: 5 000.00 ₽"],
+            ["Итого списаний за период: 83.00 ₽"],
+            ["Исходящий остаток: 5 059.30 ₽"],
+            ["С уважением,"],
+            ["2"],
+        ],
+    ]
+
+
+def test_reads_every_page_of_a_converted_statement():
+    statement = get_connector("ozon").parse_statement(_paged_xlsx(_ozon_pages()), "vypiska.xlsx")
+
+    # Вторая страница читается, хотя колонки в ней сдвинуты и шапки над
+    # сдвинутой строкой нет.
+    assert [op.amount for op in statement.operations] == [-83.0, 5000.0]
+    assert statement.period_from == date(2026, 9, 20)
+
+
+def test_wrapped_description_becomes_the_name_of_the_place():
+    statement = get_connector("ozon").parse_statement(_paged_xlsx(_ozon_pages()), "vypiska.xlsx")
+
+    payment, transfer = statement.operations
+    assert payment.description == "Mos.Transport MOSKVA RU"
+    assert classify(payment) == ("transport", "expense")
+    # Перенос подхватывается и в сдвинутой строке, а подпись с последней
+    # страницы к операции не приклеивается.
+    assert transfer.description == "Перевод клиенту Банка. Отправитель: Валентина"
+
+
+def test_balance_printed_in_the_statement_wins():
+    statement = get_connector("ozon").parse_statement(_paged_xlsx(_ozon_pages()), "vypiska.xlsx")
+
+    assert statement.closing_balance == 5059.30
+
+
+def test_import_is_refused_when_it_misses_the_stated_totals():
+    pages = _ozon_pages()
+    pages[1][-5] = ["Итого зачислений за период: 500 000.00 ₽"]
+
+    with pytest.raises(StatementParseError, match="не сходится с итогами"):
+        get_connector("ozon").parse_statement(_paged_xlsx(pages), "vypiska.xlsx")
+
+
+def test_refund_keeps_the_word_that_names_it():
+    csv = (
+        "Дата операции;Документ;Назначение платежа;Сумма операции\n"
+        "21.09.2026;1;Возврат оплаты товаров по карте 3355 сумма 490.00 в "
+        "DELIMOBIL MOSCOW RU дата 2026-09-21 время 10:00:00. Без НДС.;+ 490.00 ₽\n"
+    )
+    statement = get_connector("ozon").parse_statement(csv.encode(), "s.csv")
+    operation = statement.operations[0]
+
+    assert operation.description == "Возврат оплаты товаров: DELIMOBIL MOSCOW RU"
+    assert classify(operation) == ("refunds", "income")
+
+
 def test_parses_pdf_statement_best_effort():
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas
@@ -239,6 +349,33 @@ def test_pdf_without_text_layer_gives_actionable_error():
             "transfer",
         ),
         (RawOperation(date(2026, 3, 1), -5000, description="Снятие наличных"), "cash", "expense"),
+        # Эквайринг присылает название места латиницей — и это подавляющая
+        # часть операций по карте.
+        (
+            RawOperation(date(2026, 3, 1), -66.82, description="MAGNIT MM TYUSHINO MOSCOW RU"),
+            "groceries",
+            "expense",
+        ),
+        (
+            RawOperation(date(2026, 3, 1), -511, description="DELIMOBIL MOSCOW MOSCOW RU"),
+            "transport",
+            "expense",
+        ),
+        (
+            RawOperation(date(2026, 3, 1), -83, description="Mos.Transport MOSKVA RU"),
+            "transport",
+            "expense",
+        ),
+        (
+            RawOperation(date(2026, 3, 1), 52173, description="Заработная плата за Июль 2026 г."),
+            "salary",
+            "income",
+        ),
+        (
+            RawOperation(date(2026, 3, 1), 214, description="Выплата кешбека по программе"),
+            "cashback",
+            "income",
+        ),
         (RawOperation(date(2026, 3, 1), -100), "other", "expense"),
         (RawOperation(date(2026, 3, 1), 100), "other_income", "income"),
     ],
@@ -644,6 +781,55 @@ def test_pdf_totals_do_not_become_operations(monkeypatch):
 
     assert [op.amount for op in statement.operations] == [-1234.56]
     assert any("итогами" in w for w in statement.warnings)
+
+
+def test_pdf_reads_an_operation_whose_amount_is_printed_under_it(monkeypatch):
+    """Так выписку печатает Ozon: перенос описания, а сумма — отдельной строкой.
+
+    Пока сумма требовалась в строке с датой, из годовой выписки читалась
+    горстка операций, а остальные молча пропадали.
+    """
+    _pdf_text(monkeypatch, (
+        "Дата операции Документ Назначение платежа",
+        "21.09.2026 18:51:01 13619554740 Оплата товаров по ",
+        "карте 4092 сумма 83.00 ",
+        "в Mos.Transport ",
+        "MOSKVA RU дата 2026-",
+        "09-21 время 18:16:16",
+        "- 83.00 ₽ - 83.00 ₽",
+        "Итого списаний за период: 83.00 ₽",
+        "Исходящий остаток: 59.30 ₽",
+    ))
+
+    statement = get_connector("ozon").parse_statement(b"%PDF-1.4", "vypiska.pdf")
+    operation = statement.operations[0]
+
+    assert operation.amount == -83.0
+    assert operation.description == "Mos.Transport MOSKVA RU"
+    assert operation.external_id == "13619554740"
+    assert statement.closing_balance == 59.30
+
+
+def test_pdf_document_number_is_not_an_amount(monkeypatch):
+    """Строка с датой кончается номером документа, а описание — со следующей.
+
+    Принятый за сумму, одиннадцатизначный номер заводил операцию на миллиард
+    рублей — и таких в годовой выписке были сотни.
+    """
+    _pdf_text(monkeypatch, (
+        "17.09.2026 09:52:58 1349425902",
+        "Перевод клиенту Банка",
+        "287",
+        "Дата операции Документ Назначение платежа",
+        "- 1 000.00 ₽ - 1 000.00 ₽",
+        "Итого списаний за период: 1 000.00 ₽",
+    ))
+
+    statement = get_connector("ozon").parse_statement(b"%PDF-1.4", "vypiska.pdf")
+
+    assert [op.amount for op in statement.operations] == [-1000.0]
+    # Разрыв страницы посреди операции в описание не попадает.
+    assert statement.operations[0].description == "Перевод клиенту Банка"
 
 
 def test_pdf_income_without_a_sign_is_not_turned_into_a_loss(monkeypatch):
