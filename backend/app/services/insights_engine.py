@@ -36,10 +36,15 @@ def generate_insights(
 
     cur = cat_sum(this_month)
     prev = cat_sum(prev_month)
+    # Рост втрое бывает и на трёхстах рублях: аптека вместо одной пачки
+    # таблеток купила три. Это правда, но делать с ней нечего, а на главной
+    # такая подсказка занимает место настоящей. Заметен рост, сравнимый с
+    # дневным расходом.
+    noticeable = max(1000.0, sum(cur.values()) * 0.05)
     for cat, val in cur.items():
         if prev.get(cat, 0) > 0:
             growth = (val - prev[cat]) / prev[cat] * 100
-            if growth >= 30:
+            if growth >= 30 and val - prev[cat] >= noticeable:
                 named = category_name(cat)
                 insights.append(
                     {
