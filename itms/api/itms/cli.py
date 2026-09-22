@@ -14,7 +14,8 @@ from itms.core.config import settings
 from itms.core.context import ActorKind, RequestContext, use_context
 from itms.core.db import dispose_engine, session_scope
 from itms.domain.audit_rules import configure_audit
-from itms.models.cmdb import Ci
+from itms.models.catalog import Manufacturer
+from itms.models.cmdb import Ci, Location
 from itms.models.directory import Organization
 from itms.models.enums import (
     CableCategory,
@@ -75,93 +76,128 @@ async def seed_demo() -> None:
             RequestContext(actor_kind=ActorKind.SYSTEM, actor_label="Демо-данные", source="cli")
         ):
             await directory_service.upsert_organization(session, {"name": "Моя организация"})
-            already = (
-                await session.execute(
-                    select(Ci.id).where(Ci.code == "SRV-01", Ci.deleted_at.is_(None))
-                )
+            site, server_room, floor, server, switch = await _ensure_demo_cmdb(session)
+            seeded = (
+                await session.execute(select(Manufacturer.id).where(Manufacturer.name == "Dell"))
             ).scalar_one_or_none()
-            if already:
+            if seeded:
                 print("Демонстрационные данные уже есть")
                 return
-            site = await location_service.create_location(
-                session, {"name": "Главный офис", "location_type": LocationType.SITE}
-            )
-            building = await location_service.create_location(
-                session,
-                {"name": "Здание А", "location_type": LocationType.BUILDING, "parent_id": site.id},
-            )
-            floor = await location_service.create_location(
-                session,
-                {"name": "2 этаж", "location_type": LocationType.FLOOR, "parent_id": building.id},
-            )
-            server_room = await location_service.create_location(
-                session,
-                {"name": "Серверная", "location_type": LocationType.ROOM, "parent_id": floor.id},
-            )
-            engineer = await directory_service.create_employee(
-                session,
-                {
-                    "full_name": "Иванов Иван",
-                    "position": "Системный администратор",
-                    "support_line": SupportLine.SECOND,
-                },
-            )
-            server = await ci_service.create_ci(
-                session,
-                {
-                    "ci_type": CiType.DEVICE,
-                    "code": "SRV-01",
-                    "name": "Сервер виртуализации 1",
-                    "criticality": Criticality.CRITICAL,
-                    "location_id": server_room.id,
-                    "owner_employee_id": engineer.id,
-                    "vendor": "Dell",
-                    "model": "PowerEdge R650",
-                    "serial_number": "CN0X1Y2Z",
-                    "tags": ["виртуализация", "прод"],
-                },
-            )
-            switch = await ci_service.create_ci(
-                session,
-                {
-                    "ci_type": CiType.DEVICE,
-                    "code": "SW-CORE-1",
-                    "name": "Ядро сети",
-                    "criticality": Criticality.CRITICAL,
-                    "location_id": server_room.id,
-                    "vendor": "MikroTik",
-                    "model": "CRS354",
-                },
-            )
-            service = await ci_service.create_ci(
-                session,
-                {
-                    "ci_type": CiType.SERVICE,
-                    "code": "SVC-1C",
-                    "name": "1С: Предприятие",
-                    "criticality": Criticality.CRITICAL,
-                    "status": CiStatus.ACTIVE,
-                },
-            )
-            await ci_service.create_relation(
-                session,
-                {
-                    "source_ci_id": service.id,
-                    "target_ci_id": server.id,
-                    "rel_type": "DEPENDS_ON",
-                    "description": "Сервис работает на этом сервере",
-                },
-            )
-            await ci_service.create_relation(
-                session,
-                {
-                    "source_ci_id": server.id,
-                    "target_ci_id": switch.id,
-                    "rel_type": "CONNECTED_TO",
-                },
-            )
             await _seed_network(session, site.id, server_room.id, floor.id, server.id, switch.id)
     print("Демонстрационные данные добавлены")
+
+
+async def _ci_by_code(session: AsyncSession, code: str) -> Ci | None:
+    return (
+        await session.execute(select(Ci).where(Ci.code == code, Ci.deleted_at.is_(None)))
+    ).scalar_one_or_none()
+
+
+async def _walk_to_type(
+    session: AsyncSession, location_id: uuid.UUID | None, location_type: LocationType
+) -> Location | None:
+    current_id = location_id
+    while current_id:
+        location = await session.get(Location, current_id)
+        if location is None:
+            return None
+        if location.location_type == location_type:
+            return location
+        current_id = location.parent_id
+    return None
+
+
+async def _ensure_demo_cmdb(
+    session: AsyncSession,
+) -> tuple[Location, Location, Location, Ci, Ci]:
+    """Создаёт площадку и базовые объекты Phase 1, либо находит уже заведённые."""
+    server = await _ci_by_code(session, "SRV-01")
+    switch = await _ci_by_code(session, "SW-CORE-1")
+    if server and switch and server.location_id:
+        server_room = await session.get(Location, server.location_id)
+        floor = await _walk_to_type(session, server.location_id, LocationType.FLOOR)
+        site = await _walk_to_type(session, server.location_id, LocationType.SITE)
+        if server_room and floor and site:
+            return site, server_room, floor, server, switch
+
+    site = await location_service.create_location(
+        session, {"name": "Главный офис", "location_type": LocationType.SITE}
+    )
+    building = await location_service.create_location(
+        session,
+        {"name": "Здание А", "location_type": LocationType.BUILDING, "parent_id": site.id},
+    )
+    floor = await location_service.create_location(
+        session,
+        {"name": "2 этаж", "location_type": LocationType.FLOOR, "parent_id": building.id},
+    )
+    server_room = await location_service.create_location(
+        session,
+        {"name": "Серверная", "location_type": LocationType.ROOM, "parent_id": floor.id},
+    )
+    engineer = await directory_service.create_employee(
+        session,
+        {
+            "full_name": "Иванов Иван",
+            "position": "Системный администратор",
+            "support_line": SupportLine.SECOND,
+        },
+    )
+    server = await ci_service.create_ci(
+        session,
+        {
+            "ci_type": CiType.DEVICE,
+            "code": "SRV-01",
+            "name": "Сервер виртуализации 1",
+            "criticality": Criticality.CRITICAL,
+            "location_id": server_room.id,
+            "owner_employee_id": engineer.id,
+            "vendor": "Dell",
+            "model": "PowerEdge R650",
+            "serial_number": "CN0X1Y2Z",
+            "tags": ["виртуализация", "прод"],
+        },
+    )
+    switch = await ci_service.create_ci(
+        session,
+        {
+            "ci_type": CiType.DEVICE,
+            "code": "SW-CORE-1",
+            "name": "Ядро сети",
+            "criticality": Criticality.CRITICAL,
+            "location_id": server_room.id,
+            "vendor": "MikroTik",
+            "model": "CRS354",
+        },
+    )
+    service = await ci_service.create_ci(
+        session,
+        {
+            "ci_type": CiType.SERVICE,
+            "code": "SVC-1C",
+            "name": "1С: Предприятие",
+            "criticality": Criticality.CRITICAL,
+            "status": CiStatus.ACTIVE,
+        },
+    )
+    await ci_service.create_relation(
+        session,
+        {
+            "source_ci_id": service.id,
+            "target_ci_id": server.id,
+            "rel_type": "DEPENDS_ON",
+            "description": "Сервис работает на этом сервере",
+        },
+    )
+    await ci_service.create_relation(
+        session,
+        {
+            "source_ci_id": server.id,
+            "target_ci_id": switch.id,
+            "rel_type": "CONNECTED_TO",
+        },
+    )
+    return site, server_room, floor, server, switch
 
 
 async def _seed_network(
