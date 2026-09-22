@@ -408,6 +408,16 @@ def test_pdf_without_text_layer_gives_actionable_error():
             "cashback",
             "income",
         ),
+        (
+            RawOperation(date(2026, 3, 1), -1480, description="VV_8348_KCO_4 MOSCOW RU"),
+            "groceries",
+            "expense",
+        ),
+        (
+            RawOperation(date(2026, 3, 1), -21580, description="EPGU MOSKVA RU", bank_category="Прочее"),
+            "taxes",
+            "expense",
+        ),
         (RawOperation(date(2026, 3, 1), -100), "other", "expense"),
         (RawOperation(date(2026, 3, 1), 100), "other_income", "income"),
     ],

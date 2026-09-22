@@ -185,6 +185,10 @@ async def _forecast(client: FinanceApiClient, _args: dict[str, Any]) -> Any:
     return await client.get("/analytics/forecast")
 
 
+async def _review(client: FinanceApiClient, _args: dict[str, Any]) -> Any:
+    return await client.get("/analytics/review")
+
+
 async def _net_worth(client: FinanceApiClient, _args: dict[str, Any]) -> Any:
     return await client.get("/networth")
 
@@ -321,9 +325,18 @@ TOOLS: tuple[ToolSpec, ...] = (
     ),
     ToolSpec(
         name="get_forecast",
-        description="Прогноз на конец месяца и далее, исходя из текущего темпа трат.",
+        description="Прогноз по среднему полных месяцев выписки.",
         input_schema=_schema({}),
         handler=_forecast,
+    ),
+    ToolSpec(
+        name="get_financial_review",
+        description=(
+            "Разбор выписки: средний доход и траты по полным месяцам, "
+            "крупные категории и места, советы с цифрами."
+        ),
+        input_schema=_schema({}),
+        handler=_review,
     ),
     ToolSpec(
         name="get_net_worth",

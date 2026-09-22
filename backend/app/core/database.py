@@ -69,3 +69,11 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_ensure_calendar_ingest_columns)
+        await conn.run_sync(_reclassify_known_merchants)
+
+
+def _reclassify_known_merchants(sync_conn):
+    """Касса «VV_…» и похожие места больше не висят в «прочем»."""
+    from app.services.review_engine import reclassify_unclear
+
+    reclassify_unclear(sync_conn)

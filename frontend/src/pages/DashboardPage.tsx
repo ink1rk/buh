@@ -312,7 +312,7 @@ export function DashboardPage() {
       </Link>
 
       <section>
-        <h2 className="display mb-3 text-2xl font-semibold">AI Insights</h2>
+        <h2 className="display mb-3 text-2xl font-semibold">Разбор выписки</h2>
         <div className="grid gap-3 md:grid-cols-2">
           {data.insights.map((insight, i) => (
             <GlassCard key={insight.title + i} delay={0.05 * i} className="!p-4">

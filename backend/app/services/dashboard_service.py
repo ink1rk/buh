@@ -32,6 +32,7 @@ from app.services.coach_engine import ensure_today_challenge
 from app.services.content_bank import quote_for_date, widget_for_date
 from app.services.health_score import HealthInputs, compute_health
 from app.services.insights_engine import generate_insights
+from app.services.review_engine import build_review
 from app.services.net_worth_service import build_net_worth
 from app.services.ledger import is_income, spending
 from app.services.proactive_engine import detect_behavior_patterns, generate_proactive_alerts
@@ -178,10 +179,30 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         )
     )
 
-    behavior_patterns = detect_behavior_patterns(txs)
-    insights = behavior_patterns + generate_insights(txs, subs, profile.monthly_income)
+    review = build_review(txs)
+    if review.ready and review.advice:
+        insights = [
+            {
+                "title": note.title,
+                "body": note.body,
+                "insight_type": "pattern",
+                "severity": "warning" if note.tone == "warning" else (
+                    "success" if note.tone == "positive" else "info"
+                ),
+                "category": "review",
+            }
+            for note in review.advice
+        ]
+    else:
+        behavior_patterns = detect_behavior_patterns(txs)
+        insights = behavior_patterns + generate_insights(txs, subs, profile.monthly_income)
     goals = list((await db.execute(select(Goal).where(Goal.is_active.is_(True)).order_by(Goal.priority))).scalars())
-    focus = f"Усиль цель «{goals[0].title}»" if goals else "Заведите первую финансовую цель"
+    if review.ready and len(review.advice) > 1:
+        focus = review.advice[1].title
+    elif goals:
+        focus = f"Усиль цель «{goals[0].title}»"
+    else:
+        focus = "Заведите первую финансовую цель"
 
     events = list((await db.execute(select(CalendarEvent))).scalars())
     net_worth = await build_net_worth(db)
@@ -241,7 +262,14 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         living_screen.append(LivingScreenLine(icon="alert-triangle", text=f"Через {(e.event_date - date.today()).days} дн. платёж «{e.title}» на {e.amount:,.0f} ₽".replace(",", " "), tone="warning"))
     if avg_goal_probability is not None:
         living_screen.append(LivingScreenLine(icon="bar-chart", text=f"Вероятность достижения целей — {avg_goal_probability:.0f}%", tone="neutral"))
-    living_screen.append(LivingScreenLine(icon="heart", text="Отличная работа. Продолжай в том же духе.", tone="positive"))
+    if review.ready and review.advice:
+        living_screen.append(
+            LivingScreenLine(icon="lightbulb", text=review.advice[0].title, tone="neutral")
+        )
+    else:
+        living_screen.append(
+            LivingScreenLine(icon="heart", text="Отличная работа. Продолжай в том же духе.", tone="positive")
+        )
 
     return DashboardOut(
         greeting=_period_greeting(now, profile.name),

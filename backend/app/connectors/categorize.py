@@ -168,6 +168,9 @@ LATIN_MERCHANT_CATEGORIES: dict[str, str] = {
     "rostelecom": "utilities", "mosenergo": "utilities", "mosvodokanal": "utilities",
     "fines pdd": "taxes", "gibdd": "taxes", "shtraf": "taxes", "nalog": "taxes",
     "litres": "education", "chitaj-gorod": "education", "skillbox": "education",
+    # Касса ВкусВилла приходит как VV_8348, госуслуги — как EPGU, винотека —
+    # как WINELAB. Без этих кусков год продуктов и платежей оседал в «прочем».
+    "epgu": "taxes", "winelab": "groceries", "aromatn": "groceries",
 }
 
 MERCHANT_CATEGORIES.update(LATIN_MERCHANT_CATEGORIES)
@@ -211,6 +214,12 @@ def _haystack(op: RawOperation) -> str:
     return f"{op.description} {op.merchant} {op.bank_category}".lower().replace("ё", "е")
 
 
+def _looks_like_vkusvill(text: str) -> bool:
+    """Касса ВкусВилла подписывается кодом VV_8348, без слова «вкусвилл»."""
+    compact = text.replace(" ", "")
+    return compact.startswith("vv_") or " vv_" in f" {text}"
+
+
 def classify(op: RawOperation) -> tuple[str, str]:
     """Return `(category, transaction_type)` for a bank operation."""
     text = _haystack(op)
@@ -235,11 +244,15 @@ def classify(op: RawOperation) -> tuple[str, str]:
                 None,
             )
 
-    if not category:
+    # «Прочее» от банка не должно глушить известное место: иначе касса
+    # ВкусВилла и каршеринг так и остаются без категории.
+    if not category or category == "other":
         for name in sorted(MERCHANT_CATEGORIES, key=len, reverse=True):
             if name in text:
                 category = MERCHANT_CATEGORIES[name]
                 break
+    if (not category or category == "other") and _looks_like_vkusvill(text):
+        category = "groceries"
 
     if "перевод" in text and (not category or category == "transfers"):
         return "transfers", "transfer"

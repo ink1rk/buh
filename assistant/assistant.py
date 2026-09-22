@@ -332,6 +332,10 @@ def _finance_fetch():
             calendar = h.get(f"{FINANCE_API}/calendar").json()
         except Exception:
             calendar = []
+        try:
+            review = h.get(f"{FINANCE_API}/analytics/review").json()
+        except Exception:
+            review = {}
     delta = nw.get("delta", {}) or {}
     amounts = {n.get("id"): n.get("amount") for n in (flow.get("nodes") or [])}
     return {"current": nw.get("current"), "month": delta.get("month"),
@@ -342,7 +346,8 @@ def _finance_fetch():
             "free": amounts.get("free"),
             "budget": dash.get("budget") or {},
             "goals": goals if isinstance(goals, list) else [],
-            "calendar": calendar if isinstance(calendar, list) else []}
+            "calendar": calendar if isinstance(calendar, list) else [],
+            "review": review if isinstance(review, dict) else {}}
 
 
 def finance_context():
@@ -375,6 +380,14 @@ def finance_context():
                 f"{e.get('title')} {e.get('event_date')}"
                 + (f" {money(e.get('amount'))}" if e.get("amount") else "")
                 for e in upcoming))
+        review = d.get("review") or {}
+        if review.get("headline"):
+            lines.append(f"- разбор выписки: {review['headline']}")
+            for note in (review.get("advice") or [])[:4]:
+                title = note.get("title") or ""
+                body = note.get("body") or ""
+                if title:
+                    lines.append(f"- {title}. {body}".strip())
         if d.get("widget"):
             lines.append(f"- виджет дня в приложении: {d['widget']}")
         return "\n".join(lines)
