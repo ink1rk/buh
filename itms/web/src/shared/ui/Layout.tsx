@@ -73,6 +73,22 @@ export function Metric({
   );
 }
 
+/**
+ * Ошибка сохранения рядом с формой. Всплывающее уведомление исчезает и легко
+ * теряется, а причина отказа нужна ровно там, где её исправляют.
+ */
+export function FormError({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <p
+      role="alert"
+      className="rounded border border-[rgb(var(--danger))] bg-[rgb(var(--danger)/0.12)] px-2.5 py-1.5 text-xs text-[rgb(var(--danger))]"
+    >
+      {message}
+    </p>
+  );
+}
+
 export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-4 py-10 text-center">

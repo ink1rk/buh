@@ -17,7 +17,7 @@ import { formatDate, formatDateTime } from "@/shared/lib/format";
 import { Badge, toneFor } from "@/shared/ui/Badge";
 import { Button, IconButton } from "@/shared/ui/Button";
 import { Field, Input, Select, Textarea } from "@/shared/ui/Field";
-import { Panel } from "@/shared/ui/Layout";
+import { FormError, Panel } from "@/shared/ui/Layout";
 import { toast } from "@/shared/ui/toast";
 
 import { ProvenanceDialog } from "../provenance/ProvenanceDialog";
@@ -64,6 +64,7 @@ export function CiOverviewTab({ ci }: { ci: Ci }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Record<string, unknown>>({});
   const [provenance, setProvenance] = useState<Provenance>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [inspect, setInspect] = useState<{ field: string; label: string } | null>(null);
 
   const update = useApiMutation(
@@ -76,8 +77,13 @@ export function CiOverviewTab({ ci }: { ci: Ci }) {
         setEditing(false);
         setDraft({});
         setProvenance({});
+        setSaveError(null);
       },
-      onError: (error) => toast.error(describeError(error, t)),
+      onError: (error) => {
+        const message = describeError(error, t);
+        setSaveError(message);
+        toast.error(message);
+      },
     },
   );
 
@@ -97,6 +103,7 @@ export function CiOverviewTab({ ci }: { ci: Ci }) {
       description: ci.description ?? "",
       tags: ci.tags.join(", "),
     });
+    setSaveError(null);
     setEditing(true);
   };
 
@@ -264,15 +271,16 @@ export function CiOverviewTab({ ci }: { ci: Ci }) {
             />
           </Field>
 
-          <div className="border-t border-app pt-3">
+          <div className="flex flex-col gap-2 border-t border-app pt-3">
             <ReasonField
               value={provenance}
               onChange={setProvenance}
               required={provenanceRequired}
             />
             {provenanceRequired && (
-              <p className="mt-1 text-xs text-[rgb(var(--warn))]">{t("ci.criticalFieldHint")}</p>
+              <p className="text-xs text-[rgb(var(--warn))]">{t("ci.criticalFieldHint")}</p>
             )}
+            <FormError message={saveError} />
           </div>
         </div>
       </Panel>

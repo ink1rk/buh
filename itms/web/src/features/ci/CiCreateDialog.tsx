@@ -15,6 +15,7 @@ import {
 import { Button } from "@/shared/ui/Button";
 import { Dialog } from "@/shared/ui/Dialog";
 import { Field, Input, Select, Textarea } from "@/shared/ui/Field";
+import { FormError } from "@/shared/ui/Layout";
 import { toast } from "@/shared/ui/toast";
 
 import { ReasonField } from "../provenance/ReasonField";
@@ -62,6 +63,7 @@ export function CiCreateDialog({ open, onClose }: { open: boolean; onClose: () =
 
   const [form, setForm] = useState<FormState>(EMPTY);
   const [provenance, setProvenance] = useState<Provenance>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const create = useApiMutation(
     (payload: { body: Record<string, unknown>; provenance: Provenance }) =>
@@ -72,10 +74,15 @@ export function CiCreateDialog({ open, onClose }: { open: boolean; onClose: () =
         toast.success(t("app.created"), ci.name);
         setForm(EMPTY);
         setProvenance({});
+        setSaveError(null);
         onClose();
         navigate(`/ci/${ci.id}`);
       },
-      onError: (error) => toast.error(describeError(error, t)),
+      onError: (error) => {
+        const message = describeError(error, t);
+        setSaveError(message);
+        toast.error(message);
+      },
     },
   );
 
@@ -245,8 +252,9 @@ export function CiCreateDialog({ open, onClose }: { open: boolean; onClose: () =
           />
         </Field>
 
-        <div className="border-t border-app pt-3">
+        <div className="flex flex-col gap-2 border-t border-app pt-3">
           <ReasonField value={provenance} onChange={setProvenance} />
+          <FormError message={saveError} />
         </div>
       </form>
     </Dialog>
