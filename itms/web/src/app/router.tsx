@@ -15,6 +15,8 @@ import { DocumentsPage } from "@/features/documents/DocumentsPage";
 import { ImportPage } from "@/features/imports/ImportPage";
 import { IpamPage } from "@/features/ipam/IpamPage";
 import { LocationsPage } from "@/features/locations/LocationsPage";
+import { RackEditorPage } from "@/features/racks/RackEditorPage";
+import { RacksPage } from "@/features/racks/RacksPage";
 import { NetworkPage } from "@/features/network/NetworkPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 
@@ -39,6 +41,8 @@ export const router = createBrowserRouter([
       { path: "/ipam", element: <IpamPage /> },
       { path: "/diagrams", element: <DiagramsPage /> },
       { path: "/diagrams/:diagramId", element: <DiagramEditorPage /> },
+      { path: "/racks", element: <RacksPage /> },
+      { path: "/racks/:rackId", element: <RackEditorPage /> },
       { path: "/catalog", element: <CatalogPage /> },
       { path: "/locations", element: <LocationsPage /> },
       { path: "/documents", element: <DocumentsPage /> },

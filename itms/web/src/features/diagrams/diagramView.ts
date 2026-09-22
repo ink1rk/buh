@@ -5,7 +5,7 @@ import type { DiagramEdge, DiagramNode } from "@/shared/api/types";
 export const NODE_W = 220;
 export const NODE_H = 86;
 
-export interface DiagramNodeData {
+export interface DiagramNodeData extends Record<string, unknown> {
   label: string;
   code: string | null;
   role: string | null;
@@ -17,7 +17,7 @@ export interface DiagramNodeData {
   ciType: string | null;
 }
 
-export interface CableEdgeData {
+export interface CableEdgeData extends Record<string, unknown> {
   label: string | null;
   medium: string | null;
   status: string | null;

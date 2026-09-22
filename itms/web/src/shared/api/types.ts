@@ -584,6 +584,91 @@ export interface DiagramFull {
   edges: DiagramEdge[];
 }
 
+export interface RackSummary {
+  id: string;
+  name: string;
+  code: string | null;
+  location_id: string | null;
+  location_path: string | null;
+  u_height: number;
+  form_factor: string;
+  used_front: number;
+  used_rear: number;
+  largest_free_front: number;
+  weight_kg: number;
+  max_weight_kg: number | null;
+  power_w: number;
+  max_power_w: number | null;
+}
+
+export interface RackDetail {
+  id: string;
+  name: string;
+  code: string | null;
+  location_id: string | null;
+  location_path: string | null;
+  description: string | null;
+  u_height: number;
+  width_in: number;
+  depth_mm: number;
+  max_weight_kg: number | null;
+  max_power_w: number | null;
+  form_factor: string;
+  descending_units: boolean;
+}
+
+export interface FreeBlock {
+  start: number;
+  length: number;
+}
+
+export interface RackMount {
+  id: string;
+  ci_id: string;
+  name: string;
+  code: string | null;
+  status: string;
+  device_role: string | null;
+  position_u: number;
+  u_height: number;
+  face: string;
+  zero_u_side: string | null;
+  depth_mm: number | null;
+  weight_kg: number | null;
+  power_w: number | null;
+  is_reservation: boolean;
+}
+
+export interface WarehouseItem {
+  ci_id: string;
+  name: string;
+  code: string | null;
+  status: string;
+  device_role: string | null;
+  u_height: number;
+  power_w: number | null;
+  weight_kg: number | null;
+}
+
+export interface RackCapacity {
+  u_height: number;
+  used_front: number;
+  used_rear: number;
+  weight_kg: number;
+  max_weight_kg: number | null;
+  power_w: number;
+  max_power_w: number | null;
+}
+
+export interface RackElevation {
+  rack: RackDetail;
+  mounts: RackMount[];
+  free_front: FreeBlock[];
+  free_rear: FreeBlock[];
+  capacity: RackCapacity;
+  warehouse: WarehouseItem[];
+}
+
 export interface ImportJob {
   id: string;
   target: string;

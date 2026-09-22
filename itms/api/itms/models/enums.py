@@ -350,6 +350,27 @@ class DiagramNodeKind(StrEnum):
     CLOUD = "CLOUD"
 
 
+class RackFormFactor(StrEnum):
+    CABINET = "CABINET"
+    OPEN_FRAME = "OPEN_FRAME"
+    WALL = "WALL"
+
+
+class RackFace(StrEnum):
+    """FULL занимает оба фасада и конфликтует и с FRONT, и с REAR."""
+
+    FRONT = "FRONT"
+    REAR = "REAR"
+    FULL = "FULL"
+
+
+class ZeroUSide(StrEnum):
+    """Вертикальное оборудование сбоку стойки, юниты не занимает."""
+
+    LEFT = "LEFT"
+    RIGHT = "RIGHT"
+
+
 class CustomFieldType(StrEnum):
     TEXT = "TEXT"
     NUMBER = "NUMBER"
