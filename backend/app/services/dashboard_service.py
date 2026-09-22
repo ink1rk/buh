@@ -146,7 +146,14 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
 
     emergency = balances.reserve + balances.savings
     debt_owing = balances.debts_owing
-    savings_rate = max(0, (balances.income_month - balances.expense_month) / max(profile.monthly_income, 1))
+    # Делить на объявленный в профиле доход нельзя: пока он не заполнен, в
+    # делителе оказывался один рубль, и норма сбережений выходила в
+    # 4 220 969%. Доход месяца известен из операций, а норма больше единицы не
+    # бывает.
+    income = profile.monthly_income or balances.income_month
+    savings_rate = (
+        min(1.0, max(0.0, (income - balances.expense_month) / income)) if income else 0.0
+    )
 
     # investment regularity: months with investment txs in last 6
     months_with_inv = set()

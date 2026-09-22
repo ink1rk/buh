@@ -80,6 +80,27 @@ async def test_an_empty_app_does_not_grade_a_person_it_knows_nothing_about(clien
 
 
 @pytest.mark.asyncio
+async def test_savings_rate_survives_a_profile_without_declared_income(client, seeded_db):
+    """Сброс обнуляет доход в профиле, а норма сбережений делилась на него.
+
+    В делителе оказывался один рубль, и загруженная выписка давала «норму
+    сбережений 4 220 969%» — число, которое выглядит как поломка.
+    """
+    await clean_slate(seeded_db)
+    await seeded_db.commit()
+    await client.post("/api/v1/transactions", json={
+        "amount": 52173, "description": "Заработная плата",
+        "transaction_type": "income"})
+    await client.post("/api/v1/transactions", json={
+        "amount": -9800, "description": "Продукты"})
+
+    health = (await client.get("/api/v1/dashboard")).json()["health"]
+    savings = next(f for f in health["factors"] if f["name"] == "Сбережения")
+
+    assert savings["explanation"] == "Норма сбережений: 81%."
+
+
+@pytest.mark.asyncio
 async def test_one_real_operation_is_enough_to_start_grading(client, seeded_db):
     await clean_slate(seeded_db)
     await seeded_db.commit()
