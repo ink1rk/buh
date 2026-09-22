@@ -1,6 +1,6 @@
 import { useI18n } from "@/i18n";
 import { useAnalytics } from "@/shared/api/queries";
-import { PageHeader, Panel } from "@/shared/ui/Layout";
+import { Metric, PageHeader, Panel } from "@/shared/ui/Layout";
 
 function Bars({
   rows,
@@ -18,9 +18,9 @@ function Bars({
             <span>{label(row.key)}</span>
             <span className="tabular-nums text-muted">{row.value}</span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded bg-[rgb(var(--surface-muted))]">
+          <div className="h-1.5 overflow-hidden rounded-full bg-[rgb(var(--surface-muted))]">
             <div
-              className="h-full bg-[rgb(var(--accent))]"
+              className="h-full rounded-full bg-[rgb(var(--accent))]"
               style={{ width: `${Math.round((100 * row.value) / max)}%` }}
             />
           </div>
@@ -41,19 +41,16 @@ export function AnalyticsPage() {
     value,
   }));
   return (
-    <div data-testid="analytics-page">
+    <div className="flex flex-col gap-5" data-testid="analytics-page">
       <PageHeader title={t("nav.analytics")} />
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        {[
-          [t("projects.openTasks"), data.open],
-          [t("projects.overdue"), data.overdue],
-          [t("projects.completed"), data.completed],
-        ].map(([label, value]) => (
-          <section key={String(label)} className="surface rounded-lg p-3">
-            <p className="text-xs text-muted">{label}</p>
-            <p className="text-2xl font-medium tabular-nums">{value}</p>
-          </section>
-        ))}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Metric label={t("projects.openTasks")} value={data.open} />
+        <Metric
+          label={t("projects.overdue")}
+          value={data.overdue}
+          tone={data.overdue ? "warn" : "default"}
+        />
+        <Metric label={t("projects.completed")} value={data.completed} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title={t("projects.status")}>

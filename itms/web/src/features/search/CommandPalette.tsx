@@ -85,7 +85,7 @@ export function CommandPalette() {
   const showRecent = !debounced.trim() && recent.length > 0;
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/45 p-4 pt-[12vh]">
+    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-[rgb(8_9_11/0.55)] p-4 pt-[14vh] backdrop-blur-sm">
       <button
         type="button"
         aria-label={t("app.close")}
@@ -96,10 +96,10 @@ export function CommandPalette() {
         role="dialog"
         aria-modal="true"
         aria-label={t("nav.commandPalette")}
-        className="surface animate-in relative w-full max-w-2xl overflow-hidden rounded-lg shadow-2xl"
+        className="surface shadow-pop animate-in relative w-full max-w-2xl overflow-hidden rounded-2xl"
         onKeyDown={onKeyDown}
       >
-        <div className="flex items-center gap-2 border-b border-app px-3 py-2.5">
+        <div className="flex items-center gap-2.5 border-b border-app px-4 py-3.5">
           <Search size={15} className="text-muted" />
           <input
             ref={inputRef}
@@ -125,7 +125,7 @@ export function CommandPalette() {
                       setOpen(false);
                       navigate(item.path);
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[rgb(var(--surface-muted))]"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm hover:bg-[rgb(var(--surface-muted))]"
                   >
                     <span className="truncate">{item.title}</span>
                   </button>
@@ -149,8 +149,8 @@ export function CommandPalette() {
                       onMouseEnter={() => setCursor(index)}
                       onClick={() => go(hit)}
                       className={cn(
-                        "flex w-full items-center gap-2.5 px-3 py-1.5 text-left",
-                        index === cursor && "bg-[rgb(var(--surface-muted))]",
+                        "flex w-full items-center gap-2.5 px-4 py-2 text-left",
+                        index === cursor && "bg-[rgb(var(--accent-soft))]",
                       )}
                     >
                       <Icon size={15} />

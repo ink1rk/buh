@@ -120,9 +120,9 @@ export function DashboardPage() {
                   {formatPercent(coverage, locale)}
                 </span>
               </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded surface-muted">
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full surface-muted">
                 <div
-                  className="h-full rounded"
+                  className="h-full rounded-full"
                   style={{
                     width: `${Math.min(coverage, 100)}%`,
                     background:

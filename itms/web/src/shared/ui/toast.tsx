@@ -63,7 +63,7 @@ export function ToastViewport() {
           <div
             key={item.id}
             role="status"
-            className="surface animate-in pointer-events-auto flex items-start gap-2 rounded-lg px-3 py-2 shadow-lg"
+            className="surface shadow-pop animate-in pointer-events-auto flex items-start gap-2.5 rounded-xl px-3.5 py-3"
           >
             <Icon size={15} className={cn("mt-0.5 shrink-0", TONE_CLASS[item.tone])} />
             <div className="min-w-0 flex-1">

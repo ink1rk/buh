@@ -44,6 +44,10 @@ export const en: DeepPartial<Dictionary> = {
     theme: "Theme",
     language: "Language",
     commandPalette: "Command palette",
+    groupOverview: "Overview",
+    groupInfrastructure: "Infrastructure",
+    groupWork: "Work",
+    groupSystem: "System",
   },
   notifications: {
     title: "Notifications",

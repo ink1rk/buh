@@ -65,7 +65,7 @@ export function DataTable<T>({
                   key={column.key}
                   style={column.width ? { width: column.width } : undefined}
                   className={cn(
-                    "px-2.5 py-1.5 text-xs font-medium text-muted",
+                    "px-3 py-2.5 text-[0.68rem] font-semibold tracking-[0.08em] text-muted uppercase",
                     column.align === "right" && "text-right",
                     column.sortable && onSortChange && "cursor-pointer select-none hover:text-app",
                   )}
@@ -97,7 +97,7 @@ export function DataTable<T>({
                   <td
                     key={column.key}
                     className={cn(
-                      "px-2.5 py-1.5 align-middle",
+                      "px-3 py-2.5 align-middle",
                       column.align === "right" && "text-right tabular-nums",
                       column.className,
                     )}
@@ -138,7 +138,7 @@ export function Pagination({
           type="button"
           disabled={offset === 0}
           onClick={() => onChange(Math.max(0, offset - limit))}
-          className="rounded border border-app px-2 py-1 disabled:opacity-40 hover:not-disabled:text-app"
+          className="rounded-lg border border-app px-2.5 py-1 disabled:opacity-40 hover:not-disabled:text-app"
         >
           {labels.previous}
         </button>
@@ -146,7 +146,7 @@ export function Pagination({
           type="button"
           disabled={to >= total}
           onClick={() => onChange(offset + limit)}
-          className="rounded border border-app px-2 py-1 disabled:opacity-40 hover:not-disabled:text-app"
+          className="rounded-lg border border-app px-2.5 py-1 disabled:opacity-40 hover:not-disabled:text-app"
         >
           {labels.next}
         </button>

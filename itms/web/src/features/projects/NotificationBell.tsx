@@ -43,7 +43,7 @@ export function NotificationBell() {
       {open && (
         <div
           data-testid="notification-panel"
-          className="surface absolute top-9 right-0 z-40 w-80 overflow-hidden rounded-lg border border-app shadow-lg"
+          className="surface shadow-pop absolute top-10 right-0 z-40 w-80 overflow-hidden rounded-2xl"
         >
           <div className="flex items-center justify-between border-b border-app px-3 py-2">
             <p className="text-xs font-medium">{t("notifications.title")}</p>
@@ -66,7 +66,7 @@ export function NotificationBell() {
                   <button
                     type="button"
                     data-testid="notification-item"
-                    className="flex w-full flex-col gap-0.5 px-3 py-2 text-left hover:bg-[rgb(var(--surface-muted))]"
+                    className="flex w-full flex-col gap-0.5 px-3.5 py-2.5 text-left hover:bg-[rgb(var(--surface-muted))]"
                     onClick={() => {
                       if (!item.read_at) mark.mutate(item.id);
                       setOpen(false);

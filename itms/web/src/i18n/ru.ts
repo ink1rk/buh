@@ -69,6 +69,10 @@ export const ru = {
     themeLight: "Светлая тема",
     themeDark: "Тёмная тема",
     themeSystem: "Как в системе",
+    groupOverview: "Обзор",
+    groupInfrastructure: "Инфраструктура",
+    groupWork: "Работа",
+    groupSystem: "Система",
   },
   notifications: {
     title: "Уведомления",

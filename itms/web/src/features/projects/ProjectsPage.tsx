@@ -134,8 +134,8 @@ function SavedViews({
           type="button"
           className={
             active === (view.bucket ?? "")
-              ? "rounded-md bg-[rgb(var(--surface-muted))] px-2 py-1 text-xs"
-              : "rounded-md px-2 py-1 text-xs text-muted"
+              ? "rounded-full bg-[rgb(var(--accent-soft))] px-2.5 py-1 text-xs font-medium text-[rgb(var(--accent))]"
+              : "rounded-full px-2.5 py-1 text-xs text-muted hover:bg-[rgb(var(--surface-muted))]"
           }
           onClick={() => onPick(view.bucket ?? "")}
         >
@@ -179,7 +179,7 @@ function Inbox({ onOpen, only }: { onOpen: (projectId: string) => void; only: st
       {shown.map(([bucket, label]) => {
         const rows = (data ?? []).filter((item: InboxItem) => item.bucket === bucket);
         return (
-          <section key={bucket} className="surface rounded-lg p-3" data-testid={`inbox-${bucket}`}>
+          <section key={bucket} className="surface shadow-card rounded-xl p-3.5" data-testid={`inbox-${bucket}`}>
             <h2 className="mb-2 text-xs font-medium text-muted">
               {label} · {rows.length}
             </h2>

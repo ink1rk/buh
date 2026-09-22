@@ -53,38 +53,51 @@ export function Topbar() {
     );
   };
 
+  const initials = (session?.display_name ?? session?.email ?? "?")
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+
   return (
-    <header className="flex h-12 shrink-0 items-center gap-3 border-b border-app bg-surface px-4">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-app bg-[rgb(var(--surface)/0.86)] px-4 backdrop-blur-md sm:px-5">
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        className="flex h-8 w-full max-w-md items-center gap-2 rounded-md border border-app surface-muted px-2.5 text-left text-xs text-muted transition-colors hover:text-app"
+        className="flex h-9 w-full max-w-lg items-center gap-2 rounded-xl border border-app bg-[rgb(var(--surface-muted))] px-3 text-left text-sm text-muted transition-colors hover:text-app"
       >
-        <Search size={14} />
+        <Search size={15} strokeWidth={1.75} />
         <span className="flex-1 truncate">{t("search.placeholder")}</span>
-        <kbd className="rounded border border-app px-1 py-px font-mono text-[0.65rem]">Ctrl K</kbd>
+        <kbd className="rounded-md border border-app bg-[rgb(var(--surface))] px-1.5 py-0.5 font-mono text-[0.65rem]">
+          Ctrl K
+        </kbd>
       </button>
 
-      <div className="ml-auto flex items-center gap-1.5">
+      <div className="ml-auto flex items-center gap-1">
         <button
           type="button"
           onClick={switchLocale}
           title={t("nav.language")}
-          className="h-7 rounded-md px-2 text-xs font-medium text-muted uppercase transition-colors hover:bg-[rgb(var(--surface-muted))] hover:text-app"
+          className="h-8 rounded-lg px-2 text-xs font-semibold tracking-wide text-muted uppercase transition-colors hover:bg-[rgb(var(--surface-muted))] hover:text-app"
         >
           {locale}
         </button>
         <NotificationBell />
         <IconButton label={themeLabel} onClick={cycleTheme}>
-          <ThemeIcon size={15} />
+          <ThemeIcon size={16} strokeWidth={1.75} />
         </IconButton>
-        <div className="mx-1 h-5 w-px bg-[rgb(var(--border))]" />
-        <div className="hidden text-right sm:block">
-          <p className="text-xs font-medium leading-4">{session?.display_name}</p>
-          <p className="text-[0.7rem] leading-4 text-muted">{session?.email}</p>
+        <div className="mx-1.5 hidden h-6 w-px bg-[rgb(var(--border))] sm:block" />
+        <div className="hidden items-center gap-2 sm:flex">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[rgb(var(--accent-soft))] text-[0.7rem] font-semibold text-[rgb(var(--accent))]">
+            {initials}
+          </span>
+          <div className="text-right">
+            <p className="text-xs leading-4 font-semibold">{session?.display_name}</p>
+            <p className="text-[0.68rem] leading-4 text-muted">{session?.email}</p>
+          </div>
         </div>
         <IconButton label={t("nav.logout")} onClick={() => logout.mutate(undefined)}>
-          <LogOut size={15} />
+          <LogOut size={16} strokeWidth={1.75} />
         </IconButton>
       </div>
     </header>
