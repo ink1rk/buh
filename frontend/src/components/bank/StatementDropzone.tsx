@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, Info, Loader2, Upload } from 'lucide-react'
 import { api } from '@/lib/api'
+import { counted } from '@/lib/plural'
 import { formatMoney } from '@/lib/utils'
 import type { BankImportRun } from '@/types/bank'
 
@@ -100,12 +101,12 @@ export function StatementDropzone({ connectionId, formats }: Props) {
           {run.imported_count === 0 ? (
             <div className="flex items-center gap-2 text-sky-200">
               <Info className="h-4 w-4" />
-              Новых операций нет — все {run.parsed_count} уже были загружены
+              Новых операций нет — все {counted(run.parsed_count, 'операция', 'операции', 'операций')} уже загружены
             </div>
           ) : (
             <div className="flex items-center gap-2 text-emerald-200">
               <CheckCircle2 className="h-4 w-4" />
-              Загружено {run.imported_count} из {run.parsed_count} операций
+              Загружено {run.imported_count} из {counted(run.parsed_count, 'операции', 'операций', 'операций')}
             </div>
           )}
           <div className="flex flex-wrap gap-2 text-xs text-[var(--text-soft)]">

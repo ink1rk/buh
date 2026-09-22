@@ -57,8 +57,9 @@ def test_analytics_excludes_investments_from_expense_categories():
     ]
     bundle = build_analytics(txs, [_acc("card", 1)], days=7)
     names = {c.name for c in bundle.by_category}
-    assert "cafe" in names
-    assert "investments" not in names
+    # Категории подписаны по-русски: на диаграмме их читает человек.
+    assert "кофе и перекусы" in names
+    assert "инвестиции" not in names
 
 
 def test_habits_impulsiveness_not_collapsed():

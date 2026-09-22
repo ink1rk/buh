@@ -8,6 +8,7 @@ from statistics import mean, pstdev
 
 from app.models.transaction import Transaction
 from app.schemas.ai import FraudAlert
+from app.services.categories import category_name
 
 
 def detect_anomalies(transactions: list[Transaction], lookback_days: int = 120) -> list[FraudAlert]:
@@ -33,7 +34,10 @@ def detect_anomalies(transactions: list[Transaction], lookback_days: int = 120) 
             sd = pstdev(cat_values) or 1.0
             z = (amount - m) / sd
             if z >= 2.5:
-                reasons.append(f"Сильно отличается от привычных трат в категории «{t.category}» (в {amount / max(m, 1):.1f}× больше обычного)")
+                reasons.append(
+                    f"Сильно отличается от привычных трат в категории "
+                    f"«{category_name(t.category)}» (в {amount / max(m, 1):.1f}× больше обычного)"
+                )
 
         if merchant and merchant not in known_merchants - {merchant}:
             # first time seeing this merchant and it's a meaningfully large amount

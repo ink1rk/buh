@@ -3,6 +3,7 @@ import { AlertTriangle, Info, Landmark, Plus, RefreshCw, Trash2 } from 'lucide-r
 import { api } from '@/lib/api'
 import { GlassCard } from '@/components/ui/GlassCard'
 import { StatementDropzone } from '@/components/bank/StatementDropzone'
+import { counted } from '@/lib/plural'
 import { formatMoney } from '@/lib/utils'
 import type { BankConnection, BankImportRun, BankProvider } from '@/types/bank'
 
@@ -36,7 +37,7 @@ export function ConnectionsPage() {
         <p className="mt-2 text-[var(--text-soft)]">
           {connections.length === 0
             ? 'Подключите банк, и операции будут попадать в штаб сами.'
-            : `${connections.length} подключение · ${imported} операций загружено`}
+            : `${counted(connections.length, 'подключение', 'подключения', 'подключений')} · загружено ${counted(imported, 'операция', 'операции', 'операций')}`}
         </p>
       </div>
 
@@ -126,7 +127,7 @@ function ConnectionCard({
           </div>
           <div className="mt-1 text-xs text-[var(--text-soft)]">
             {connection.last_synced_at
-              ? `Обновлено ${new Date(connection.last_synced_at).toLocaleString('ru-RU')} · ${connection.imported_total} операций`
+              ? `Обновлено ${new Date(connection.last_synced_at).toLocaleString('ru-RU')} · ${counted(connection.imported_total, 'операция', 'операции', 'операций')}`
               : 'Ещё ни одной выписки'}
           </div>
         </div>

@@ -18,6 +18,7 @@ from app.schemas.ai import (
     PostponePurchaseRequest,
     PurchaseAnalyzeRequest,
 )
+from app.services.categories import category_name
 from app.services.dashboard_service import compute_balances, get_or_create_profile
 from app.services.fraud_engine import detect_anomalies
 from app.services.ledger import spending
@@ -41,7 +42,9 @@ async def _context(db: AsyncSession) -> dict:
         "balance": balances.total,
         "income_month": balances.income_month,
         "expense_month": balances.expense_month,
-        "top_category": top[0],
+        # Советчик пересказывает контекст пользователю, поэтому категория
+        # приходит к нему словом, а не кодом из базы.
+        "top_category": category_name(top[0]),
         "top_category_sum": top[1],
         "subscriptions_total": sum(s.amount for s in subs),
     }

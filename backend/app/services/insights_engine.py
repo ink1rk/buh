@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 from datetime import date, timedelta
 
 from app.models.subscription import Subscription
 from app.models.transaction import Transaction
-
-
-_ALLOCATION = {"investment", "savings", "debt", "transfer"}
-
-
-def _is_spend(t: Transaction) -> bool:
-    return t.amount < 0 and t.transaction_type not in _ALLOCATION
+from app.services.categories import category_name
+from app.services.ledger import is_income, is_spending
 
 
 def generate_insights(
@@ -25,9 +20,9 @@ def generate_insights(
     month_start = today.replace(day=1)
     prev_start = (month_start - timedelta(days=1)).replace(day=1)
 
-    this_month = [t for t in transactions if t.occurred_on >= month_start and _is_spend(t)]
+    this_month = [t for t in transactions if t.occurred_on >= month_start and is_spending(t)]
     prev_month = [
-        t for t in transactions if prev_start <= t.occurred_on < month_start and _is_spend(t)
+        t for t in transactions if prev_start <= t.occurred_on < month_start and is_spending(t)
     ]
 
     insights: list[dict] = []
@@ -45,10 +40,12 @@ def generate_insights(
         if prev.get(cat, 0) > 0:
             growth = (val - prev[cat]) / prev[cat] * 100
             if growth >= 30:
+                named = category_name(cat)
                 insights.append(
                     {
-                        "title": f"Рост «{cat}» на {growth:.0f}%",
-                        "body": f"В этом месяце категория «{cat}» выросла до {val:,.0f} ₽.".replace(",", " "),
+                        "title": f"Рост «{named}» на {growth:.0f}%",
+                        "body": f"В этом месяце категория «{named}» выросла до {val:,.0f} ₽ "
+                        f"против {prev[cat]:,.0f} ₽ месяцем раньше.".replace(",", " "),
                         "insight_type": "warning",
                         "severity": "warning",
                         "category": cat,
@@ -127,7 +124,7 @@ def generate_insights(
         )
 
     # Invest opportunity
-    income_like = sum(t.amount for t in transactions if t.occurred_on >= month_start and t.amount > 0)
+    income_like = sum(t.amount for t in transactions if t.occurred_on >= month_start and is_income(t))
     expense = sum(abs(t.amount) for t in this_month)
     if income_like - expense > monthly_income * 0.2:
         insights.append(

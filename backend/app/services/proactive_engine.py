@@ -171,28 +171,49 @@ def detect_behavior_patterns(transactions: list[Transaction]) -> list[dict]:
     # Payday spending spike: find income days, check spend in following 3 days
     incomes = [t for t in transactions
                if is_income(t) and t.occurred_on >= today - timedelta(days=180)]
-    ratios = []
     spent = spending(transactions)
-    for inc in incomes:
-        window_start = inc.occurred_on
-        window_end = inc.occurred_on + timedelta(days=3)
-        spent_after = sum(
-            abs(t.amount) for t in spent
-            if window_start <= t.occurred_on <= window_end
-        )
-        if inc.amount > 0:
-            ratios.append(spent_after / inc.amount)
-    if ratios:
-        avg_ratio = sum(ratios) / len(ratios)
-        if avg_ratio >= 0.25:
-            patterns.append(
-                {
-                    "title": "После зарплаты в первые три дня уходит значительная часть дохода",
-                    "body": f"В среднем ≈ {avg_ratio * 100:.0f}% дохода тратится в первые 72 часа после поступления.",
-                    "insight_type": "warning",
-                    "severity": "warning",
-                    "category": "behavior",
-                }
-            )
+    for pattern in _payday_spike(incomes, spent):
+        patterns.append(pattern)
 
     return patterns[:3]
+
+
+# Зарплатой считается крупное поступление. Кэшбэк в пять рублей — тоже доход,
+# и покупки того же дня рядом с ним выглядели тратой всей зарплаты: доля
+# считалась по каждому поступлению отдельно и усреднялась, поэтому на главной
+# висело «в первые 72 часа уходит 93905% дохода».
+PAYDAY_SHARE = 0.25
+PAYDAYS_FOR_A_PATTERN = 3
+PAYDAY_WINDOW_DAYS = 3
+
+
+def _payday_spike(incomes: list[Transaction], spent: list[Transaction]) -> list[dict]:
+    """Сколько зарплаты уходит в первые трое суток после её прихода."""
+    if not incomes:
+        return []
+    biggest = max(t.amount for t in incomes)
+    paydays = [t for t in incomes if t.amount >= biggest * PAYDAY_SHARE]
+    if len(paydays) < PAYDAYS_FOR_A_PATTERN:
+        return []
+
+    # Окна складываются днями, а не долями: две зарплаты подряд иначе
+    # засчитали бы одни и те же траты дважды.
+    days = {
+        pay.occurred_on + timedelta(days=step)
+        for pay in paydays
+        for step in range(PAYDAY_WINDOW_DAYS + 1)
+    }
+    earned = sum(t.amount for t in paydays)
+    share = sum(abs(t.amount) for t in spent if t.occurred_on in days) / earned
+    if share < 0.25:
+        return []
+    return [
+        {
+            "title": "После зарплаты в первые три дня уходит значительная часть дохода",
+            "body": f"В среднем ≈ {share * 100:.0f}% зарплаты тратится в первые 72 часа "
+                    f"после поступления (по {len(paydays)} последним начислениям).",
+            "insight_type": "warning",
+            "severity": "warning",
+            "category": "behavior",
+        }
+    ]

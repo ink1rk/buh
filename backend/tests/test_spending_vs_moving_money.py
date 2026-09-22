@@ -84,3 +84,42 @@ def test_payday_pattern_ignores_money_moved_on_payday():
     patterns = detect_behavior_patterns(transactions)
 
     assert not [p for p in patterns if "зарплаты" in p["title"]]
+
+
+def test_a_five_rouble_cashback_is_not_a_payday():
+    """Доля считалась по каждому поступлению и усреднялась.
+
+    Рядом с кэшбэком в пять рублей любая покупка того же дня — это «потрачено
+    двадцать тысяч процентов дохода», и такая подсказка висела на главной.
+    """
+    today = date.today()
+    transactions = []
+    for month in range(3):
+        payday = today - timedelta(days=30 * month + 5)
+        transactions += [
+            _tx(amount=100_000, transaction_type="income", occurred_on=payday),
+            _tx(amount=-5_000, occurred_on=payday + timedelta(days=1)),
+            _tx(amount=5.0, transaction_type="income", occurred_on=payday + timedelta(days=9)),
+            _tx(amount=-3_000, occurred_on=payday + timedelta(days=9)),
+        ]
+
+    patterns = detect_behavior_patterns(transactions)
+
+    assert not [p for p in patterns if "зарплаты" in p["title"]], (
+        "5 000 из 100 000 зарплаты — это не «значительная часть дохода»"
+    )
+
+
+def test_spending_the_whole_payday_is_still_worth_saying():
+    today = date.today()
+    transactions = []
+    for month in range(3):
+        payday = today - timedelta(days=30 * month + 5)
+        transactions += [
+            _tx(amount=100_000, transaction_type="income", occurred_on=payday),
+            _tx(amount=-60_000, occurred_on=payday + timedelta(days=2)),
+        ]
+
+    spike = [p for p in detect_behavior_patterns(transactions) if "зарплаты" in p["title"]]
+
+    assert spike and "60%" in spike[0]["body"]
