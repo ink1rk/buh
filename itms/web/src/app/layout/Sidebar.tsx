@@ -1,6 +1,7 @@
 import {
   Boxes,
   FileText,
+  GalleryVertical,
   History,
   LayoutDashboard,
   Layers,
@@ -36,6 +37,7 @@ const PRIMARY: NavItem[] = [
   { to: "/network", labelKey: "nav.network", icon: Network },
   { to: "/ipam", labelKey: "nav.ipam", icon: Router },
   { to: "/diagrams", labelKey: "nav.diagrams", icon: Workflow },
+  { to: "/racks", labelKey: "nav.racks", icon: GalleryVertical },
   { to: "/locations", labelKey: "nav.locations", icon: MapPin },
   { to: "/documents", labelKey: "nav.documents", icon: FileText },
   { to: "/directory", labelKey: "nav.directory", icon: Users },

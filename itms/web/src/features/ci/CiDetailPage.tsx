@@ -135,6 +135,9 @@ export function CiDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {ci.ci_type === "RACK" && (
+              <Button onClick={() => navigate(`/racks/${ci.id}`)}>{t("racks.open")}</Button>
+            )}
             {ci.archived_at ? (
               <Button icon={<ArchiveRestore size={14} />} onClick={() => setAction("restore")}>
                 {t("app.restore")}

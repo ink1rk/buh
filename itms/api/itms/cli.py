@@ -30,8 +30,10 @@ from itms.models.enums import (
     IpRole,
     LocationType,
     PanelSide,
+    RackFace,
     SupportLine,
     VlanMode,
+    ZeroUSide,
 )
 from itms.models.network import Interface
 from itms.services import (
@@ -44,6 +46,7 @@ from itms.services import (
     ipam_service,
     location_service,
     network_service,
+    rack_service,
 )
 
 USAGE = """Команды:
@@ -88,6 +91,7 @@ async def seed_demo() -> None:
                     session, site.id, server_room.id, floor.id, server.id, switch.id
                 )
             await _ensure_demo_diagram(session, floor.id)
+            await _ensure_demo_rack(session, server_room.id)
             if seeded:
                 print("Демонстрационные данные уже есть")
                 return
@@ -224,6 +228,90 @@ async def _ensure_demo_diagram(session: AsyncSession, floor_id: uuid.UUID) -> No
                 "Кабели серверной и точки доступа. Раскладка хранится отдельно от модели."
             ),
             "autofill": True,
+        },
+    )
+
+
+async def _ensure_demo_rack(session: AsyncSession, server_room_id: uuid.UUID) -> None:
+    """Стойка серверной: сервер на оба фасада, коммутатор и панель спереди, PDU сбоку."""
+    if await _ci_by_code(session, "R1"):
+        return
+    created = await rack_service.create_rack(
+        session,
+        {
+            "name": "Стойка R1",
+            "code": "R1",
+            "location_id": server_room_id,
+            "u_height": 42,
+            "depth_mm": 1000,
+            "max_weight_kg": 800,
+            "max_power_w": 5000,
+        },
+    )
+    rack_id = created["rack"]["id"]
+    server = await _ci_by_code(session, "SRV-01")
+    switch = await _ci_by_code(session, "SW-CORE-1")
+    panel = await _ci_by_code(session, "PP-01")
+    if server is None or switch is None or panel is None:
+        return
+    await rack_service.place_mount(
+        session,
+        rack_id,
+        {
+            "ci_id": server.id,
+            "position_u": 20,
+            "u_height": 1,
+            "face": RackFace.FULL,
+            "weight_kg": 18,
+        },
+    )
+    await rack_service.place_mount(
+        session,
+        rack_id,
+        {
+            "ci_id": switch.id,
+            "position_u": 36,
+            "u_height": 1,
+            "face": RackFace.FRONT,
+            "weight_kg": 6,
+        },
+    )
+    await rack_service.place_mount(
+        session,
+        rack_id,
+        {
+            "ci_id": panel.id,
+            "position_u": 38,
+            "u_height": 1,
+            "face": RackFace.FRONT,
+            "weight_kg": 3,
+        },
+    )
+    pdu = await _ci_by_code(session, "PDU-R1")
+    if pdu is None:
+        pdu = await ci_service.create_ci(
+            session,
+            {
+                "ci_type": CiType.DEVICE,
+                "code": "PDU-R1",
+                "name": "PDU стойки R1",
+                "criticality": Criticality.HIGH,
+                "location_id": server_room_id,
+                "status": CiStatus.ACTIVE,
+            },
+        )
+        await device_service.upsert_device(
+            session, pdu.id, {"device_role": DeviceRole.PDU}
+        )
+    await rack_service.place_mount(
+        session,
+        rack_id,
+        {
+            "ci_id": pdu.id,
+            "position_u": 1,
+            "u_height": 0,
+            "face": RackFace.FRONT,
+            "zero_u_side": ZeroUSide.LEFT,
         },
     )
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 from itms.core.audit import AuditConfig, install_audit, register_audit
 from itms.models.catalog import DeviceModel, Manufacturer, PortTemplate
 from itms.models.cmdb import Ci, CiRelation, CustomFieldDef, Location, Tag
+from itms.models.datacenter import Rack, RackMount
 from itms.models.diagram import Diagram
 from itms.models.directory import (
     Department,
@@ -132,6 +133,21 @@ def configure_audit() -> None:
         ),
     )
     register_audit(CableRoute, AuditConfig(entity_type="CABLE_ROUTE"))
+    register_audit(
+        Rack,
+        AuditConfig(
+            entity_type="RACK",
+            critical_fields=frozenset({"u_height", "max_power_w", "max_weight_kg"}),
+        ),
+    )
+    register_audit(
+        RackMount,
+        AuditConfig(
+            entity_type="RACK_MOUNT",
+            label_attr="face",
+            critical_fields=frozenset({"position_u", "u_height", "face", "rack_id"}),
+        ),
+    )
     register_audit(Vrf, AuditConfig(entity_type="VRF"))
     register_audit(Vlan, AuditConfig(entity_type="VLAN"))
     register_audit(Prefix, AuditConfig(entity_type="PREFIX", label_attr="cidr"))

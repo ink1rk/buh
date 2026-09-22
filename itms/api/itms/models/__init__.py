@@ -16,6 +16,7 @@ from itms.models.cmdb import (
     SearchIndex,
     Tag,
 )
+from itms.models.datacenter import Rack, RackMount
 from itms.models.diagram import Diagram, DiagramEdge, DiagramNode
 from itms.models.directory import (
     Department,
@@ -83,6 +84,8 @@ __all__ = [
     "OutboxEvent",
     "PortTemplate",
     "Prefix",
+    "Rack",
+    "RackMount",
     "ResponsibilityArea",
     "SearchIndex",
     "Tag",

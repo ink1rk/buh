@@ -19,6 +19,8 @@ import type {
   DiagramFull,
   DiagramNode,
   DiagramSummary,
+  RackElevation,
+  RackSummary,
   DocumentDetail,
   DocumentSummary,
   DocumentVersion,
@@ -90,6 +92,8 @@ export const keys = {
   addresses: (params: unknown) => ["ipam", "addresses", params] as const,
   diagrams: ["diagrams"] as const,
   diagram: (id: string) => ["diagrams", id] as const,
+  racks: ["racks"] as const,
+  rack: (id: string) => ["racks", id] as const,
 };
 
 export function useSession() {
@@ -331,6 +335,21 @@ export function useDiagram(id: string | undefined) {
   return useQuery({
     queryKey: keys.diagram(id ?? ""),
     queryFn: () => api.get<DiagramFull>(`/diagrams/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useRacks() {
+  return useQuery({
+    queryKey: keys.racks,
+    queryFn: () => api.get<RackSummary[]>("/racks"),
+  });
+}
+
+export function useRack(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.rack(id ?? ""),
+    queryFn: () => api.get<RackElevation>(`/racks/${id}`),
     enabled: Boolean(id),
   });
 }
@@ -587,4 +606,10 @@ export const mutations = {
   removeDiagramNode: (nodeId: string) => api.delete<{ ok: boolean }>(`/diagrams/nodes/${nodeId}`),
   syncDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/sync`),
   autolayoutDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/autolayout`),
+
+  createRack: (body: Record<string, unknown>) => api.post<RackElevation>("/racks", body),
+  placeMount: (rackId: string, body: Record<string, unknown>, provenance?: Provenance) =>
+    api.put<RackElevation>(`/racks/${rackId}/mounts`, body, provenance),
+  removeMount: (rackId: string, mountId: string, toStock: boolean, provenance?: Provenance) =>
+    api.delete<RackElevation>(`/racks/${rackId}/mounts/${mountId}?to_stock=${toStock}`, provenance),
 };

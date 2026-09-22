@@ -33,6 +33,8 @@ TABLES_TO_CLEAR = (
     "diagram_edge",
     "diagram_node",
     "diagram",
+    "rack_mount",
+    "rack",
     "audit_log",
     "interface_vlan",
     "ip_address",
