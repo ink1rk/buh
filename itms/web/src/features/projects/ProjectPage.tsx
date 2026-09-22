@@ -86,6 +86,14 @@ export function ProjectPage() {
           </span>
         }
       />
+      <p className="-mt-2 mb-3 text-sm text-muted">
+        {te("projectStatus", project.status)}
+        {" · "}
+        {te("priority", project.priority)}
+        {project.owner_name ? ` · ${project.owner_name}` : ""}
+        {project.due_date ? ` · ${project.due_date}` : ""}
+        {` · ${project.open_task_count}/${project.task_count}`}
+      </p>
       <div className="mb-4 flex items-center gap-3">
         <div className="h-1.5 flex-1 overflow-hidden rounded bg-[rgb(var(--surface-muted))]">
           <div
@@ -93,7 +101,7 @@ export function ProjectPage() {
             style={{ width: `${Math.min(100, project.progress_pct)}%` }}
           />
         </div>
-        <span className="tabular-nums text-xs text-muted">{project.progress_pct}%</span>
+        <span className="text-xs text-muted tabular-nums">{project.progress_pct}%</span>
       </div>
       <Tabs
         className="mb-4"
@@ -257,11 +265,19 @@ function Overview({ projectId, view }: { projectId: string; view: ProjectView })
         <Panel title={t("projects.phases")}>
           <ul className="mb-3 flex flex-col gap-1">
             {view.phases.map((phase) => (
-              <li key={phase.id} className="flex items-center justify-between gap-3 text-sm">
-                <span>
-                  {phase.order_index}. {phase.name}
-                </span>
-                <span className="tabular-nums text-muted">{phase.progress_pct}%</span>
+              <li key={phase.id} className="text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span>
+                    {phase.order_index}. {phase.name}
+                  </span>
+                  <span className="tabular-nums text-muted">{phase.progress_pct}%</span>
+                </div>
+                <div className="mt-1 h-1 overflow-hidden rounded-full bg-[rgb(var(--surface-muted))]">
+                  <div
+                    className="h-full rounded-full bg-[rgb(var(--accent))]"
+                    style={{ width: `${Math.min(phase.progress_pct, 100)}%` }}
+                  />
+                </div>
               </li>
             ))}
           </ul>

@@ -23,6 +23,7 @@ import { toast } from "@/shared/ui/toast";
 import { ConfirmDialog } from "../provenance/ReasonField";
 import { CiHistoryTab } from "./CiHistoryTab";
 import { CiNetworkTab } from "./CiNetworkTab";
+import { CiOps } from "./CiOps";
 import { CiOverviewTab } from "./CiOverviewTab";
 import { CiRelationsTab } from "./CiRelationsTab";
 
@@ -174,6 +175,8 @@ export function CiDetailPage() {
             </Button>
           </div>
         </header>
+
+        <CiOps ci={ci} related={related} />
 
         <Tabs
           active={tab}

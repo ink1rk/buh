@@ -60,11 +60,11 @@ export function Topbar() {
     .join("");
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-app bg-[rgb(var(--surface)/0.86)] px-4 backdrop-blur-md sm:px-5">
+    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-app bg-app px-4 sm:px-5">
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        className="flex h-9 w-full max-w-lg items-center gap-2 rounded-xl border border-app bg-[rgb(var(--surface-muted))] px-3 text-left text-sm text-muted transition-colors hover:text-app"
+        className="flex h-9 w-full max-w-lg items-center gap-2 rounded-lg border border-app bg-[rgb(var(--surface))] px-3 text-left text-sm text-muted transition-colors hover:text-app"
       >
         <Search size={15} strokeWidth={1.75} />
         <span className="flex-1 truncate">{t("search.placeholder")}</span>

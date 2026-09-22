@@ -69,20 +69,16 @@ export function CiListPage() {
 
   const columns: Array<Column<Ci>> = [
     {
-      key: "code",
-      header: t("ci.code"),
-      width: "9rem",
-      sortable: true,
-      render: (row) => <span className="font-mono text-xs text-muted">{row.code ?? "—"}</span>,
-    },
-    {
       key: "name",
       header: t("ci.name"),
       sortable: true,
       render: (row) => (
-        <span className="flex items-center gap-2">
-          <span className="font-medium">{row.name}</span>
-          {row.archived_at && <Badge>{t("ci.archived")}</Badge>}
+        <span className="block min-w-0">
+          <span className="flex items-center gap-2">
+            {row.code && <span className="font-mono text-xs text-muted">{row.code}</span>}
+            {row.archived_at && <Badge>{t("ci.archived")}</Badge>}
+          </span>
+          <span className="block truncate font-medium">{row.name}</span>
         </span>
       ),
     },
