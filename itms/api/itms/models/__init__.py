@@ -35,6 +35,7 @@ from itms.models.documents import (
     DocumentVersion,
     FileObject,
 )
+from itms.models.floorplan import Floorplan, FloorplanItem
 from itms.models.network import (
     CableRoute,
     Connection,
@@ -95,6 +96,8 @@ __all__ = [
     "Employee",
     "EmployeeResponsibility",
     "FileObject",
+    "Floorplan",
+    "FloorplanItem",
     "ImportJob",
     "Interface",
     "InterfaceVlan",

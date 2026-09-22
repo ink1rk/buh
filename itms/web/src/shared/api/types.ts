@@ -588,6 +588,44 @@ export interface DiagramFull {
   edges: DiagramEdge[];
 }
 
+export interface FloorplanSummary {
+  id: string;
+  name: string;
+  location_id: string;
+  location_name: string | null;
+  width_mm: number;
+  height_mm: number;
+  item_count: number;
+}
+
+export interface FloorplanItem {
+  id: string;
+  ci_id: string | null;
+  code: string | null;
+  name: string;
+  item_kind: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+}
+
+export interface FloorplanCandidate {
+  ci_id: string;
+  code: string | null;
+  name: string;
+  item_kind: string;
+  width: number;
+  height: number;
+}
+
+export interface FloorplanView {
+  plan: Omit<FloorplanSummary, "item_count">;
+  items: FloorplanItem[];
+  available: FloorplanCandidate[];
+}
+
 export interface RackSummary {
   id: string;
   name: string;

@@ -29,6 +29,8 @@ from itms.main import app
 from itms.services import auth_service, directory_service
 
 TABLES_TO_CLEAR = (
+    "floorplan_item",
+    "floorplan",
     "change_item",
     "planned_change",
     "state_snapshot",

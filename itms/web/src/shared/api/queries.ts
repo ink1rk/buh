@@ -19,6 +19,8 @@ import type {
   DiagramFull,
   DiagramNode,
   DiagramSummary,
+  FloorplanSummary,
+  FloorplanView,
   RackElevation,
   RackSummary,
   PowerOverview,
@@ -96,6 +98,8 @@ export const keys = {
   addresses: (params: unknown) => ["ipam", "addresses", params] as const,
   diagrams: ["diagrams"] as const,
   diagram: (id: string) => ["diagrams", id] as const,
+  floorplans: ["floorplans"] as const,
+  floorplan: (id: string) => ["floorplans", id] as const,
   racks: ["racks"] as const,
   rack: (id: string) => ["racks", id] as const,
   projects: ["projects"] as const,
@@ -343,6 +347,21 @@ export function useDiagram(id: string | undefined) {
   return useQuery({
     queryKey: keys.diagram(id ?? ""),
     queryFn: () => api.get<DiagramFull>(`/diagrams/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useFloorplans() {
+  return useQuery({
+    queryKey: keys.floorplans,
+    queryFn: () => api.get<FloorplanSummary[]>("/floorplans"),
+  });
+}
+
+export function useFloorplan(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.floorplan(id ?? ""),
+    queryFn: () => api.get<FloorplanView>(`/floorplans/${id}`),
     enabled: Boolean(id),
   });
 }
@@ -678,6 +697,13 @@ export const mutations = {
     api.post<TransitionView>(`/projects/${id}/plans/${planId}/apply`, undefined, provenance),
   rollbackPlan: (id: string, planId: string, provenance?: Provenance) =>
     api.post<TransitionView>(`/projects/${id}/plans/${planId}/rollback`, undefined, provenance),
+
+  createFloorplan: (body: Record<string, unknown>) =>
+    api.post<FloorplanView>("/floorplans", body),
+  placeFloorplanItem: (planId: string, body: Record<string, unknown>) =>
+    api.post<FloorplanView>(`/floorplans/${planId}/items`, body),
+  moveFloorplanItem: (planId: string, itemId: string, body: Record<string, unknown>) =>
+    api.patch<FloorplanView>(`/floorplans/${planId}/items/${itemId}`, body),
 
   createRack: (body: Record<string, unknown>) => api.post<RackElevation>("/racks", body),
   placeMount: (rackId: string, body: Record<string, unknown>, provenance?: Provenance) =>
