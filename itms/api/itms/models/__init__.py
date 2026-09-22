@@ -16,6 +16,7 @@ from itms.models.cmdb import (
     SearchIndex,
     Tag,
 )
+from itms.models.diagram import Diagram, DiagramEdge, DiagramNode
 from itms.models.directory import (
     Department,
     Employee,
@@ -62,6 +63,9 @@ __all__ = [
     "Department",
     "Device",
     "DeviceModel",
+    "Diagram",
+    "DiagramEdge",
+    "DiagramNode",
     "Document",
     "DocumentFolder",
     "DocumentLink",

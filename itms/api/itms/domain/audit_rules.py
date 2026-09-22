@@ -10,6 +10,7 @@ from __future__ import annotations
 from itms.core.audit import AuditConfig, install_audit, register_audit
 from itms.models.catalog import DeviceModel, Manufacturer, PortTemplate
 from itms.models.cmdb import Ci, CiRelation, CustomFieldDef, Location, Tag
+from itms.models.diagram import Diagram
 from itms.models.directory import (
     Department,
     Employee,
@@ -102,6 +103,13 @@ def configure_audit() -> None:
     )
     register_audit(DocumentFolder, AuditConfig(entity_type="DOCUMENT_FOLDER"))
     register_audit(DocumentLink, AuditConfig(entity_type="DOCUMENT_LINK", label_attr="entity_type"))
+    register_audit(
+        Diagram,
+        AuditConfig(
+            entity_type="DIAGRAM",
+            ignore_fields=frozenset({"viewport", "scope"}),
+        ),
+    )
     register_audit(Manufacturer, AuditConfig(entity_type="MANUFACTURER"))
     register_audit(DeviceModel, AuditConfig(entity_type="DEVICE_MODEL", label_attr="model"))
     register_audit(PortTemplate, AuditConfig(entity_type="PORT_TEMPLATE",

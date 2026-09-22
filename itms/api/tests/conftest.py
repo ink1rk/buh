@@ -30,6 +30,9 @@ from itms.services import auth_service, directory_service
 
 TABLES_TO_CLEAR = (
     "audit_change",
+    "diagram_edge",
+    "diagram_node",
+    "diagram",
     "audit_log",
     "interface_vlan",
     "ip_address",

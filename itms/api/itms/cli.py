@@ -16,6 +16,7 @@ from itms.core.db import dispose_engine, session_scope
 from itms.domain.audit_rules import configure_audit
 from itms.models.catalog import Manufacturer
 from itms.models.cmdb import Ci, Location
+from itms.models.diagram import Diagram
 from itms.models.directory import Organization
 from itms.models.enums import (
     CableCategory,
@@ -24,6 +25,7 @@ from itms.models.enums import (
     CiType,
     Criticality,
     DeviceRole,
+    DiagramType,
     InterfaceType,
     IpRole,
     LocationType,
@@ -37,6 +39,7 @@ from itms.services import (
     catalog_service,
     ci_service,
     device_service,
+    diagram_service,
     directory_service,
     ipam_service,
     location_service,
@@ -80,10 +83,14 @@ async def seed_demo() -> None:
             seeded = (
                 await session.execute(select(Manufacturer.id).where(Manufacturer.name == "Dell"))
             ).scalar_one_or_none()
+            if not seeded:
+                await _seed_network(
+                    session, site.id, server_room.id, floor.id, server.id, switch.id
+                )
+            await _ensure_demo_diagram(session, floor.id)
             if seeded:
                 print("Демонстрационные данные уже есть")
                 return
-            await _seed_network(session, site.id, server_room.id, floor.id, server.id, switch.id)
     print("Демонстрационные данные добавлены")
 
 
@@ -198,6 +205,27 @@ async def _ensure_demo_cmdb(
         },
     )
     return site, server_room, floor, server, switch
+
+
+async def _ensure_demo_diagram(session: AsyncSession, floor_id: uuid.UUID) -> None:
+    """Сетевая схема этажа: серверная и точка доступа попадают в одно поддерево."""
+    existing = (
+        await session.execute(select(Diagram.id).where(Diagram.name == "Сеть 2 этажа"))
+    ).scalar_one_or_none()
+    if existing:
+        return
+    await diagram_service.create_diagram(
+        session,
+        {
+            "name": "Сеть 2 этажа",
+            "diagram_type": DiagramType.NETWORK,
+            "location_id": floor_id,
+            "description": (
+                "Кабели серверной и точки доступа. Раскладка хранится отдельно от модели."
+            ),
+            "autofill": True,
+        },
+    )
 
 
 async def _seed_network(

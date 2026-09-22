@@ -134,6 +134,27 @@
     outline-offset: -1px;
     border-color: rgb(var(--accent));
   }
+
+  /* Tailwind сбрасывает svg до max-width: 100%, из-за этого линии схемы пропадают. */
+  .react-flow__edges,
+  .react-flow__edgelabel-renderer,
+  .react-flow__attribution {
+    max-width: none;
+  }
+
+  .react-flow__edge-path {
+    max-width: none;
+  }
+
+  .react-flow__controls-button {
+    background: rgb(var(--surface));
+    border-bottom-color: rgb(var(--border));
+    fill: rgb(var(--text));
+  }
+
+  .react-flow__minimap {
+    background: rgb(var(--surface));
+  }
 }
 
 @keyframes itms-fade-in {

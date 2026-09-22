@@ -27,6 +27,7 @@ export const en: DeepPartial<Dictionary> = {
     devices: "Hardware",
     network: "Network",
     ipam: "IP addressing",
+    diagrams: "Diagrams",
     catalog: "Model catalogue",
     locations: "Locations",
     documents: "Documentation",

@@ -13,6 +13,7 @@ import {
   Settings,
   Upload,
   Users,
+  Workflow,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { NavLink } from "react-router-dom";
@@ -34,6 +35,7 @@ const PRIMARY: NavItem[] = [
   { to: "/devices", labelKey: "nav.devices", icon: Server },
   { to: "/network", labelKey: "nav.network", icon: Network },
   { to: "/ipam", labelKey: "nav.ipam", icon: Router },
+  { to: "/diagrams", labelKey: "nav.diagrams", icon: Workflow },
   { to: "/locations", labelKey: "nav.locations", icon: MapPin },
   { to: "/documents", labelKey: "nav.documents", icon: FileText },
   { to: "/directory", labelKey: "nav.directory", icon: Users },

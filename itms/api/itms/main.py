@@ -15,6 +15,7 @@ from itms.api.routers import (
     catalog,
     ci,
     devices,
+    diagrams,
     directory,
     documents,
     files,
@@ -96,6 +97,7 @@ app.include_router(catalog.router, prefix=prefix)
 app.include_router(devices.router, prefix=prefix)
 app.include_router(devices.interfaces_router, prefix=prefix)
 app.include_router(network.router, prefix=prefix)
+app.include_router(diagrams.router, prefix=prefix)
 app.include_router(ipam.router, prefix=prefix)
 app.include_router(directory.router, prefix=prefix)
 app.include_router(documents.router, prefix=prefix)
