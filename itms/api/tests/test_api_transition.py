@@ -98,6 +98,16 @@ async def test_snapshot_plan_apply_and_rollback(client: AsyncClient, api: str) -
     item = body["plans"][0]["items"][0]
     assert item["payload"]["fields"]["max_load_w"] == 32909
     assert item["payload"]["fields"]["rated_current_a"] == 50
+    refs = [row["payload"].get("ref") for row in body["plans"][0]["items"]]
+    assert refs[1:] == [
+        "R2",
+        "UPS-2",
+        "PDU-R2-A",
+        "PDU-R2-B",
+        "link-ups",
+        "link-pdu-a",
+        "link-pdu-b",
+    ]
     levels = {row["rule"]: row["level"] for row in body["gap"]}
     assert levels["power_target"] == "OK"
     assert levels["power_unapplied"] == "WARNING"
@@ -131,6 +141,11 @@ async def test_snapshot_plan_apply_and_rollback(client: AsyncClient, api: str) -
     assert overview.status_code == 200
     node = next(row for row in overview.json()["nodes"] if row["code"] == "UPG-IN")
     assert node["limit_w"] == 32909
+    codes = {row["code"] for row in overview.json()["nodes"]}
+    assert {"UPS-2", "PDU-R2-A", "PDU-R2-B"} <= codes
+    racks = await client.get(f"{api}/racks")
+    assert racks.status_code == 200
+    assert any(row["code"] == "R2" for row in racks.json())
     forecast = overview.json()["scenarios"][0]["forecast"]
     assert forecast["target_estimated_w"] == 20497
     assert forecast["deficit_w"] == 0
@@ -146,6 +161,10 @@ async def test_snapshot_plan_apply_and_rollback(client: AsyncClient, api: str) -
     assert rolled.json()["live"]["limit_w"] == 20000
     assert rolled.json()["live"]["deficit_w"] == 497
     assert rolled.json()["plans"][0]["status"] == "DRAFT"
+    cleared = await client.get(f"{api}/power")
+    left = {row["code"] for row in cleared.json()["nodes"]}
+    assert "UPS-2" not in left
+    assert "R2" not in {row["code"] for row in (await client.get(f"{api}/racks")).json()}
 
     again = await client.get(f"{api}/projects/{project_id}")
     assert again.json()["health"]["status"] == "AT_RISK"

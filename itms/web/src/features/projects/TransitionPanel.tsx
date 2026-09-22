@@ -234,15 +234,21 @@ function PlanCard({
         {plan.items.map((item) => {
           const before = item.payload.before?.max_load_w;
           const next = item.payload.fields?.max_load_w;
+          const showsWatts = before != null || next != null;
           return (
-            <li key={item.id}>
-              <div>{item.payload.summary}</div>
-              <div className="text-xs text-muted">
-                {t("projects.was")} {formatKw(before ?? null)} · {t("projects.becomes")}{" "}
-                {formatKw(next ?? null)}
-                {item.payload.fields?.rated_current_a != null &&
-                  ` · ${item.payload.fields.rated_current_a} А`}
+            <li key={item.id} data-testid="plan-item" data-ref={item.payload.ref ?? ""}>
+              <div className="flex items-start gap-2">
+                <Badge tone="neutral">{te("changeOperation", item.operation)}</Badge>
+                <span>{item.payload.summary}</span>
               </div>
+              {showsWatts && (
+                <div className="mt-1 text-xs text-muted">
+                  {t("projects.was")} {formatKw(before ?? null)} · {t("projects.becomes")}{" "}
+                  {formatKw(next ?? null)}
+                  {item.payload.fields?.rated_current_a != null &&
+                    ` · ${item.payload.fields.rated_current_a} А`}
+                </div>
+              )}
             </li>
           );
         })}
