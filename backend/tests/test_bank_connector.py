@@ -759,3 +759,59 @@ def test_a_table_with_absurdly_many_rows_is_refused():
 
     with pytest.raises(StatementParseError, match="строк"):
         read_csv_rows(huge.encode())
+
+
+def _pdf(lines: list[str]) -> bytes:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    pdf.setFont("Helvetica", 9)
+    y = 800
+    for line in lines:
+        pdf.drawString(40, y, line)
+        y -= 12
+        if y < 40:
+            pdf.showPage()
+            pdf.setFont("Helvetica", 9)
+            y = 800
+    pdf.save()
+    return buffer.getvalue()
+
+
+def test_the_currency_sign_is_printed_once_in_the_header_not_on_every_row():
+    """Пока знак валюты был обязателен, выписка теряла почти все операции."""
+    statement = get_connector("ozon").parse_statement(
+        _pdf([
+            "Data Opisanie Summa, RUB Ostatok",
+            "12.03.2026 Pyaterochka -1 234,56 48 765,44",
+            "13.03.2026 Zachislenie zarplaty +180 000,00 228 765,44",
+            "14.03.2026 Oplata Yandex Taxi -450,00 228 315,44",
+        ]),
+        "statement.pdf",
+    )
+
+    assert [op.amount for op in statement.operations] == [-1234.56, 180000.0, -450.0]
+
+
+def test_a_page_number_is_not_an_operation():
+    statement = get_connector("ozon").parse_statement(
+        _pdf([
+            "12.03.2026 Pyaterochka -1 234,56",
+            "13.03.2026 Salary +180 000,00",
+            "01.03.2026 Stranica 2",
+        ]),
+        "statement.pdf",
+    )
+
+    assert [op.amount for op in statement.operations] == [-1234.56, 180000.0]
+
+
+def test_a_layout_it_did_not_understand_is_refused_not_guessed():
+    """Полгода трат не могут превратиться в две операции незаметно."""
+    lines = [f"{day:02d}.03.2026 Pokupka v magazine bez summy" for day in range(1, 29)]
+    lines += ["12.03.2026 Pyaterochka -1 234,56 RUB"]
+
+    with pytest.raises(StatementParseError, match="не понял вёрстку"):
+        get_connector("ozon").parse_statement(_pdf(lines), "statement.pdf")

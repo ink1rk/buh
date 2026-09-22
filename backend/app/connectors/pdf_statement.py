@@ -22,9 +22,20 @@ from app.connectors.base import (
 )
 
 _DATE_PREFIX = re.compile(r"^\s*(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4})\s*(?:\d{2}:\d{2}(?::\d{2})?)?\s*")
+# Знак валюты в выписке обычно стоит один раз — в шапке колонки, а не в каждой
+# строке. Пока он требовался, почти все операции молча отбрасывались, и до
+# импорта доходили только те немногие строки, где банк валюту всё же напечатал.
+_SPACE = r"[\s\u00a0\u202f\u2009]"
+_SIGN = r"[+\-\u2212\u2013]?\s?"
+# Раньше границей числа служил знак валюты. Без него пробел внутри числа
+# перестаёт отличаться от пробела между числами, и «-1 234,56 48 765,44»
+# читается одной суммой в пять миллионов. Поэтому разряды описаны как
+# разряды: группы ровно по три цифры.
 _TRAILING_AMOUNT = re.compile(
-    r"(?P<amount>[+\-\u2212\u2013]?\s?\d[\d\s\u00a0\u202f\u2009]*(?:[.,]\d{1,2})?)"
-    r"\s*(?:₽|руб\.?|RUB|Р)\s*$",
+    rf"(?:^|(?<={_SPACE})|(?<=[|·]))"
+    rf"(?P<amount>{_SIGN}\d{{1,3}}(?:{_SPACE}\d{{3}})+(?:[.,]\d{{1,2}})?"
+    rf"|{_SIGN}\d+(?:[.,]\d{{1,2}})?)"
+    rf"\s*(?P<currency>₽|руб\.?|RUB|Р)?\s*$",
     re.IGNORECASE,
 )
 _SIGNED = re.compile(r"^[+\-\u2212\u2013]")
@@ -100,6 +111,18 @@ def extract_pdf_text(data: bytes) -> str:
         raise StatementParseError(f"Не удалось прочитать PDF: {exc}") from exc
 
 
+def _is_money(raw: str, currency: str | None) -> bool:
+    """Похоже ли хвостовое число на сумму, если валюту банк не напечатал.
+
+    Без якоря валюты концом строки легко оказывается номер страницы или
+    сноска. Деньги себя выдают: копейки, разряды или просто величина.
+    """
+    if currency:
+        return True
+    digits = re.sub(r"[^\d]", "", raw)
+    return bool(re.search(r"[.,]\d{1,2}$", raw)) or len(digits) >= 3
+
+
 def _direction(description: str) -> int:
     """+1 income, -1 expense, 0 — the wording gives nothing away."""
     text = description.lower().replace("ё", "е")
@@ -119,7 +142,7 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
         )
 
     statement = ParsedStatement()
-    unsigned = guessed = totals = 0
+    unsigned = guessed = totals = dated_without_amount = 0
     any_signed = False
 
     for line in text.splitlines():
@@ -142,9 +165,12 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
             amount_match = _TRAILING_AMOUNT.search(body)
             if not amount_match:
                 break
+            if not _is_money(amount_match.group("amount"), amount_match.group("currency")):
+                break
             amounts.insert(0, amount_match.group("amount").strip())
             body = body[: amount_match.start()].strip()
         if not amounts:
+            dated_without_amount += 1
             continue
 
         # With two trailing amounts the rightmost one is the running balance.
@@ -177,6 +203,18 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
         raise StatementParseError(
             "В PDF не нашлось строк вида «дата — описание — сумма». "
             "Попробуйте выгрузить выписку в CSV или XLSX."
+        )
+
+    # Вёрстка у каждого банка своя, и если она не поддалась, разбор не падает
+    # — он тихо выдаёт горстку случайных строк. Полгода трат превращаются в
+    # две операции, и это выглядит как настоящая история. Молчать нельзя:
+    # строк с датами в файле видно, и несоответствие само себя выдаёт.
+    if dated_without_amount > max(5, len(statement.operations) * 3):
+        raise StatementParseError(
+            f"Разбор не понял вёрстку: строк с датами {dated_without_amount + len(statement.operations)}, "
+            f"а операций распозналось всего {len(statement.operations)}. "
+            "Загрузить такую выписку — значит завести неверную историю трат. "
+            "Выгрузите выписку в CSV или XLSX: там колонки на месте."
         )
 
     if not any_signed and guessed * 2 > len(statement.operations):

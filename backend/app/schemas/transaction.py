@@ -23,9 +23,11 @@ class TransactionCreate(BaseModel):
 class TransactionUpdate(BaseModel):
     amount: float | None = None
     category: str | None = None
+    subcategory: str | None = None
     description: str | None = None
     merchant: str | None = None
     account_id: int | None = None
+    transaction_type: str | None = None
     occurred_on: date | None = None
     tags: str | None = None
 

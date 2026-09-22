@@ -29,6 +29,7 @@ from app.schemas.misc import (
 )
 from app.services.dashboard_service import compute_balances, get_or_create_profile
 from app.services.export_service import export_csv, export_excel_bytes, export_json
+from app.services.reset import clean_slate
 from fastapi import File, UploadFile
 
 router = APIRouter(tags=["misc"])
@@ -47,6 +48,18 @@ async def update_profile(payload: UserProfileUpdate, db: AsyncSession = Depends(
         setattr(profile, k, v)
     await db.flush()
     return profile
+
+
+@router.post("/profile/clean-slate")
+async def profile_clean_slate(confirm: str = "", db: AsyncSession = Depends(get_db)):
+    """Стереть всё и начать со своих денег.
+
+    Спрашиваем слово вслух: восстановить стёртое неоткуда, а промахнуться
+    мимо кнопки легко.
+    """
+    if confirm != "стереть":
+        raise HTTPException(400, "нужно подтверждение: confirm=стереть")
+    return await clean_slate(db)
 
 
 # --- Debts ---

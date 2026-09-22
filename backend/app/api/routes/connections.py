@@ -1,4 +1,7 @@
 import json
+import re
+from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
@@ -6,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors import StatementParseError, available_providers, get_connector
 from app.connectors.open_banking import OpenBankingError, ensure_public_url
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.security import EncryptionUnavailable
 from app.models.account import Account
@@ -179,12 +183,32 @@ async def upload_statement(
 ):
     connection = await _get_connection(db, connection_id)
     data = await _read_within_limit(file)
+    name = file.filename or "statement"
+    _keep_original(connection_id, name, data)
     await ensure_account(db, connection, connection.label)
     try:
-        run = await import_statement_file(db, connection, data, file.filename or "statement")
+        run = await import_statement_file(db, connection, data, name)
     except StatementParseError as exc:
         raise HTTPException(422, str(exc)) from exc
     return _import_to_out(run)
+
+
+def _keep_original(connection_id: int, name: str, data: bytes) -> None:
+    """Отложить сам файл выписки рядом с базой.
+
+    Вёрстка PDF у каждого банка своя, и когда разбор её не понял, чинить его
+    не на чем: операции в базу не попали, а файл был только в памяти запроса.
+    Копия позволяет разобрать выписку заново, уже исправленным разбором.
+    """
+    folder = get_settings().data_dir / "statements"
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    safe = re.sub(r"[^\w.\-]+", "_", Path(name).name)[:120] or "statement"
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"{stamp}-c{connection_id}-{safe}").write_bytes(data)
+    except OSError:
+        # Не смогли сохранить копию — это не повод не импортировать выписку.
+        pass
 
 
 @router.post("/{connection_id}/sync", response_model=ImportOut)

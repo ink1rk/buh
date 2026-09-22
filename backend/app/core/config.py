@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
     vision_model: str = "gpt-4o-mini"
 
+    # Показательный набор данных на пустой базе. По умолчанию выключен:
+    # приложение о собственных деньгах не должно начинаться с чужих.
+    seed_demo: bool = False
+
     # User defaults
     default_user_name: str = "Кирилл"
     default_currency: str = "RUB"

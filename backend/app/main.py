@@ -16,9 +16,10 @@ def create_app(*, testing: bool = False) -> FastAPI:
     async def lifespan(_: FastAPI):
         if not testing:
             await init_db()
-            async with AsyncSessionLocal() as session:
-                await seed_if_empty(session)
-                await session.commit()
+            if settings.seed_demo:
+                async with AsyncSessionLocal() as session:
+                    await seed_if_empty(session)
+                    await session.commit()
         yield
 
     app = FastAPI(
