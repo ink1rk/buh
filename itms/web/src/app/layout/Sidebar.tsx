@@ -1,6 +1,7 @@
 import {
   Boxes,
   FileText,
+  FolderKanban,
   GalleryVertical,
   History,
   LayoutDashboard,
@@ -38,6 +39,7 @@ const PRIMARY: NavItem[] = [
   { to: "/ipam", labelKey: "nav.ipam", icon: Router },
   { to: "/diagrams", labelKey: "nav.diagrams", icon: Workflow },
   { to: "/racks", labelKey: "nav.racks", icon: GalleryVertical },
+  { to: "/projects", labelKey: "nav.projects", icon: FolderKanban },
   { to: "/locations", labelKey: "nav.locations", icon: MapPin },
   { to: "/documents", labelKey: "nav.documents", icon: FileText },
   { to: "/directory", labelKey: "nav.directory", icon: Users },

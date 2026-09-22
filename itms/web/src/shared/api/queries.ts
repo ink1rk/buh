@@ -21,6 +21,8 @@ import type {
   DiagramSummary,
   RackElevation,
   RackSummary,
+  ProjectSummary,
+  ProjectView,
   DocumentDetail,
   DocumentSummary,
   DocumentVersion,
@@ -94,6 +96,8 @@ export const keys = {
   diagram: (id: string) => ["diagrams", id] as const,
   racks: ["racks"] as const,
   rack: (id: string) => ["racks", id] as const,
+  projects: ["projects"] as const,
+  project: (id: string) => ["projects", id] as const,
 };
 
 export function useSession() {
@@ -335,6 +339,21 @@ export function useDiagram(id: string | undefined) {
   return useQuery({
     queryKey: keys.diagram(id ?? ""),
     queryFn: () => api.get<DiagramFull>(`/diagrams/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
+export function useProjects() {
+  return useQuery({
+    queryKey: keys.projects,
+    queryFn: () => api.get<ProjectSummary[]>("/projects"),
+  });
+}
+
+export function useProject(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.project(id ?? ""),
+    queryFn: () => api.get<ProjectView>(`/projects/${id}`),
     enabled: Boolean(id),
   });
 }
@@ -606,6 +625,28 @@ export const mutations = {
   removeDiagramNode: (nodeId: string) => api.delete<{ ok: boolean }>(`/diagrams/nodes/${nodeId}`),
   syncDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/sync`),
   autolayoutDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/autolayout`),
+
+  createProject: (body: Record<string, unknown>) => api.post<ProjectView>("/projects", body),
+  updateProject: (id: string, body: Record<string, unknown>) =>
+    api.patch<ProjectView>(`/projects/${id}`, body),
+  addPhase: (id: string, body: Record<string, unknown>) =>
+    api.post<ProjectView>(`/projects/${id}/phases`, body),
+  addMilestone: (id: string, body: Record<string, unknown>) =>
+    api.post<ProjectView>(`/projects/${id}/milestones`, body),
+  addTask: (id: string, body: Record<string, unknown>) =>
+    api.post<ProjectView>(`/projects/${id}/tasks`, body),
+  updateTask: (id: string, taskId: string, body: Record<string, unknown>) =>
+    api.patch<ProjectView>(`/projects/${id}/tasks/${taskId}`, body),
+  addDependency: (id: string, body: Record<string, unknown>) =>
+    api.post<ProjectView>(`/projects/${id}/dependencies`, body),
+  linkProjectCi: (id: string, body: Record<string, unknown>) =>
+    api.post<ProjectView>(`/projects/${id}/ci`, body),
+  unlinkProjectCi: (id: string, ciId: string) =>
+    api.delete<ProjectView>(`/projects/${id}/ci/${ciId}`),
+  addMember: (id: string, body: Record<string, unknown>) =>
+    api.post<ProjectView>(`/projects/${id}/members`, body),
+  addTime: (id: string, taskId: string, body: Record<string, unknown>) =>
+    api.post<ProjectView>(`/projects/${id}/tasks/${taskId}/time`, body),
 
   createRack: (body: Record<string, unknown>) => api.post<RackElevation>("/racks", body),
   placeMount: (rackId: string, body: Record<string, unknown>, provenance?: Provenance) =>

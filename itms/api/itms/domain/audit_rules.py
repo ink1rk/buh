@@ -30,6 +30,7 @@ from itms.models.network import (
     Vlan,
     Vrf,
 )
+from itms.models.projects import Project, Task
 
 CI_CRITICAL_FIELDS = frozenset(
     {
@@ -113,8 +114,9 @@ def configure_audit() -> None:
     )
     register_audit(Manufacturer, AuditConfig(entity_type="MANUFACTURER"))
     register_audit(DeviceModel, AuditConfig(entity_type="DEVICE_MODEL", label_attr="model"))
-    register_audit(PortTemplate, AuditConfig(entity_type="PORT_TEMPLATE",
-                                             label_attr="name_pattern"))
+    register_audit(
+        PortTemplate, AuditConfig(entity_type="PORT_TEMPLATE", label_attr="name_pattern")
+    )
     register_audit(
         Device,
         AuditConfig(
@@ -140,6 +142,8 @@ def configure_audit() -> None:
             critical_fields=frozenset({"u_height", "max_power_w", "max_weight_kg"}),
         ),
     )
+    register_audit(Project, AuditConfig(entity_type="PROJECT", label_attr="key"))
+    register_audit(Task, AuditConfig(entity_type="TASK", label_attr="title"))
     register_audit(
         RackMount,
         AuditConfig(

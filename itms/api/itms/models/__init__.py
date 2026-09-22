@@ -46,6 +46,17 @@ from itms.models.network import (
     Vlan,
     Vrf,
 )
+from itms.models.projects import (
+    Milestone,
+    Phase,
+    Project,
+    ProjectCi,
+    ProjectMember,
+    Task,
+    TaskCi,
+    TaskDependency,
+    TimeEntry,
+)
 from itms.models.system import AppSetting, ImportJob, OutboxEvent
 
 __all__ = [
@@ -80,15 +91,24 @@ __all__ = [
     "IpAddress",
     "Location",
     "Manufacturer",
+    "Milestone",
     "Organization",
     "OutboxEvent",
+    "Phase",
     "PortTemplate",
     "Prefix",
+    "Project",
+    "ProjectCi",
+    "ProjectMember",
     "Rack",
     "RackMount",
     "ResponsibilityArea",
     "SearchIndex",
     "Tag",
+    "Task",
+    "TaskCi",
+    "TaskDependency",
+    "TimeEntry",
     "UserAccount",
     "UserSession",
     "Vlan",

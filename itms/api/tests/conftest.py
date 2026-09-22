@@ -30,6 +30,15 @@ from itms.services import auth_service, directory_service
 
 TABLES_TO_CLEAR = (
     "audit_change",
+    "time_entry",
+    "task_dependency",
+    "task_ci",
+    "project_ci",
+    "project_member",
+    "task",
+    "milestone",
+    "phase",
+    "project",
     "diagram_edge",
     "diagram_node",
     "diagram",
