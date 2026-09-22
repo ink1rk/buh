@@ -815,6 +815,71 @@ export interface ProjectView {
   };
 }
 
+export interface PowerWarning {
+  code: string;
+  message: string;
+}
+
+export interface PowerNodeRow {
+  id: string;
+  code: string | null;
+  name: string;
+  node_type: string;
+  feed_id: string | null;
+  feed_name: string | null;
+  feed_side: string;
+  nameplate_w: number;
+  estimated_w: number;
+  inlet_w: number;
+  used_w: number;
+  limit_w: number | null;
+  headroom_w: number | null;
+  current_a: number | null;
+  disbalance_pct: number | null;
+  phases_w: Record<string, number>;
+  value_source: string;
+  measured_coverage_pct: number;
+  warnings: PowerWarning[];
+  trace: Array<Record<string, unknown>>;
+  failover: string | null;
+  failover_detail: string | null;
+  estimated_with_charge_w: number;
+}
+
+export interface PowerScenarioRow {
+  id: string;
+  name: string;
+  description: string;
+  project_id: string | null;
+  project_key: string | null;
+  charge_w: number;
+  ups_efficiency: number | null;
+  reserve: number;
+  items: Array<{
+    id: string;
+    name: string;
+    nameplate_w: number;
+    quantity: number;
+    utilization: number;
+    behind_new_ups: boolean;
+  }>;
+  forecast: Record<string, number> | null;
+}
+
+export interface PowerOverview {
+  nodes: PowerNodeRow[];
+  feeds: Array<{ id: string; name: string; side: string; is_protected: boolean }>;
+  links: Array<{
+    id: string;
+    source_node_id: string;
+    target_node_id: string;
+    source_name: string | null;
+    target_name: string | null;
+  }>;
+  primary_input_id: string | null;
+  scenarios: PowerScenarioRow[];
+}
+
 export interface ImportJob {
   id: string;
   target: string;

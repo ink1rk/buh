@@ -21,6 +21,7 @@ import type {
   DiagramSummary,
   RackElevation,
   RackSummary,
+  PowerOverview,
   ProjectSummary,
   ProjectView,
   DocumentDetail,
@@ -98,6 +99,7 @@ export const keys = {
   rack: (id: string) => ["racks", id] as const,
   projects: ["projects"] as const,
   project: (id: string) => ["projects", id] as const,
+  power: ["power"] as const,
 };
 
 export function useSession() {
@@ -340,6 +342,13 @@ export function useDiagram(id: string | undefined) {
     queryKey: keys.diagram(id ?? ""),
     queryFn: () => api.get<DiagramFull>(`/diagrams/${id}`),
     enabled: Boolean(id),
+  });
+}
+
+export function usePower() {
+  return useQuery({
+    queryKey: keys.power,
+    queryFn: () => api.get<PowerOverview>("/power"),
   });
 }
 
@@ -625,6 +634,11 @@ export const mutations = {
   removeDiagramNode: (nodeId: string) => api.delete<{ ok: boolean }>(`/diagrams/nodes/${nodeId}`),
   syncDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/sync`),
   autolayoutDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/autolayout`),
+
+  createPowerNode: (body: Record<string, unknown>) =>
+    api.post<{ id: string }>("/power/nodes", body),
+  createPowerLink: (body: Record<string, unknown>) =>
+    api.post<{ id: string }>("/power/links", body),
 
   createProject: (body: Record<string, unknown>) => api.post<ProjectView>("/projects", body),
   updateProject: (id: string, body: Record<string, unknown>) =>

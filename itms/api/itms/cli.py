@@ -49,6 +49,7 @@ from itms.services import (
     ipam_service,
     location_service,
     network_service,
+    power_service,
     project_service,
     rack_service,
 )
@@ -97,6 +98,7 @@ async def seed_demo() -> None:
             await _ensure_demo_diagram(session, floor.id)
             await _ensure_demo_rack(session, server_room.id)
             await _ensure_demo_project(session)
+            await _ensure_demo_power(session, server_room.id)
             if seeded:
                 print("Демонстрационные данные уже есть")
                 return
@@ -330,6 +332,199 @@ async def _ensure_demo_project(session: AsyncSession) -> None:
         await project_service.add_member(
             session, project_id, {"employee_id": engineer.id, "role": "владелец"}
         )
+
+
+async def _ensure_demo_power(session: AsyncSession, server_room_id: uuid.UUID) -> None:
+    """Ввод 20 кВт, учтённые 16.8 кВт и луч B, чтобы прогноз PWR показал дефицит."""
+    if await _ci_by_code(session, "IN-1"):
+        return
+    server = await _ci_by_code(session, "SRV-01")
+    switch = await _ci_by_code(session, "SW-CORE-1")
+    rack = await _ci_by_code(session, "R1")
+    project = (
+        await session.execute(select(Project).where(Project.key == "PWR"))
+    ).scalar_one_or_none()
+
+    async def make(**fields: object) -> uuid.UUID:
+        payload = {"location_id": server_room_id, **fields}
+        created = await power_service.create_node(session, payload)
+        return created["id"]
+
+    inlet = await make(
+        name="Ввод серверной",
+        code="IN-1",
+        node_type="INPUT",
+        phases=3,
+        voltage_v=400,
+        rated_current_a=32,
+        power_factor=0.95,
+        max_load_w=20000,
+        feed_side="A",
+    )
+    panel = await make(name="ЩС-1", code="PN-1", node_type="PANEL", phases=3, feed_side="A")
+    generic = await make(
+        name="Учтённая нагрузка",
+        code="GL-1",
+        node_type="GENERIC_LOAD",
+        phases=3,
+        phase_label="L1L2L3",
+        power_nameplate_w=24000,
+        utilization=0.7,
+        feed_side="A",
+    )
+    breaker = await make(
+        name="Автомат QF1",
+        code="QF1",
+        node_type="BREAKER",
+        phases=3,
+        voltage_v=400,
+        rated_current_a=32,
+        derating_factor=0.8,
+        power_factor=0.95,
+        feed_side="A",
+    )
+    ups = await make(
+        name="UPS серверной",
+        code="UPS-1",
+        node_type="UPS",
+        phases=3,
+        voltage_v=400,
+        efficiency=0.96,
+        ups_capacity_w=10000,
+        feed_side="A",
+    )
+    pdu_a = await make(
+        name="PDU стойки R1, сторона A",
+        code="PDU-A",
+        node_type="PDU",
+        phases=3,
+        phase_label="L1L2L3",
+        rack_id=rack.id if rack else None,
+        feed_side="A",
+    )
+    psu_a = await make(
+        name="SRV-01 PSU-A",
+        code="PSU-A",
+        node_type="PSU",
+        phases=1,
+        phase_label="L1",
+        power_nameplate_w=750,
+        parent_device_id=server.id if server else None,
+        feed_side="A",
+    )
+    psu_sw = await make(
+        name="SW-CORE-1 PSU",
+        code="PSU-SW",
+        node_type="PSU",
+        phases=1,
+        phase_label="L1",
+        power_nameplate_w=60,
+        parent_device_id=switch.id if switch else None,
+        feed_side="A",
+    )
+    inlet_b = await make(
+        name="Ввод B",
+        code="IN-B",
+        node_type="INPUT",
+        phases=3,
+        voltage_v=400,
+        max_load_w=20000,
+        power_factor=0.95,
+        feed_side="B",
+    )
+    pdu_b = await make(
+        name="PDU стойки R1, сторона B",
+        code="PDU-B",
+        node_type="PDU",
+        phases=3,
+        phase_label="L1L2L3",
+        rack_id=rack.id if rack else None,
+        feed_side="B",
+    )
+    psu_b = await make(
+        name="SRV-01 PSU-B",
+        code="PSU-B",
+        node_type="PSU",
+        phases=1,
+        phase_label="L1",
+        power_nameplate_w=750,
+        parent_device_id=server.id if server else None,
+        feed_side="B",
+    )
+    pairs = (
+        (inlet, panel),
+        (panel, generic),
+        (panel, breaker),
+        (breaker, ups),
+        (ups, pdu_a),
+        (pdu_a, psu_a),
+        (pdu_a, psu_sw),
+        (inlet_b, pdu_b),
+        (pdu_b, psu_b),
+    )
+    for source_id, target_id in pairs:
+        await power_service.create_link(
+            session, {"source_node_id": source_id, "target_node_id": target_id}
+        )
+    feed_a = await power_service.create_feed(
+        session,
+        {
+            "name": "Луч A",
+            "side": "A",
+            "root_node_id": inlet,
+            "location_id": server_room_id,
+            "is_protected": True,
+            "description": "Ввод серверной через UPS",
+        },
+    )
+    feed_b = await power_service.create_feed(
+        session,
+        {
+            "name": "Луч B",
+            "side": "B",
+            "root_node_id": inlet_b,
+            "location_id": server_room_id,
+            "is_protected": False,
+            "description": "Резервный ввод без UPS",
+        },
+    )
+    for node_id in (inlet, panel, generic, breaker, ups, pdu_a, psu_a, psu_sw):
+        await power_service.assign_feed(session, node_id, feed_a["id"], "A")
+    for node_id in (inlet_b, pdu_b, psu_b):
+        await power_service.assign_feed(session, node_id, feed_b["id"], "B")
+    if project is None:
+        return
+    await power_service.create_scenario(
+        session,
+        {
+            "project_id": project.id,
+            "name": "Целевая нагрузка",
+            "description": "Серверы, СХД и коммутаторы за новым UPS с КПД 0.94",
+            "charge_w": 900,
+            "ups_efficiency": 0.94,
+            "reserve": 0.2,
+            "items": [
+                {
+                    "name": "Сервер R650",
+                    "nameplate_w": 1200,
+                    "quantity": 2,
+                    "utilization": 0.7,
+                },
+                {
+                    "name": "СХД ME5024",
+                    "nameplate_w": 1600,
+                    "quantity": 1,
+                    "utilization": 0.75,
+                },
+                {
+                    "name": "Коммутатор",
+                    "nameplate_w": 350,
+                    "quantity": 2,
+                    "utilization": 0.85,
+                },
+            ],
+        },
+    )
 
 
 async def _ensure_demo_rack(session: AsyncSession, server_room_id: uuid.UUID) -> None:

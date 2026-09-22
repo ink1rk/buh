@@ -46,6 +46,14 @@ from itms.models.network import (
     Vlan,
     Vrf,
 )
+from itms.models.power import (
+    PowerFeed,
+    PowerLink,
+    PowerMeasurement,
+    PowerNode,
+    PowerScenario,
+    PowerScenarioItem,
+)
 from itms.models.projects import (
     Milestone,
     Phase,
@@ -96,6 +104,12 @@ __all__ = [
     "OutboxEvent",
     "Phase",
     "PortTemplate",
+    "PowerFeed",
+    "PowerLink",
+    "PowerMeasurement",
+    "PowerNode",
+    "PowerScenario",
+    "PowerScenarioItem",
     "Prefix",
     "Project",
     "ProjectCi",

@@ -29,6 +29,12 @@ from itms.main import app
 from itms.services import auth_service, directory_service
 
 TABLES_TO_CLEAR = (
+    "power_scenario_item",
+    "power_scenario",
+    "power_measurement",
+    "power_link",
+    "power_feed",
+    "power_node",
     "audit_change",
     "time_entry",
     "task_dependency",

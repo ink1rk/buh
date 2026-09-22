@@ -15,6 +15,7 @@ import { DocumentsPage } from "@/features/documents/DocumentsPage";
 import { ImportPage } from "@/features/imports/ImportPage";
 import { IpamPage } from "@/features/ipam/IpamPage";
 import { LocationsPage } from "@/features/locations/LocationsPage";
+import { PowerPage } from "@/features/power/PowerPage";
 import { ProjectPage } from "@/features/projects/ProjectPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
 import { RackEditorPage } from "@/features/racks/RackEditorPage";
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
       { path: "/racks/:rackId", element: <RackEditorPage /> },
       { path: "/projects", element: <ProjectsPage /> },
       { path: "/projects/:projectId", element: <ProjectPage /> },
+      { path: "/power", element: <PowerPage /> },
       { path: "/catalog", element: <CatalogPage /> },
       { path: "/locations", element: <LocationsPage /> },
       { path: "/documents", element: <DocumentsPage /> },
