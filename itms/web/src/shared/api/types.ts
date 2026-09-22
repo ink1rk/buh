@@ -537,6 +537,53 @@ export interface WarrantyRow {
   device_role: string;
 }
 
+export interface DiagramSummary {
+  id: string;
+  name: string;
+  diagram_type: string;
+  location_id: string | null;
+  description: string | null;
+  viewport: { x?: number; y?: number; zoom?: number };
+  version: number;
+}
+
+export interface DiagramNode {
+  id: string;
+  ci_id: string | null;
+  node_kind: string;
+  x: number;
+  y: number;
+  label: string;
+  code: string | null;
+  ci_type: string | null;
+  status: string | null;
+  criticality: string | null;
+  device_role: string | null;
+  hostname: string | null;
+  mgmt_ip: string | null;
+}
+
+export interface DiagramEdge {
+  id: string;
+  source_node_id: string;
+  target_node_id: string;
+  connection_id: string | null;
+  relation_id: string | null;
+  label: string | null;
+  medium: string | null;
+  status: string | null;
+  length_m: number | null;
+  is_redundant: boolean;
+  redundancy_group: string | null;
+  rel_type: string | null;
+}
+
+export interface DiagramFull {
+  diagram: DiagramSummary;
+  nodes: DiagramNode[];
+  edges: DiagramEdge[];
+}
+
 export interface ImportJob {
   id: string;
   target: string;

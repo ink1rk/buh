@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from itms.cli import seed_demo
 from itms.core.db import session_scope
 from itms.models.catalog import DeviceModel, Manufacturer
+from itms.models.diagram import Diagram
 from itms.models.network import Connection, Device, Interface, Prefix
 from itms.services import network_service
 
@@ -27,6 +28,7 @@ async def test_seed_demo_builds_network_topology() -> None:
         assert await count(Device) == 4
         assert await count(Connection) == 4
         assert await count(Prefix) == 3
+        assert await count(Diagram) == 1
 
         start = (
             await session.execute(

@@ -6,6 +6,8 @@ import { CatalogPage } from "@/features/catalog/CatalogPage";
 import { CiDetailPage } from "@/features/ci/CiDetailPage";
 import { CiListPage } from "@/features/ci/CiListPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
+import { DiagramEditorPage } from "@/features/diagrams/DiagramEditorPage";
+import { DiagramsPage } from "@/features/diagrams/DiagramsPage";
 import { DevicesPage } from "@/features/devices/DevicesPage";
 import { DirectoryPage } from "@/features/directory/DirectoryPage";
 import { DocumentDetailPage } from "@/features/documents/DocumentDetailPage";
@@ -35,6 +37,8 @@ export const router = createBrowserRouter([
       { path: "/devices", element: <DevicesPage /> },
       { path: "/network", element: <NetworkPage /> },
       { path: "/ipam", element: <IpamPage /> },
+      { path: "/diagrams", element: <DiagramsPage /> },
+      { path: "/diagrams/:diagramId", element: <DiagramEditorPage /> },
       { path: "/catalog", element: <CatalogPage /> },
       { path: "/locations", element: <LocationsPage /> },
       { path: "/documents", element: <DocumentsPage /> },

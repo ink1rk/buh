@@ -16,6 +16,9 @@ import type {
   Device,
   DeviceModel,
   DeviceRow,
+  DiagramFull,
+  DiagramNode,
+  DiagramSummary,
   DocumentDetail,
   DocumentSummary,
   DocumentVersion,
@@ -85,6 +88,8 @@ export const keys = {
   prefixes: (params: unknown) => ["ipam", "prefixes", params] as const,
   prefix: (id: string) => ["ipam", "prefixes", id] as const,
   addresses: (params: unknown) => ["ipam", "addresses", params] as const,
+  diagrams: ["diagrams"] as const,
+  diagram: (id: string) => ["diagrams", id] as const,
 };
 
 export function useSession() {
@@ -315,6 +320,21 @@ export function useDevices(params: DeviceListParams) {
 }
 
 /** У объекта может не быть инженерного профиля — 404 здесь ожидаем и не повторяем запрос. */
+export function useDiagrams() {
+  return useQuery({
+    queryKey: keys.diagrams,
+    queryFn: () => api.get<DiagramSummary[]>("/diagrams"),
+  });
+}
+
+export function useDiagram(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.diagram(id ?? ""),
+    queryFn: () => api.get<DiagramFull>(`/diagrams/${id}`),
+    enabled: Boolean(id),
+  });
+}
+
 export function useDevice(id: string | undefined) {
   return useQuery({
     queryKey: keys.device(id ?? ""),
@@ -549,4 +569,22 @@ export const mutations = {
   updateAddress: (id: string, body: Record<string, unknown>) =>
     api.patch<IpAddress>(`/ipam/addresses/${id}`, body),
   deleteAddress: (id: string) => api.delete<{ ok: boolean }>(`/ipam/addresses/${id}`),
+
+  createDiagram: (body: Record<string, unknown>) => api.post<DiagramSummary>("/diagrams", body),
+  updateDiagram: (id: string, body: Record<string, unknown>) =>
+    api.patch<DiagramSummary>(`/diagrams/${id}`, body),
+  deleteDiagram: (id: string) => api.delete<{ ok: boolean }>(`/diagrams/${id}`),
+  saveDiagramLayout: (
+    id: string,
+    body: {
+      version: number;
+      nodes: Array<{ id: string; x: number; y: number }>;
+      viewport?: { x: number; y: number; zoom: number };
+    },
+  ) => api.patch<DiagramSummary>(`/diagrams/${id}/layout`, body),
+  addDiagramNode: (id: string, ciId: string) =>
+    api.post<DiagramNode>(`/diagrams/${id}/nodes`, { ci_id: ciId }),
+  removeDiagramNode: (nodeId: string) => api.delete<{ ok: boolean }>(`/diagrams/nodes/${nodeId}`),
+  syncDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/sync`),
+  autolayoutDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/autolayout`),
 };

@@ -336,6 +336,20 @@ class ImportTarget(StrEnum):
     EMPLOYEE = "EMPLOYEE"
 
 
+class DiagramType(StrEnum):
+    """Схема — проекция модели, а не отдельный рисунок."""
+
+    NETWORK = "NETWORK"
+    LOGICAL = "LOGICAL"
+
+
+class DiagramNodeKind(StrEnum):
+    CI = "CI"
+    GROUP = "GROUP"
+    NOTE = "NOTE"
+    CLOUD = "CLOUD"
+
+
 class CustomFieldType(StrEnum):
     TEXT = "TEXT"
     NUMBER = "NUMBER"
