@@ -41,6 +41,36 @@ META = {
     "noise_level": ("Уровень шума", "дБ", "avg", "low"),
 }
 
+# Границы правдоподобия для одного замера. Это не медицинская норма, а защита
+# от мусора: норма у нас считается медианой по собственным дням владельца, и
+# один замер «999999999 шагов» или «-500 уд/мин» сдвигает её так, что все
+# отклонения после этого считаются от вымысла.
+LIMITS = {
+    "steps": (0, 200_000),
+    "distance": (0, 500),
+    "active_energy": (0, 20_000),
+    "basal_energy": (0, 20_000),
+    "exercise_minutes": (0, 1440),
+    "stand_hours": (0, 24),
+    "flights_climbed": (0, 1000),
+    "sleep": (0, 24),
+    "sleep_deep": (0, 24),
+    "sleep_rem": (0, 24),
+    "heart_rate": (20, 260),
+    "resting_hr": (20, 150),
+    "walking_hr": (30, 220),
+    "hrv": (1, 500),
+    "vo2max": (5, 100),
+    "respiratory_rate": (3, 60),
+    "blood_oxygen": (50, 100),
+    "body_temperature": (30, 45),
+    "weight": (20, 400),
+    "mindful_minutes": (0, 1440),
+    "screen_time": (0, 1440),
+    "pickups": (0, 5000),
+    "noise_level": (0, 140),
+}
+
 ALIASES = {
     "stepcount": "steps", "step_count": "steps", "шаги": "steps",
     "distancewalkingrunning": "distance", "walking_running_distance": "distance",
@@ -138,6 +168,12 @@ def direction(metric):
     """Куда лучше: `high`, `low` или неважно."""
     known = META.get(metric)
     return known[3] if known else None
+
+
+def plausible(metric, value):
+    """Похоже ли значение на эту метрику вообще."""
+    low, high = LIMITS.get(metric, (float("-inf"), float("inf")))
+    return low <= value <= high
 
 
 def aggregate(metric, values):

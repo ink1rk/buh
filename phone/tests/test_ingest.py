@@ -203,3 +203,61 @@ def test_a_name_stays_one_human_sized_line(device):
     assert "\n" not in saved["peer_name"]
     assert len(saved["peer_name"]) <= ingest.NAME_LIMIT
     assert saved["peer_name"].startswith("Аня")
+
+
+# --- границы правдоподобия ----------------------------------------------
+def test_absurd_values_do_not_poison_the_baseline(device):
+    """Норма считается медианой по своим же дням, и мусор её сдвигает."""
+    report = ingest.ingest_health([
+        {"metric": "steps", "value": 999999999, "date": "2026-09-20"},
+        {"metric": "resting_hr", "value": -500, "date": "2026-09-20"},
+        {"metric": "weight", "value": 1e308, "date": "2026-09-20"},
+        {"metric": "steps", "value": 8200, "date": "2026-09-20"},
+    ], device[0]["id"])
+
+    assert report["new"] == 1
+    assert len(report["rejected"]) == 3
+    assert [s["value"] for s in store.samples(metric="steps")] == [8200.0]
+
+
+def test_a_sample_from_the_future_is_refused(device):
+    """Окно «сегодня» намеренно с запасом на пояса — туда и попадал бы замер."""
+    report = ingest.ingest_health([
+        {"metric": "steps", "value": 5000, "date": "2035-01-01"},
+    ], device[0]["id"])
+
+    assert report["new"] == 0
+    assert "будущем" in report["rejected"][0]["reason"]
+
+
+def test_a_section_too_large_is_refused_rather_than_ground_through(device):
+    huge = [{"metric": "steps", "value": 1, "date": "2026-09-20"}
+            for _ in range(ingest.BATCH_LIMIT + 1)]
+
+    result = ingest.ingest_batch({"health": huge}, device[0]["id"])
+
+    assert result["accepted"] == 0
+    assert "частями" in result["health"]["rejected"][0]["reason"]
+
+
+def test_a_capped_read_keeps_the_newest_samples(device):
+    """Пульс с часов — сотни замеров в сутки, и предел упирается быстро.
+
+    При отборе от старых обрезались бы как раз последние дни: сводка молча
+    заканчивалась бы неделями раньше, а норма считалась бы по прошлому.
+    """
+    import time as clock
+
+    now = clock.time()
+    for minutes_back in range(50):
+        store.save_sample({"metric": "heart_rate", "value": 60 + minutes_back,
+                           "started_at": now - minutes_back * 60,
+                           "ended_at": now - minutes_back * 60, "unit": "уд/мин",
+                           "external_id": f"hr-{minutes_back}",
+                           "device_id": device[0]["id"], "source": ""})
+
+    got = store.samples(metric="heart_rate", limit=10)
+
+    assert len(got) == 10
+    assert got[-1]["started_at"] == pytest.approx(now, abs=1), "свежий замер потерян"
+    assert got[0]["started_at"] < got[-1]["started_at"], "порядок по времени"

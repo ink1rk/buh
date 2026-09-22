@@ -16,6 +16,7 @@ import threading
 import time
 
 from fastapi import Body, FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 
 from . import ingest, insights, store, tools
@@ -184,8 +185,12 @@ def create_app(testing=False):
                 {"jsonrpc": "2.0", "id": None,
                  "error": {"code": -32700, "message": "не разобрать JSON"}},
                 status_code=400)
-        reply = tools.server.handle(message, headers=dict(request.headers),
-                                    transport="http")
+        # Инструменты читают базу обычным sqlite3, то есть блокируют. В своём
+        # потоке — иначе один запрос модели останавливает весь цикл событий, и
+        # выгрузка с телефона ждёт вместе с ним.
+        reply = await run_in_threadpool(
+            tools.server.handle, message, headers=dict(request.headers),
+            transport="http")
         if reply.body is None:
             return Response(status_code=reply.status)
         return JSONResponse(reply.body, status_code=reply.status)

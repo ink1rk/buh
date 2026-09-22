@@ -75,6 +75,21 @@ def parse_number(value, default=None):
 
 
 NAME_LIMIT = 80
+BATCH_LIMIT = 20_000
+# Замер из будущего попадает в окно «сегодня» — оно намеренно с запасом на
+# часовые пояса — и портит медианы, по которым считаются отклонения. Замер из
+# семидесятых означает, что время разобрано неверно, а не что так и было.
+FUTURE_SLACK = 2 * 86400
+PAST_LIMIT = 5 * 365 * 86400
+
+
+def sane_time(value):
+    now = time.time()
+    if value > now + FUTURE_SLACK:
+        raise ValueError("время замера в будущем")
+    if value < now - PAST_LIMIT:
+        raise ValueError("время замера слишком давнее")
+    return value
 
 
 def clean_name(raw):
@@ -236,6 +251,10 @@ def ingest_health(payload, device_id=None):
             if metric.startswith("sleep") and not unit and ended > started + 60:
                 value, unit = (ended - started) / 3600, "ч"
             value, unit = metrics.normalize(metric, value, unit)
+            if not metrics.plausible(metric, value):
+                raise ValueError(
+                    f"{value} {unit} не похоже на «{metrics.label(metric)}»")
+            started = sane_time(started)
             sample = {
                 "external_id": _external_id(item, "smp", metric, round(started),
                                             round(value, 4)),
@@ -333,6 +352,17 @@ def ingest_batch(payload, device_id=None):
     result = {}
     for name, section, handler in sections:
         if section is None:
+            continue
+        if isinstance(section, list) and len(section) > BATCH_LIMIT:
+            # Каждая запись — отдельная запись в базу, и такой пакет занимает
+            # поток на минуты. Сутки здоровья с часов — это сотни записей, а
+            # не сотни тысяч, так что предел выгрузку не ломает.
+            result[name] = {
+                "new": 0, "duplicates": 0,
+                "rejected": [{"index": 0,
+                              "reason": f"в разделе больше {BATCH_LIMIT} записей "
+                                        f"({len(section)}) — присылайте частями"}],
+            }
             continue
         result[name] = handler(section, device_id)
     if payload.get("state") and device_id:

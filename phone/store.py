@@ -265,15 +265,21 @@ def messages(since=None, until=None, limit=500):
         (since or 0, until or time.time() + 86400, limit))]
 
 
-def samples(metric=None, since=None, until=None, limit=5000):
+def samples(metric=None, since=None, until=None, limit=20000):
+    """Замеры за окно, в порядке времени.
+
+    Отбор идёт от свежих: пульс с часов — это триста замеров в сутки, и при
+    отборе от старых предел обрезал бы как раз последние дни. Тогда сводка дня
+    молча заканчивалась бы неделями раньше, а норма считалась бы по прошлому.
+    """
     sql = "SELECT * FROM samples WHERE started_at >= ? AND started_at < ?"
     params = [since or 0, until or time.time() + 86400]
     if metric:
         sql += " AND metric=?"
         params.append(metric)
-    sql += " ORDER BY started_at LIMIT ?"
+    sql += " ORDER BY started_at DESC LIMIT ?"
     params.append(limit)
-    return [dict(row) for row in query(sql, tuple(params))]
+    return [dict(row) for row in reversed(query(sql, tuple(params)))]
 
 
 def metrics():

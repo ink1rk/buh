@@ -4,4 +4,6 @@ httpx>=0.28.0
 pydantic>=2.9.0
 python-multipart>=0.0.9        # приём голосовых файлов в /stt и /voice
 telethon>=1.36.0               # аккаунт владельца, tg_user_service.py
+feedparser>=6.0.11             # ленты новостей в брифинге, news.py
+faster-whisper>=1.0.0          # распознавание голосовых, /stt и /voice
 pytest>=8.0.0
