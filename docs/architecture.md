@@ -163,5 +163,5 @@ TTS в проекте нет: модуль синтеза и эндпоинты 
 | Phase 6 — календарь | реализовано ([calendar.md](calendar.md)) |
 | Phase 6 — задачи | не начато |
 | Phase 7 — телефон и здоровье | реализовано ([phone.md](phone.md)) |
-| Phase 8 — банки и Ozon | реализовано ([BANKS.md](BANKS.md), [MCP.md](MCP.md)) |
+| Phase 8 — банки и Ozon | реализовано ([BANKS.md](BANKS.md), [operations.md](operations.md), [MCP.md](MCP.md)) |
 | Phase 9+ — рынки, такси | не начато |
