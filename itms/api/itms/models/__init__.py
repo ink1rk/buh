@@ -66,6 +66,7 @@ from itms.models.projects import (
     TimeEntry,
 )
 from itms.models.system import AppSetting, ImportJob, OutboxEvent
+from itms.models.transition import ChangeItem, PlannedChange, StateSnapshot
 
 __all__ = [
     "AppSetting",
@@ -74,6 +75,7 @@ __all__ = [
     "AuditLog",
     "Base",
     "CableRoute",
+    "ChangeItem",
     "Ci",
     "CiRelation",
     "CiTag",
@@ -103,6 +105,7 @@ __all__ = [
     "Organization",
     "OutboxEvent",
     "Phase",
+    "PlannedChange",
     "PortTemplate",
     "PowerFeed",
     "PowerLink",
@@ -118,6 +121,7 @@ __all__ = [
     "RackMount",
     "ResponsibilityArea",
     "SearchIndex",
+    "StateSnapshot",
     "Tag",
     "Task",
     "TaskCi",

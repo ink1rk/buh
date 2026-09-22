@@ -12,6 +12,7 @@ import {
   useProject,
 } from "@/shared/api/queries";
 import type { ProjectView, ScheduleItem } from "@/shared/api/types";
+import { TransitionPanel } from "@/features/projects/TransitionPanel";
 import { Badge, type Tone } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { Field, Input, Select, Textarea } from "@/shared/ui/Field";
@@ -95,6 +96,7 @@ export function ProjectPage() {
           { id: "board", label: t("projects.board") },
           { id: "schedule", label: t("projects.schedule") },
           { id: "infra", label: t("projects.infrastructure"), badge: data.cis.length },
+          { id: "transition", label: t("projects.transition") },
         ]}
       />
       {tab === "overview" && <Overview projectId={projectId} view={data} />}
@@ -102,6 +104,7 @@ export function ProjectPage() {
       {tab === "board" && <Board projectId={projectId} view={data} />}
       {tab === "schedule" && <Schedule view={data} />}
       {tab === "infra" && <Infrastructure projectId={projectId} view={data} />}
+      {tab === "transition" && <TransitionPanel projectId={projectId} />}
     </div>
   );
 }

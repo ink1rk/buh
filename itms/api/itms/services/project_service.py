@@ -49,6 +49,7 @@ from itms.models.projects import (
     TaskDependency,
     TimeEntry,
 )
+from itms.services import transition_service
 
 _KEY = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,31}$")
 _OPEN = frozenset({TaskStatus.DONE, TaskStatus.CANCELLED})
@@ -157,6 +158,7 @@ async def list_projects(session: AsyncSession) -> list[dict[str, Any]]:
         (await session.execute(select(Milestone).where(Milestone.project_id.in_(ids)))).scalars()
     )
     names = await _names(session, {project.owner_id for project in projects})
+    deficits = await transition_service.projects_with_power_deficit(session)
     by_project: dict[uuid.UUID, list[Task]] = {}
     for task in tasks:
         by_project.setdefault(task.project_id, []).append(task)
@@ -176,6 +178,7 @@ async def list_projects(session: AsyncSession) -> list[dict[str, Any]]:
             by_project.get(project.id, []),
             dep_by_project.get(project.id, []),
             miles_by_project.get(project.id, []),
+            power_deficit=project.id in deficits,
         )
         for project in projects
     ]
@@ -267,8 +270,19 @@ async def project_view(
     people.update(task.assignee_id for task in tasks)
     people.update(entry.employee_id for entry in entries)
     names = await _names(session, people)
+    deficits = await transition_service.projects_with_power_deficit(session)
     view = _compose(
-        project, phases, milestones, tasks, deps, links, task_links, members, entries, names
+        project,
+        phases,
+        milestones,
+        tasks,
+        deps,
+        links,
+        task_links,
+        members,
+        entries,
+        names,
+        power_deficit=project.id in deficits,
     )
     if persist_progress:
         project.progress_pct = Decimal(str(view["project"]["progress_pct"]))
@@ -755,8 +769,12 @@ def _summary(
     tasks: list[Task],
     deps: list[TaskDependency],
     milestones: list[Milestone],
+    *,
+    power_deficit: bool = False,
 ) -> dict[str, Any]:
-    progress, health, _schedule = _metrics(project, tasks, deps, milestones)
+    progress, health, _schedule = _metrics(
+        project, tasks, deps, milestones, power_deficit=power_deficit
+    )
     open_tasks = sum(1 for task in tasks if task.status not in _OPEN)
     return {
         "id": project.id,
@@ -785,8 +803,12 @@ def _compose(
     members: list[tuple[ProjectMember, Employee]],
     entries: list[TimeEntry],
     names: dict[uuid.UUID, str],
+    *,
+    power_deficit: bool = False,
 ) -> dict[str, Any]:
-    progress, health, schedule = _metrics(project, tasks, deps, milestones)
+    progress, health, schedule = _metrics(
+        project, tasks, deps, milestones, power_deficit=power_deficit
+    )
     children: dict[uuid.UUID, list[TaskStatus]] = {}
     for task in tasks:
         if task.parent_id is not None:
@@ -918,6 +940,8 @@ def _metrics(
     tasks: list[Task],
     deps: list[TaskDependency],
     milestones: list[Milestone],
+    *,
+    power_deficit: bool = False,
 ) -> tuple[float, dict[str, Any], dict[str, Any]]:
     children: dict[uuid.UUID, list[TaskStatus]] = {}
     for task in tasks:
@@ -1023,6 +1047,7 @@ def _metrics(
         budget_planned=_money(project.budget_planned),
         budget_actual=_money(project.budget_actual),
         last_activity=last_activity,
+        power_deficit=power_deficit,
     )
     return (
         progress,

@@ -117,6 +117,19 @@ def test_health_rules_are_explicit() -> None:
     )
     assert any(item.rule == "blocked" for item in blocked.findings)
 
+    deficit = assess_health(
+        project_status=ProjectStatus.IN_PROGRESS,
+        today=today,
+        tasks=[],
+        milestones=[],
+        budget_planned=None,
+        budget_actual=None,
+        last_activity=today,
+        power_deficit=True,
+    )
+    assert deficit.status == HealthStatus.AT_RISK
+    assert any(item.rule == "power_deficit" for item in deficit.findings)
+
 
 async def test_project_schedule_and_status_graph(client: AsyncClient, api: str) -> None:
     created = await client.post(

@@ -23,8 +23,9 @@ from itms.api.schemas.projects import (
     TaskUpdate,
     TimeEntryCreate,
 )
+from itms.api.schemas.transition import SnapshotCreate, SnapshotRead, TransitionView
 from itms.domain.permissions import Permission
-from itms.services import project_service
+from itms.services import project_service, transition_service
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -296,3 +297,61 @@ async def add_time(
 ) -> ProjectView:
     view = await project_service.add_time(session, project_id, task_id, payload.model_dump())
     return ProjectView.model_validate(view)
+
+
+@router.get(
+    "/{project_id}/transition",
+    response_model=TransitionView,
+    dependencies=[requires(Permission.CI_READ)],
+)
+async def get_transition(project_id: uuid.UUID, session: SessionDep) -> TransitionView:
+    return TransitionView.model_validate(await transition_service.view(session, project_id))
+
+
+@router.post(
+    "/{project_id}/snapshots",
+    response_model=SnapshotRead,
+    status_code=201,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def take_snapshot(
+    project_id: uuid.UUID, payload: SnapshotCreate, session: SessionDep
+) -> SnapshotRead:
+    row = await transition_service.take_snapshot(session, project_id, payload.name)
+    return SnapshotRead.model_validate(row)
+
+
+@router.post(
+    "/{project_id}/plans",
+    response_model=TransitionView,
+    status_code=201,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def build_plan(project_id: uuid.UUID, session: SessionDep) -> TransitionView:
+    return TransitionView.model_validate(await transition_service.build_plan(session, project_id))
+
+
+@router.post(
+    "/{project_id}/plans/{plan_id}/apply",
+    response_model=TransitionView,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def apply_plan(
+    project_id: uuid.UUID, plan_id: uuid.UUID, session: SessionDep
+) -> TransitionView:
+    return TransitionView.model_validate(
+        await transition_service.apply_plan(session, project_id, plan_id)
+    )
+
+
+@router.post(
+    "/{project_id}/plans/{plan_id}/rollback",
+    response_model=TransitionView,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def rollback_plan(
+    project_id: uuid.UUID, plan_id: uuid.UUID, session: SessionDep
+) -> TransitionView:
+    return TransitionView.model_validate(
+        await transition_service.rollback_plan(session, project_id, plan_id)
+    )
