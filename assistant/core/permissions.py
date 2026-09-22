@@ -40,6 +40,9 @@ ACTION_RISK = {
     # Встречу владелец правит сам и видит сразу, а чужого она не касается.
     "create.calendar.event": RiskLevel.LOW,
     "create.calendar.event": RiskLevel.MEDIUM,
+    # За именем инструмента может быть что угодно — от «покажи сон» до
+    # «открой дверь», поэтому по умолчанию спрашиваем.
+    "mcp.tool.call": RiskLevel.MEDIUM,
     "call.taxi": RiskLevel.HIGH,
     "purchase.ozon": RiskLevel.HIGH,
     "bank.transfer": RiskLevel.CRITICAL,

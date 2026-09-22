@@ -14,6 +14,7 @@ from agents.personal import PersonalAgent
 from domain.enrichment import Enricher
 from providers.calendar import CalendarActionProvider
 from providers.email import EmailActionProvider
+from providers.mcp import McpActionProvider
 from providers.telegram import TelegramActionProvider
 
 from . import audit, db
@@ -26,10 +27,11 @@ from .calendarwatch import CalendarWatcher
 from .integrations import (CalendarIntegration, DatabaseIntegration,
                            EmailIntegration, FinanceIntegration,
                            GatewayLLMIntegration, IntegrationRegistry,
-                           LocalLLMIntegration, TelegramBotIntegration,
-                           TelegramUserIntegration)
+                           LocalLLMIntegration, McpIntegration,
+                           TelegramBotIntegration, TelegramUserIntegration)
 from .llm import GatewayProvider, LLMRegistry, LocalProvider
 from .mailwatch import MailWatcher
+from .mcp import McpRegistry
 from .notifications import NotificationEngine
 from .permissions import PermissionEngine
 
@@ -46,10 +48,14 @@ class Core:
         self.llm = LLMRegistry()
         self.permissions = PermissionEngine()
         self.notifications = NotificationEngine(self.bus)
+        # Внешние сервисы, подключённые по MCP: мост с телефоном и всё, что
+        # появится потом. Ядро знает только адрес и токен каждого.
+        self.mcp = McpRegistry()
         self.actions = ActionEngine(self.bus, self.permissions,
                                     providers=[TelegramActionProvider(),
                                                EmailActionProvider(),
-                                               CalendarActionProvider()],
+                                               CalendarActionProvider(),
+                                               McpActionProvider(self.mcp)],
                                     notifier=self.notifications)
         self.resolver = ContextResolver(permissions=self.permissions)
         self.enricher = Enricher(self.llm, self.bus)
@@ -67,7 +73,8 @@ class Core:
             DatabaseIntegration(), LocalLLMIntegration(local),
             GatewayLLMIntegration(gateway), TelegramBotIntegration(),
             TelegramUserIntegration(), EmailIntegration(),
-            CalendarIntegration(), FinanceIntegration()])
+            CalendarIntegration(), FinanceIntegration()]
+            + [McpIntegration(client) for client in self.mcp.clients.values()])
 
         self.mail = MailWatcher(self)
         self.calendar = CalendarWatcher(self)
