@@ -8,8 +8,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-itms}
       POSTGRES_USER: ${POSTGRES_USER:-itms}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-itms}
-      POSTGRES_INITDB_ARGS: "--locale=ru_RU.UTF-8 --encoding=UTF8"
-      LANG: ru_RU.utf8
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+      LANG: C.UTF-8
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -33,7 +33,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -52,7 +52,7 @@ services:
 
   # Разовая инициализация: бакет для файлов с включённым версионированием документов.
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/mc:latest
     depends_on:
       minio:
         condition: service_healthy

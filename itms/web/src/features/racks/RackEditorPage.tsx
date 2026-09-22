@@ -87,7 +87,11 @@ export function RackEditorPage() {
   async function commit(body: PlaceBody) {
     setBusy(true);
     try {
-      const next = await mutations.placeMount(rackId, body, reason);
+      const next = await mutations.placeMount(
+        rackId,
+        body as unknown as Record<string, unknown>,
+        reason,
+      );
       queryClient.setQueryData(keys.rack(rackId), next);
       void queryClient.invalidateQueries({ queryKey: keys.racks });
       setPending(null);
