@@ -41,9 +41,7 @@ class Diagram(Base, TimestampMixin, VersionMixin):
 
 class DiagramNode(Base, TimestampMixin):
     __tablename__ = "diagram_node"
-    __table_args__ = (
-        UniqueConstraint("diagram_id", "ci_id", name="uq_diagram_node_ci"),
-    )
+    __table_args__ = (UniqueConstraint("diagram_id", "ci_id", name="uq_diagram_node_ci"),)
 
     id: Mapped[uuid.UUID] = uuid_pk()
     diagram_id: Mapped[uuid.UUID] = mapped_column(
@@ -73,7 +71,7 @@ class DiagramEdge(Base, TimestampMixin):
     __tablename__ = "diagram_edge"
     __table_args__ = (
         CheckConstraint(
-            "num_nonnulls(connection_id, relation_id) <= 1",
+            "num_nonnulls(connection_id, relation_id, power_link_id) <= 1",
             name="one_backing",
         ),
     )
@@ -87,6 +85,9 @@ class DiagramEdge(Base, TimestampMixin):
     )
     relation_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("ci_relation.id", ondelete="CASCADE")
+    )
+    power_link_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("power_link.id", ondelete="CASCADE")
     )
     source_node_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("diagram_node.id", ondelete="CASCADE"), nullable=False

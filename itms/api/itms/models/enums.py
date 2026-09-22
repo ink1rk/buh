@@ -341,6 +341,7 @@ class DiagramType(StrEnum):
 
     NETWORK = "NETWORK"
     LOGICAL = "LOGICAL"
+    POWER = "POWER"
 
 
 class DiagramNodeKind(StrEnum):

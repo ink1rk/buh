@@ -86,7 +86,7 @@ function CreateDiagramDialog({ open, onClose }: { open: boolean; onClose: () => 
           <Select
             id="diagram-type"
             value={diagramType}
-            options={["NETWORK", "LOGICAL"].map((value) => ({
+            options={["NETWORK", "LOGICAL", "POWER"].map((value) => ({
               value,
               label: te("diagramType", value),
             }))}

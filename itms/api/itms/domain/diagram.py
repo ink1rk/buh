@@ -57,6 +57,38 @@ def layered_layout[T](
     for item_id, ci_type, role in items:
         buckets[layer_for(ci_type, role)].append(item_id)
 
+    return _place(buckets)
+
+
+def flow_layout[T](node_ids: list[T], edges: list[tuple[T, T]]) -> dict[T, tuple[float, float]]:
+    """Источники сверху, потребители ниже по самому длинному пути от истока."""
+    parents: dict[T, list[T]] = {node_id: [] for node_id in node_ids}
+    known = set(node_ids)
+    for source, target in edges:
+        if source in known and target in known and source != target:
+            parents[target].append(source)
+    rank: dict[T, int] = {}
+
+    def depth(node_id: T, stack: set[T]) -> int:
+        if node_id in rank:
+            return rank[node_id]
+        if node_id in stack:
+            return 0
+        stack.add(node_id)
+        above = parents[node_id]
+        rank[node_id] = 0 if not above else 1 + max(depth(item, stack) for item in above)
+        stack.remove(node_id)
+        return rank[node_id]
+
+    for node_id in node_ids:
+        depth(node_id, set())
+    buckets: dict[int, list[T]] = defaultdict(list)
+    for node_id in node_ids:
+        buckets[rank[node_id]].append(node_id)
+    return _place(buckets)
+
+
+def _place[T](buckets: dict[int, list[T]]) -> dict[T, tuple[float, float]]:
     positions: dict[T, tuple[float, float]] = {}
     for layer, ids in sorted(buckets.items()):
         width = (len(ids) - 1) * STEP_X
