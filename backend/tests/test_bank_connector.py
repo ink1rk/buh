@@ -159,8 +159,40 @@ def test_ozon_bonus_points_are_not_money():
 
 
 def test_statement_without_recognisable_header_is_rejected():
-    with pytest.raises(StatementParseError, match="заголовка"):
+    with pytest.raises(StatementParseError, match="заголовка") as refusal:
         get_connector("ozon").parse_statement(b"just;some;text\n1;2;3\n", "s.csv")
+    # По отказу должно быть видно, что именно прочитали: иначе спорить с ним
+    # можно только вслепую.
+    assert "Строк в файле: 2" in str(refusal.value)
+
+
+def test_a_statement_without_a_header_is_read_by_its_rows():
+    """Справка о движении средств приходит таблицей без шапки.
+
+    Строк, похожих на операции, в ней сотни — по ним колонки и видно. Отказ
+    «проверьте, что это выписка» доставался файлу, который выпиской и был.
+    """
+    rows = "".join(
+        f"1{day:02d};0{day % 9 + 1}.03.2026;Оплата в магазине у дома;-{day}00,50\n"
+        for day in range(1, 21)
+    )
+    statement = get_connector("ozon").parse_statement(rows.encode(), "spravka.csv")
+
+    assert len(statement.operations) == 20
+    assert statement.operations[0].amount == -100.5
+    assert statement.operations[0].description == "Оплата в магазине у дома"
+    assert any("по содержимому" in warning for warning in statement.warnings)
+
+
+def test_a_couple_of_dated_lines_is_not_a_statement():
+    """Счёт или квитанция — тоже строки с датой и суммой, но не история трат."""
+    invoice = (
+        "Счёт на оплату №12 от 01.03.2026;;\n"
+        "Услуга;01.03.2026;12 000,00\n"
+        "Доставка;01.03.2026;500,00\n"
+    )
+    with pytest.raises(StatementParseError, match="справка, счёт или квитанция"):
+        get_connector("ozon").parse_statement(invoice.encode(), "invoice.csv")
 
 
 def test_unsupported_provider_is_rejected():
@@ -581,6 +613,42 @@ async def test_external_ids_dedupe_across_reordered_statements(db: AsyncSession)
 
 
 @pytest.mark.asyncio
+async def test_one_statement_in_two_formats_is_one_history(db: AsyncSession, monkeypatch):
+    """Тот же год трат, выгруженный и таблицей, и PDF, — одна история.
+
+    Номер документа виден по-разному: в таблице он лежит в своей колонке,
+    в PDF короткий номер от описания не отличить. Пока личностью операции
+    служил номер, тридцать девять зарплат завелись по второму разу.
+    """
+    connection = await _connection(db)
+    connector = get_connector("ozon")
+    table = (
+        "Дата операции;Документ;Сумма операции;Описание операции\n"
+        "10.08.2026;2079;+52 173,85;Заработная плата за Июль 2026 г.\n"
+        "11.08.2026;12372063678;-83,00;Оплата проезда\n"
+    )
+    from_table = await ingest_statement(
+        db, connection, connector.parse_statement(table.encode(), "god.csv"), source_name="a"
+    )
+
+    _pdf_text(monkeypatch, (
+        "10.08.2026 09:00:00 2079 Заработная плата за Июль 2026 г.",
+        "+ 52 173.85 ₽",
+        "11.08.2026 09:00:00 12372063678 Оплата проезда",
+        "- 83.00 ₽",
+        "Итого зачислений за период: 52 173.85 ₽",
+        "Итого списаний за период: 83.00 ₽",
+    ))
+    from_pdf = await ingest_statement(
+        db, connection, connector.parse_statement(b"%PDF-1.4", "god.pdf"), source_name="b"
+    )
+
+    assert from_table.imported_count == 2
+    assert (from_pdf.imported_count, from_pdf.duplicate_count) == (0, 2)
+    assert len(list((await db.execute(select(Transaction))).scalars())) == 2
+
+
+@pytest.mark.asyncio
 async def test_pending_operations_are_held_back(db: AsyncSession):
     connection = await _connection(db)
     csv = (
@@ -885,6 +953,50 @@ def test_pdf_income_without_a_sign_is_not_turned_into_a_loss(monkeypatch):
     statement = get_connector("ozon").parse_statement(b"%PDF-1.4", "statement.pdf")
 
     assert [op.amount for op in statement.operations] == [180000.0, -450.0]
+
+
+def test_a_date_inside_a_description_does_not_start_an_operation(monkeypatch):
+    """«…по обращению от 16.07.2026. Сумма 19779-» — это перенос, а не операция.
+
+    Приняв такую строку за начало новой операции, разбор заводил зарплату
+    задним числом, а настоящую, чьё описание он оборвал, терял. Денег в сумме
+    столько же, поэтому итоги сходились и подмена ничем себя не выдавала.
+    """
+    _pdf_text(monkeypatch, (
+        "06.08.2026 16:37:46 144014 Для зачисления на счет",
+        "Кириллов Кирилл Владимирович. Компенсация расходов по",
+        "обращению от",
+        "16.07.2026. Сумма 19779-",
+        "00 В т.ч. Без налога (НДС)",
+        "+ 19 779.00 ₽ + 19 779.00 ₽",
+        "Итого зачислений за период: 19 779.00 ₽",
+    ))
+
+    statement = get_connector("ozon").parse_statement(b"%PDF-1.4", "vypiska.pdf")
+
+    assert [(op.occurred_on, op.amount) for op in statement.operations] == [
+        (date(2026, 8, 6), 19779.0)
+    ]
+
+
+def test_pdf_document_number_goes_away_even_before_a_numeric_purpose(monkeypatch):
+    """Назначение платежа тоже начинается с цифр — номер узнаётся по месту.
+
+    После даты и времени первое число — номер документа, каким бы ни было
+    описание. В таблице этот номер лежит в своей колонке, и пока он оставался
+    в тексте, зарплата из PDF и зарплата из XLSX были разными операциями.
+    """
+    _pdf_text(monkeypatch, (
+        "08.09.2026 09:00:00 2506 187/№187/249/2/ОП/ 26/84/Для зачисления",
+        "на счет Кириллова К.В. Заработная плата август",
+        "+ 37 986.12 ₽",
+        "Итого зачислений за период: 37 986.12 ₽",
+    ))
+
+    operation = get_connector("ozon").parse_statement(b"%PDF-1.4", "v.pdf").operations[0]
+
+    assert operation.description.startswith("187/№187/249/2/ОП/")
+    assert operation.external_id == ""
 
 
 def test_a_pdf_that_hides_the_direction_is_refused(monkeypatch):

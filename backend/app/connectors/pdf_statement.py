@@ -23,9 +23,18 @@ from app.connectors.base import (
     parse_money,
     parse_statement_date,
     stated_totals,
+    unique_reference,
 )
 
-_DATE_PREFIX = re.compile(r"^\s*(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4})\s*(?:\d{2}:\d{2}(?::\d{2})?)?\s*")
+# Дата в начале строки открывает операцию только если за ней идёт пробел или
+# конец строки. Иначе операцию открывает перенос чужого описания: «…по
+# обращению от\n16.07.2026. Сумма 19779-» — здесь дата стоит внутри фразы. Из
+# таких переносов заводились операции-призраки, а настоящие, чьё описание
+# оборвали, терялись: зарплата исчезала, а её сумма всплывала месяцем раньше.
+_DATE_PREFIX = re.compile(
+    r"^\s*(?P<date>\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4})"
+    r"(?:\s+(?P<time>\d{2}:\d{2}(?::\d{2})?))?(?=\s|$)\s*"
+)
 # Знак валюты в выписке обычно стоит один раз — в шапке колонки, а не в каждой
 # строке. Пока он требовался, почти все операции молча отбрасывались, и до
 # импорта доходили только те немногие строки, где банк валюту всё же напечатал.
@@ -163,11 +172,18 @@ _PAGE_NUMBER = re.compile(r"^\d{1,4}$")
 # со следующей строки. В таблице этот номер лежит в своей колонке и в описание
 # не попадает: пока он оставался в тексте, одна и та же выписка, загруженная
 # в двух форматах, выглядела двумя разными историями и удваивала операции.
-_DOCUMENT = re.compile(r"^(?P<id>\d{3,})(?:[\s,.]+|$)")
-# Идентификатором операции номер становится, только если он достаточно длинный,
-# чтобы быть уникальным: короткий номер повторяется, а по совпавшему
-# идентификатору сверка приняла бы разные операции за одну.
-_UNIQUE_DIGITS = 7
+# Номер отделён от описания пробелом, и дальше идёт текст, а не цифра: иначе
+# от суммы, напечатанной сразу после даты, отрезало бы рубли и оставляло
+# копейки. Короткие номера тоже убираем из описания — в таблице они лежат в
+# своей колонке, и «2 С/х продукция» из PDF иначе не сходится с «С/х
+# продукция» из XLSX.
+_DOCUMENT = re.compile(r"^(?P<id>\d+)(?:\s+(?=[^\d\s])|$)")
+# Со временем в строке порядок колонок известен: дата, время, номер документа,
+# назначение. Тогда первое число — номер, даже если назначение тоже начинается
+# с цифр («2506 187/№187/249/2/ОП/…» — это документ 2506 и шифр платёжного
+# поручения), и зарплата в двух форматах выписки перестаёт быть двумя разными
+# операциями.
+_DOCUMENT_AFTER_TIME = re.compile(r"^(?P<id>\d+)(?:\s+|$)")
 _HEADER_WORDS = (
     "дата операции", "документ", "назначение платежа", "сумма операции",
     "российские рубли", "валюта",
@@ -248,7 +264,7 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
             continue
 
         date_match = _DATE_PREFIX.match(line)
-        occurred_on = parse_statement_date(date_match.group(1)) if date_match else None
+        occurred_on = parse_statement_date(date_match["date"]) if date_match else None
 
         if occurred_on is not None:
             if started:
@@ -259,12 +275,12 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
                 totals += 1
                 continue
             body = line[date_match.end() :].strip()
-            document = _DOCUMENT.match(body)
+            numbering = _DOCUMENT_AFTER_TIME if date_match["time"] else _DOCUMENT
+            document = numbering.match(body)
             reference = ""
             if document:
                 body = body[document.end() :]
-                if len(document["id"]) >= _UNIQUE_DIGITS:
-                    reference = document["id"]
+                reference = unique_reference(document["id"])
             # With two trailing amounts the rightmost one is the running balance.
             amounts, body = _trailing_amounts(body)
             if amounts:

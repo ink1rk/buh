@@ -125,6 +125,20 @@ def _safe_date(year: int, month: int, day: int) -> date | None:
         return None
 
 
+# Номер операции годится в опознавательный знак, только если он достаточно
+# длинный. Короткий — это счётчик внутри дня: в одной выписке «документ 1» и
+# «документ 2», в следующей снова «1». По такому номеру сверка приняла бы
+# разные операции за одну и потеряла бы вторую.
+UNIQUE_REFERENCE_DIGITS = 7
+
+
+def unique_reference(raw: Any) -> str:
+    """Номер операции, если по нему её вообще можно узнать."""
+    text = " ".join(str(raw or "").split())
+    digits = sum(1 for ch in text if ch.isdigit())
+    return text[:120] if digits >= UNIQUE_REFERENCE_DIGITS else ""
+
+
 @dataclass(slots=True)
 class RawOperation:
     """One bank-side operation, before it becomes a Transaction."""

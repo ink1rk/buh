@@ -35,21 +35,22 @@ def _normalize(text: str) -> str:
 
 
 def _base_fingerprint(connection: BankConnection, operation: RawOperation) -> str:
-    """Stable identity for an operation, independent of import order.
+    """Stable identity for an operation, independent of import order and format.
 
     Scoped to the connection, because the same purchase can genuinely happen on
     two cards of the same bank: same day, same shop, same amount. The column is
     globally unique, so a provider-wide identity would let the first card's
     record silently swallow the second card's.
-    """
-    scope = f"{connection.provider}|{connection.id}"
-    if operation.external_id:
-        payload = f"{scope}|id|{operation.external_id}"
-        return hashlib.sha256(payload.encode()).hexdigest()[:40]
 
+    Built from the operation itself rather than from the bank's number, because
+    the number depends on the file: в таблице номер документа лежит в своей
+    колонке, а в PDF короткий номер от описания не отличить. Пока личностью
+    служил номер, одна и та же выписка в двух форматах заводила одни и те же
+    зарплаты по второму разу.
+    """
     payload = "|".join(
         [
-            scope,
+            f"{connection.provider}|{connection.id}",
             operation.occurred_on.isoformat(),
             str(round(operation.amount * 100)),
             operation.currency.upper(),
@@ -74,6 +75,30 @@ def _fingerprints(connection: BankConnection, operations: list[RawOperation]) ->
         seen[base] = index + 1
         result.append(f"{base}#{index}")
     return result
+
+
+async def _known(
+    db: AsyncSession,
+    connection: BankConnection,
+    column,
+    values: list[str],
+) -> set[str]:
+    """Which of `values` this connection has already seen in that column.
+
+    SQLite allows a few hundred bound parameters per statement, and a year of
+    card history is thousands of rows, so ask in batches.
+    """
+    found: set[str] = set()
+    unique = list({value for value in values if value})
+    for start in range(0, len(unique), 400):
+        rows = await db.execute(
+            select(column).where(
+                BankOperation.connection_id == connection.id,
+                column.in_(unique[start : start + 400]),
+            )
+        )
+        found.update(rows.scalars())
+    return found
 
 
 def credentials_for(connection: BankConnection) -> ApiCredentials:
@@ -102,17 +127,16 @@ async def ingest_statement(
     warnings = list(statement.warnings)
 
     fingerprints = _fingerprints(connection, statement.operations)
-    existing: set[str] = set()
-    # SQLite allows a few hundred bound parameters per statement, and a year of
-    # card history is thousands of rows, so ask in batches.
-    for batch in (fingerprints[i : i + 400] for i in range(0, len(fingerprints), 400)):
-        rows = await db.execute(
-            select(BankOperation.fingerprint).where(
-                BankOperation.connection_id == connection.id,
-                BankOperation.fingerprint.in_(batch),
-            )
-        )
-        existing.update(rows.scalars())
+    existing = await _known(db, connection, BankOperation.fingerprint, fingerprints)
+    # Номер операции — вторая примета той же самой операции. Описание банк
+    # печатает по-разному в разных форматах, поэтому совпадения по содержанию
+    # мало: там, где номер есть, он и решает.
+    known_ids = await _known(
+        db,
+        connection,
+        BankOperation.external_id,
+        [op.external_id for op in statement.operations if op.external_id],
+    )
 
     run = BankImport(
         connection_id=connection.id,
@@ -131,7 +155,7 @@ async def ingest_statement(
     foreign_currency = set()
 
     for operation, fingerprint in zip(statement.operations, fingerprints, strict=True):
-        if fingerprint in existing:
+        if fingerprint in existing or operation.external_id in known_ids:
             duplicates += 1
             continue
         if operation.is_pending:
@@ -185,6 +209,8 @@ async def ingest_statement(
             )
         )
         existing.add(fingerprint)
+        if operation.external_id:
+            known_ids.add(operation.external_id)
         imported += 1
         net_amount += operation.amount
 

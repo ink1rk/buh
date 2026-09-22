@@ -12,6 +12,8 @@ from __future__ import annotations
 import codecs
 import csv
 import io
+import re
+from collections import Counter
 from datetime import date
 from typing import Any
 
@@ -23,6 +25,7 @@ from app.connectors.base import (
     parse_money,
     parse_statement_date,
     stated_totals,
+    unique_reference,
 )
 
 # field -> ((header fragment, score), ...). Highest score wins the column.
@@ -143,11 +146,93 @@ def detect_columns(rows: list[list[Any]]) -> tuple[int, dict[str, int]]:
             best_row, best_mapping, best_total = row_index, mapping, total
 
     if best_row < 0:
-        raise StatementParseError(
-            "Не нашёл в файле строку заголовка с датой и суммой операции. "
-            "Проверьте, что это выписка, а не справка или счёт."
-        )
+        guessed = guess_columns(rows)
+        if guessed:
+            return -1, guessed
+        raise StatementParseError(_nothing_to_read(rows))
     return best_row, best_mapping
+
+
+# Строки, похожие на операции, ещё не выписка: пара дат с суммами найдётся и в
+# справке, и в счёте. Год трат — это сотни строк, поэтому колонки угадываются
+# только когда одна и та же пара колонок повторяется много раз подряд.
+MIN_GUESSED_ROWS = 10
+_MONEY_MARKS = re.compile(r"[.,]\d{1,2}(?!\d)|[₽$€]|руб|[-+\u2212]\s?\d|\d[\s\u00a0]\d{3}", re.I)
+
+
+def _looks_like_money(cell: Any) -> bool:
+    """Сумма, а не номер документа и не количество.
+
+    Номер документа парсится как число ничуть не хуже суммы, поэтому одного
+    разбора мало: деньги себя выдают копейками, знаком, разрядами или валютой.
+    """
+    if isinstance(cell, bool) or cell is None:
+        return False
+    if isinstance(cell, float):
+        return cell != 0
+    if isinstance(cell, int):
+        return False
+    text = str(cell).strip()
+    return bool(text) and parse_money(text) not in (None, 0) and bool(_MONEY_MARKS.search(text))
+
+
+def guess_columns(rows: list[list[Any]]) -> dict[str, int]:
+    """Колонки по содержимому строк, когда шапки в файле нет.
+
+    Банки выгружают и такое: «справка о движении средств», переведённая в
+    таблицу, теряет шапку целиком. Раньше разбор отвечал «проверьте, что это
+    выписка» — про файл, который выпиской и был.
+    """
+    votes: Counter[tuple[int, int]] = Counter()
+    for row in rows:
+        date_at = next((i for i, cell in enumerate(row) if parse_statement_date(cell)), None)
+        if date_at is None:
+            continue
+        money_at = next(
+            (i for i, cell in enumerate(row) if i != date_at and _looks_like_money(cell)), None
+        )
+        if money_at is not None:
+            votes[(date_at, money_at)] += 1
+
+    if not votes:
+        return {}
+    (date_at, money_at), seen = votes.most_common(1)[0]
+    if seen < MIN_GUESSED_ROWS:
+        return {}
+
+    mapping = {"occurred_on": date_at, "amount": money_at}
+    described = _wordiest_column(rows, skip={date_at, money_at})
+    if described is not None:
+        mapping["description"] = described
+    return mapping
+
+
+def _wordiest_column(rows: list[list[Any]], skip: set[int]) -> int | None:
+    """Колонка с самым длинным текстом — в выписке это назначение платежа."""
+    letters: Counter[int] = Counter()
+    for row in rows:
+        for index, cell in enumerate(row):
+            if index in skip or cell is None:
+                continue
+            letters[index] += sum(1 for ch in str(cell) if ch.isalpha())
+    return max(letters, key=letters.get) if letters else None
+
+
+def _nothing_to_read(rows: list[list[Any]]) -> str:
+    """Отказ, по которому видно, что за файл прочитали."""
+    sample = ""
+    for row in rows[:_MAX_HEADER_SCAN]:
+        text = " | ".join(str(cell).strip() for cell in row if str(cell or "").strip())
+        if len(text) > len(sample):
+            sample = text
+    seen = f"Строк в файле: {len(rows)}."
+    if sample:
+        seen += f" Самая содержательная: «{sample[:160]}»."
+    return (
+        "Не нашёл в файле ни строки заголовка с датой и суммой операции, ни строк, "
+        f"похожих на операции. {seen} Похоже, это справка, счёт или квитанция, "
+        "а не выписка по счёту."
+    )
 
 
 # A year of card history is a few thousand rows. These caps exist because the
@@ -266,7 +351,8 @@ def _closing_balance(
 def rows_to_statement(rows: list[list[Any]]) -> ParsedStatement:
     """Turn spreadsheet rows into a `ParsedStatement`."""
     header_index, mapping = detect_columns(rows)
-    header = [normalize_header(cell) for cell in rows[header_index]]
+    guessed = header_index < 0
+    header = [] if guessed else [normalize_header(cell) for cell in rows[header_index]]
     statement = ParsedStatement()
     unreadable = 0
     balances: list[tuple[date, int, float]] = []
@@ -316,7 +402,7 @@ def rows_to_statement(rows: list[list[Any]]) -> ParsedStatement:
             description=description or merchant,
             merchant=merchant,
             currency=currency,
-            external_id=_text(row, columns, "external_id"),
+            external_id=unique_reference(_text(row, columns, "external_id")),
             mcc=mcc,
             bank_category=_text(row, columns, "bank_category"),
             is_pending=any(marker in status for marker in PENDING_MARKERS),
@@ -339,6 +425,11 @@ def rows_to_statement(rows: list[list[Any]]) -> ParsedStatement:
     stated = stated_totals(cell for row in rows for cell in row)
     # Напечатанный в выписке остаток вернее посчитанного по строкам.
     statement.closing_balance = stated.get("closing", _closing_balance(balances, dates))
+    if guessed:
+        statement.warnings.append(
+            "Шапки в файле нет — колонки определены по содержимому строк. "
+            "Сверьте несколько операций на странице «Операции»."
+        )
     if unreadable:
         statement.warnings.append(f"Пропущено нечитаемых строк: {unreadable}")
     check_against_stated(statement, stated)
