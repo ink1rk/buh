@@ -4,13 +4,13 @@ import { useNavigate } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
 import { describeError } from "@/shared/api/errors";
-import { keys, mutations, useApiMutation, useInbox, useProjects } from "@/shared/api/queries";
+import { keys, mutations, useApiMutation, useInbox, useProjects, useSavedViews } from "@/shared/api/queries";
 import type { InboxItem, ProjectSummary } from "@/shared/api/types";
 import { Badge, type Tone } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { DataTable, type Column } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
-import { Field, Input, Textarea } from "@/shared/ui/Field";
+import { Field, Input, Select, Textarea } from "@/shared/ui/Field";
 import { FormError, PageHeader } from "@/shared/ui/Layout";
 import { toast } from "@/shared/ui/toast";
 
@@ -27,10 +27,12 @@ function CreateProjectDialog({ open, onClose }: { open: boolean; onClose: () => 
   const [key, setKey] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [template, setTemplate] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const create = useApiMutation(
-    (body: Record<string, unknown>) => mutations.createProject(body),
+    (body: Record<string, unknown>) =>
+      body.template ? mutations.createFromTemplate(body) : mutations.createProject(body),
     [keys.projects],
     {
       onSuccess: (created) => {
@@ -54,13 +56,17 @@ function CreateProjectDialog({ open, onClose }: { open: boolean; onClose: () => 
           <Button
             variant="primary"
             disabled={!key.trim() || !name.trim() || create.isPending}
-            onClick={() =>
+            onClick={() => {
+              if (template) {
+                create.mutate({ template, key: key.trim(), name: name.trim() });
+                return;
+              }
               create.mutate({
                 key: key.trim(),
                 name: name.trim(),
                 description: description.trim(),
-              })
-            }
+              });
+            }}
           >
             {t("app.create")}
           </Button>
@@ -73,6 +79,15 @@ function CreateProjectDialog({ open, onClose }: { open: boolean; onClose: () => 
         </Field>
         <Field label={t("projects.name")} required htmlFor="project-name">
           <Input id="project-name" value={name} onChange={(event) => setName(event.target.value)} />
+        </Field>
+        <Field label={t("projects.template")} htmlFor="project-template">
+          <Select
+            id="project-template"
+            value={template}
+            placeholder={t("projects.template")}
+            options={[{ value: "infrastructure", label: t("projects.fromTemplate") }]}
+            onChange={(event) => setTemplate(event.target.value)}
+          />
         </Field>
         <Field label={t("projects.description")} htmlFor="project-description">
           <Textarea
@@ -87,7 +102,69 @@ function CreateProjectDialog({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
-function Inbox({ onOpen }: { onOpen: (projectId: string) => void }) {
+function SavedViews({
+  active,
+  onPick,
+}: {
+  active: string;
+  onPick: (bucket: string) => void;
+}) {
+  const { t } = useI18n();
+  const { data } = useSavedViews();
+  const [name, setName] = useState("");
+  const [bucket, setBucket] = useState("overdue");
+  const save = useApiMutation((body: Record<string, unknown>) => mutations.saveView(body), [keys.views], {
+    onSuccess: () => {
+      setName("");
+      toast.success(t("app.saved"));
+    },
+    onError: (err) => toast.error(describeError(err, t)),
+  });
+  const buckets = [
+    ["overdue", t("projects.overdue")],
+    ["today", t("projects.today")],
+    ["upcoming", t("projects.upcoming")],
+    ["undated", t("projects.undated")],
+  ] as const;
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2" data-testid="saved-views">
+      {(data ?? []).map((view) => (
+        <button
+          key={view.id}
+          type="button"
+          className={
+            active === (view.bucket ?? "")
+              ? "rounded-md bg-[rgb(var(--surface-muted))] px-2 py-1 text-xs"
+              : "rounded-md px-2 py-1 text-xs text-muted"
+          }
+          onClick={() => onPick(view.bucket ?? "")}
+        >
+          {view.name}
+        </button>
+      ))}
+      <Input
+        className="w-44"
+        value={name}
+        placeholder={t("projects.viewName")}
+        onChange={(event) => setName(event.target.value)}
+      />
+      <Select
+        value={bucket}
+        options={buckets.map(([value, label]) => ({ value, label }))}
+        onChange={(event) => setBucket(event.target.value)}
+      />
+      <Button
+        data-testid="save-view"
+        disabled={!name.trim() || save.isPending}
+        onClick={() => save.mutate({ name: name.trim(), bucket })}
+      >
+        {t("projects.saveView")}
+      </Button>
+    </div>
+  );
+}
+
+function Inbox({ onOpen, only }: { onOpen: (projectId: string) => void; only: string }) {
   const { t } = useI18n();
   const { data } = useInbox();
   const buckets = [
@@ -96,9 +173,10 @@ function Inbox({ onOpen }: { onOpen: (projectId: string) => void }) {
     ["upcoming", t("projects.upcoming")],
     ["undated", t("projects.undated")],
   ] as const;
+  const shown = only ? buckets.filter(([bucket]) => bucket === only) : buckets;
   return (
     <div className="mb-4 grid gap-3 md:grid-cols-4" data-testid="project-inbox">
-      {buckets.map(([bucket, label]) => {
+      {shown.map(([bucket, label]) => {
         const rows = (data ?? []).filter((item: InboxItem) => item.bucket === bucket);
         return (
           <section key={bucket} className="surface rounded-lg p-3" data-testid={`inbox-${bucket}`}>
@@ -131,6 +209,7 @@ export function ProjectsPage() {
   const navigate = useNavigate();
   const { data, isLoading } = useProjects();
   const [creating, setCreating] = useState(false);
+  const [only, setOnly] = useState("");
 
   const columns: Array<Column<ProjectSummary>> = [
     {
@@ -188,7 +267,8 @@ export function ProjectsPage() {
           </Button>
         }
       />
-      <Inbox onOpen={(projectId) => navigate(`/projects/${projectId}`)} />
+      <SavedViews active={only} onPick={setOnly} />
+      <Inbox only={only} onOpen={(projectId) => navigate(`/projects/${projectId}`)} />
       <DataTable
         columns={columns}
         rows={data ?? []}

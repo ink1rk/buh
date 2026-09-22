@@ -155,6 +155,9 @@ class Task(Base, TimestampMixin):
         Integer, nullable=False, default=0, server_default=text("0")
     )
     completed_at: Mapped[datetime | None] = mapped_column()
+    recurrence_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("task_recurrence.id", ondelete="SET NULL")
+    )
     order_index: Mapped[Decimal] = mapped_column(
         Numeric(12, 4), nullable=False, default=0, server_default=text("0")
     )
@@ -296,3 +299,60 @@ class TaskCheck(Base):
     order_index: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default=text("0")
     )
+
+
+class TaskRecurrence(Base, TimestampMixin):
+    """Определение повтора. Выполненная задача его не копирует, а порождает новый экземпляр."""
+
+    __tablename__ = "task_recurrence"
+    __table_args__ = (
+        CheckConstraint("cadence IN ('daily', 'weekly', 'monthly')", name="cadence"),
+        CheckConstraint("interval_count >= 1", name="interval"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("project.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
+    cadence: Mapped[str] = mapped_column(String(16), nullable=False)
+    interval_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
+    weekday: Mapped[int | None] = mapped_column(SmallInteger)
+    month_day: Mapped[int | None] = mapped_column(SmallInteger)
+    priority: Mapped[Priority] = mapped_column(
+        ENUM(Priority, name="priority", create_type=False),
+        nullable=False,
+        default=Priority.MEDIUM,
+    )
+    assignee_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("employee.id", ondelete="SET NULL")
+    )
+    estimate_min: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+    next_on: Mapped[date] = mapped_column(Date, nullable=False)
+    active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+
+
+class SavedView(Base, TimestampMixin):
+    """Именованный фильтр задач владельца представления."""
+
+    __tablename__ = "saved_view"
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("project.id", ondelete="CASCADE")
+    )
+    status: Mapped[str | None] = mapped_column(String(32))
+    priority: Mapped[str | None] = mapped_column(String(32))
+    bucket: Mapped[str | None] = mapped_column(String(32))
+

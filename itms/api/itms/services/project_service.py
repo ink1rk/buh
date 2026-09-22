@@ -554,6 +554,9 @@ async def update_task(
         await notification_service.task_status(
             session, task, previous_status.value, task.status.value
         )
+        from itms.services import recurrence_service
+
+        await recurrence_service.spawn_next(session, task)
     return await project_view(session, project_id, persist_progress=True)
 
 

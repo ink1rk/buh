@@ -24,8 +24,10 @@ import type {
   RackElevation,
   RackSummary,
   PowerOverview,
+  AnalyticsReport,
   InboxItem,
   NotificationList,
+  SavedView,
   ProjectSummary,
   ProjectView,
   TaskWork,
@@ -109,6 +111,8 @@ export const keys = {
   project: (id: string) => ["projects", id] as const,
   inbox: ["projects", "inbox"] as const,
   notifications: ["notifications"] as const,
+  analytics: ["projects", "analytics"] as const,
+  views: ["projects", "views"] as const,
   taskWork: (projectId: string, taskId: string) => ["projects", projectId, "work", taskId] as const,
   power: ["power"] as const,
   transition: (id: string) => ["projects", id, "transition"] as const,
@@ -376,6 +380,20 @@ export function usePower() {
   return useQuery({
     queryKey: keys.power,
     queryFn: () => api.get<PowerOverview>("/power"),
+  });
+}
+
+export function useAnalytics() {
+  return useQuery({
+    queryKey: keys.analytics,
+    queryFn: () => api.get<AnalyticsReport>("/projects/analytics"),
+  });
+}
+
+export function useSavedViews() {
+  return useQuery({
+    queryKey: keys.views,
+    queryFn: () => api.get<SavedView[]>("/projects/views"),
   });
 }
 
@@ -701,6 +719,11 @@ export const mutations = {
     api.post<{ id: string }>("/power/links", body),
 
   createProject: (body: Record<string, unknown>) => api.post<ProjectView>("/projects", body),
+  createFromTemplate: (body: Record<string, unknown>) =>
+    api.post<ProjectView>("/projects/from-template", body),
+  addRecurrence: (id: string, body: Record<string, unknown>) =>
+    api.post<unknown>(`/projects/${id}/recurrences`, body),
+  saveView: (body: Record<string, unknown>) => api.post<SavedView[]>("/projects/views", body),
   updateProject: (id: string, body: Record<string, unknown>) =>
     api.patch<ProjectView>(`/projects/${id}`, body),
   addPhase: (id: string, body: Record<string, unknown>) =>

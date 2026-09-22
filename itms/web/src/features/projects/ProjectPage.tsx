@@ -366,6 +366,58 @@ function Overview({ projectId, view }: { projectId: string; view: ProjectView })
   );
 }
 
+function RecurrenceForm({ projectId }: { projectId: string }) {
+  const { t } = useI18n();
+  const [title, setTitle] = useState("");
+  const [cadence, setCadence] = useState("weekly");
+  const write = useApiMutation(
+    (body: Record<string, unknown>) => mutations.addRecurrence(projectId, body),
+    [keys.projects, keys.project(projectId)],
+    {
+      onSuccess: () => {
+        setTitle("");
+        toast.success(t("app.saved"));
+      },
+      onError: (err) => toast.error(describeError(err, t)),
+    },
+  );
+  return (
+    <Panel title={t("projects.recurrence")}>
+      <div className="flex flex-wrap gap-2">
+        <Input
+          className="min-w-48 flex-1"
+          value={title}
+          placeholder={t("projects.addTask")}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+        <Select
+          value={cadence}
+          options={[
+            { value: "daily", label: t("projects.daily") },
+            { value: "weekly", label: t("projects.weekly") },
+            { value: "monthly", label: t("projects.monthly") },
+          ]}
+          onChange={(event) => setCadence(event.target.value)}
+        />
+        <Button
+          data-testid="add-recurrence"
+          variant="primary"
+          disabled={!title.trim() || write.isPending}
+          onClick={() =>
+            write.mutate({
+              title: title.trim(),
+              cadence,
+              weekday: cadence === "weekly" ? 0 : null,
+            })
+          }
+        >
+          {t("app.create")}
+        </Button>
+      </div>
+    </Panel>
+  );
+}
+
 function Tasks({
   projectId,
   view,
@@ -497,6 +549,7 @@ function Tasks({
           </table>
         )}
       </Panel>
+      <RecurrenceForm projectId={projectId} />
       <Panel title={t("projects.dependency")}>
         <div className="flex flex-wrap gap-2">
           <Select

@@ -30,6 +30,7 @@ export const en: DeepPartial<Dictionary> = {
     diagrams: "Diagrams",
     racks: "Racks",
     projects: "Projects",
+    analytics: "Analytics",
     power: "Power",
     catalog: "Model catalogue",
     locations: "Locations",

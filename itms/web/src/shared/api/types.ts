@@ -761,6 +761,24 @@ export interface NotificationList {
   items: NotificationItem[];
 }
 
+export interface SavedView {
+  id: string;
+  name: string;
+  project_id: string | null;
+  status: string | null;
+  priority: string | null;
+  bucket: string | null;
+}
+
+export interface AnalyticsReport {
+  by_status: Record<string, number>;
+  by_priority: Record<string, number>;
+  open: number;
+  completed: number;
+  overdue: number;
+  workload: Array<{ name: string; open: number; estimate_min: number }>;
+}
+
 export interface InboxItem {
   id: string;
   project_id: string;
