@@ -166,3 +166,16 @@ def test_a_batch_touches_the_device(device):
 
 def test_an_empty_batch_is_not_an_error(device):
     assert ingest.ingest_batch({}, device[0]["id"])["accepted"] == 0
+
+
+def test_fahrenheit_becomes_celsius(device):
+    ingest.ingest_health([{"metric": "body_temperature", "value": 98.6,
+                           "unit": "degF", "start": at(0, 8)}], device[0]["id"])
+    assert store.samples()[0]["value"] == pytest.approx(37.0, abs=0.05)
+
+
+def test_an_unknown_metric_is_kept(device):
+    """Выгрузка присылает всё — неизвестное имя не повод выбросить замер."""
+    ingest.ingest_health([{"metric": "HKQuantityTypeIdentifierUvExposure",
+                           "value": 3, "start": at(0, 12)}], device[0]["id"])
+    assert store.samples()[0]["metric"] == "uvexposure"

@@ -57,6 +57,9 @@ SCHEMA = (
         device_id TEXT PRIMARY KEY, battery REAL, charging INTEGER, focus TEXT,
         place TEXT, network TEXT, extra TEXT, updated_at REAL)""",
 
+    """CREATE TABLE IF NOT EXISTS sync_state(
+        key TEXT PRIMARY KEY, value TEXT, updated_at REAL)""",
+
     """CREATE TABLE IF NOT EXISTS outbox(
         id TEXT PRIMARY KEY, kind TEXT NOT NULL, payload TEXT, target TEXT,
         status TEXT DEFAULT 'NEW', created_at REAL, taken_at REAL, done_at REAL,
@@ -170,59 +173,101 @@ def _as_device(row):
 
 
 # --- события -------------------------------------------------------------
-def _insert(table, columns, values):
-    """True — запись новая, False — такой external_id уже приходил."""
+CALL_COLUMNS = ("id", "external_id", "direction", "status", "peer_name",
+                "peer_number", "app", "started_at", "duration", "note",
+                "device_id", "created_at")
+MESSAGE_COLUMNS = ("id", "external_id", "app", "direction", "peer_name",
+                   "peer_number", "chars", "attachments", "preview", "ts",
+                   "device_id", "created_at")
+SAMPLE_COLUMNS = ("id", "external_id", "metric", "value", "unit", "started_at",
+                  "ended_at", "source", "device_id", "created_at")
+WORKOUT_COLUMNS = ("id", "external_id", "kind", "started_at", "ended_at", "duration",
+                   "energy", "distance", "avg_hr", "max_hr", "source", "device_id",
+                   "created_at")
+
+
+def call_row(call):
+    return (new_id("cal-"), call["external_id"], call["direction"], call["status"],
+            call.get("peer_name") or "", call.get("peer_number") or "",
+            call.get("app") or "phone", call["started_at"], call.get("duration") or 0,
+            call.get("note") or "", call.get("device_id"), time.time())
+
+
+def message_row(message):
+    return (new_id("msg-"), message["external_id"], message.get("app") or "imessage",
+            message["direction"], message.get("peer_name") or "",
+            message.get("peer_number") or "", message.get("chars") or 0,
+            message.get("attachments") or 0, message.get("preview") or "",
+            message["ts"], message.get("device_id"), time.time())
+
+
+def sample_row(sample):
+    return (new_id("smp-"), sample["external_id"], sample["metric"],
+            sample.get("value"), sample.get("unit") or "", sample["started_at"],
+            sample.get("ended_at") or sample["started_at"], sample.get("source") or "",
+            sample.get("device_id"), time.time())
+
+
+def workout_row(workout):
+    return (new_id("wrk-"), workout["external_id"], workout.get("kind") or "",
+            workout["started_at"], workout.get("ended_at"), workout.get("duration"),
+            workout.get("energy"), workout.get("distance"), workout.get("avg_hr"),
+            workout.get("max_hr"), workout.get("source") or "",
+            workout.get("device_id"), time.time())
+
+
+def save_many(table, columns, rows):
+    """Сколько строк оказалось новыми. Остальные — повторы, их тихо отбросили.
+
+    Только пачками: в выгрузке из «Здоровья» за пять лет миллионы замеров, и
+    отдельная транзакция на каждый превращает импорт в часы.
+    """
+    rows = list(rows)
+    if not rows:
+        return 0
+    conn = connect()
+    before = conn.total_changes
     placeholders = ",".join("?" * len(columns))
-    cursor = execute(f"INSERT OR IGNORE INTO {table}({','.join(columns)})"
-                     f" VALUES({placeholders})", values)
-    return cursor.rowcount > 0
+    try:
+        conn.executemany(f"INSERT OR IGNORE INTO {table}({','.join(columns)})"
+                         f" VALUES({placeholders})", rows)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    return conn.total_changes - before
+
+
+def save_calls(calls):
+    return save_many("calls", CALL_COLUMNS, [call_row(c) for c in calls])
+
+
+def save_messages(messages):
+    return save_many("messages", MESSAGE_COLUMNS, [message_row(m) for m in messages])
+
+
+def save_samples(samples):
+    return save_many("samples", SAMPLE_COLUMNS, [sample_row(s) for s in samples])
+
+
+def save_workouts(workouts):
+    return save_many("workouts", WORKOUT_COLUMNS, [workout_row(w) for w in workouts])
 
 
 def save_call(call):
-    return _insert("calls",
-                   ("id", "external_id", "direction", "status", "peer_name",
-                    "peer_number", "app", "started_at", "duration", "note",
-                    "device_id", "created_at"),
-                   (new_id("cal-"), call["external_id"], call["direction"],
-                    call["status"], call.get("peer_name") or "",
-                    call.get("peer_number") or "", call.get("app") or "phone",
-                    call["started_at"], call.get("duration") or 0,
-                    call.get("note") or "", call.get("device_id"), time.time()))
+    return save_calls([call]) > 0
 
 
 def save_message(message):
-    return _insert("messages",
-                   ("id", "external_id", "app", "direction", "peer_name",
-                    "peer_number", "chars", "attachments", "preview", "ts",
-                    "device_id", "created_at"),
-                   (new_id("msg-"), message["external_id"], message.get("app") or "imessage",
-                    message["direction"], message.get("peer_name") or "",
-                    message.get("peer_number") or "", message.get("chars") or 0,
-                    message.get("attachments") or 0, message.get("preview") or "",
-                    message["ts"], message.get("device_id"), time.time()))
+    return save_messages([message]) > 0
 
 
 def save_sample(sample):
-    return _insert("samples",
-                   ("id", "external_id", "metric", "value", "unit", "started_at",
-                    "ended_at", "source", "device_id", "created_at"),
-                   (new_id("smp-"), sample["external_id"], sample["metric"],
-                    sample.get("value"), sample.get("unit") or "",
-                    sample["started_at"], sample.get("ended_at") or sample["started_at"],
-                    sample.get("source") or "", sample.get("device_id"), time.time()))
+    return save_samples([sample]) > 0
 
 
 def save_workout(workout):
-    return _insert("workouts",
-                   ("id", "external_id", "kind", "started_at", "ended_at", "duration",
-                    "energy", "distance", "avg_hr", "max_hr", "source", "device_id",
-                    "created_at"),
-                   (new_id("wrk-"), workout["external_id"], workout.get("kind") or "",
-                    workout["started_at"], workout.get("ended_at"),
-                    workout.get("duration"), workout.get("energy"),
-                    workout.get("distance"), workout.get("avg_hr"),
-                    workout.get("max_hr"), workout.get("source") or "",
-                    workout.get("device_id"), time.time()))
+    return save_workouts([workout]) > 0
 
 
 def save_state(device_id, state):
@@ -266,13 +311,17 @@ def messages(since=None, until=None, limit=500):
 
 
 def samples(metric=None, since=None, until=None, limit=5000):
+    """`limit=None` — без ограничения: в дне с тренировкой пульс мерится
+    сотнями раз, и обрезанная выборка молча занизила бы день."""
     sql = "SELECT * FROM samples WHERE started_at >= ? AND started_at < ?"
     params = [since or 0, until or time.time() + 86400]
     if metric:
         sql += " AND metric=?"
         params.append(metric)
-    sql += " ORDER BY started_at LIMIT ?"
-    params.append(limit)
+    sql += " ORDER BY started_at"
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(limit)
     return [dict(row) for row in query(sql, tuple(params))]
 
 
@@ -286,6 +335,30 @@ def workouts(since=None, until=None, limit=100):
         "SELECT * FROM workouts WHERE started_at >= ? AND started_at < ?"
         " ORDER BY started_at DESC LIMIT ?",
         (since or 0, until or time.time() + 86400, limit))]
+
+
+def get_cursor(key, default=None):
+    """Докуда дочитан внешний источник: chat.db, журнал звонков, выгрузка."""
+    row = one("SELECT value FROM sync_state WHERE key=?", (key,))
+    if row is None:
+        return default
+    try:
+        return json.loads(row["value"])
+    except ValueError:
+        return default
+
+
+def set_cursor(key, value):
+    execute("""INSERT INTO sync_state(key, value, updated_at) VALUES(?,?,?)
+               ON CONFLICT(key) DO UPDATE SET value=excluded.value,
+                updated_at=excluded.updated_at""",
+            (key, json.dumps(value, ensure_ascii=False), time.time()))
+    return value
+
+
+def cursors():
+    return {row["key"]: row["updated_at"]
+            for row in query("SELECT key, updated_at FROM sync_state")}
 
 
 def last_sync_at():
@@ -361,8 +434,14 @@ def _as_outbox(row):
 
 # --- уборка --------------------------------------------------------------
 def prune(retention_days=None):
-    """Телефон присылает много и каждый день; вечно это хранить незачем."""
+    """Чистка по сроку давности. Ноль — хранить всё.
+
+    Ноль по умолчанию не от лени: в базу заезжает выгрузка «Здоровья» за все
+    годы, и срок хранения в год молча съел бы её на первой же уборке.
+    """
     days = retention_days if retention_days is not None else config.retention_days
+    if not days or days <= 0:
+        return 0
     cutoff = time.time() - days * 86400
     removed = 0
     for table, column in (("calls", "started_at"), ("messages", "ts"),

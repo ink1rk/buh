@@ -56,6 +56,44 @@ def _sample_day(sample):
     return day_of(anchor or sample["started_at"])
 
 
+def _source_rank(source):
+    """Кому верить, когда один и тот же шаг записали двое."""
+    name = (source or "").lower()
+    if "watch" in name or "часы" in name:
+        return 0
+    if "iphone" in name or "phone" in name or "телефон" in name:
+        return 1
+    return 2
+
+
+def combine(metric, samples):
+    """Число за день из замеров — с оглядкой на то, кто их записал.
+
+    Здоровье хранит шаги отдельно от часов и отдельно от телефона: человек
+    шёл один раз, а записей две. Apple при показе выбирает один источник на
+    отрезок времени, и если сложить всё подряд, день выйдет вдвое бодрее,
+    чем был. Поэтому для накопительных метрик минута достаётся одному
+    источнику — тому, что ближе к телу.
+    """
+    values = [s["value"] for s in samples]
+    if metrics.how(metric) != "sum":
+        return metrics.aggregate(metric, values)
+    sources = {(s.get("source") or "") for s in samples}
+    if len(sources) < 2:
+        return metrics.aggregate(metric, values)
+
+    minutes = {}
+    for sample in samples:
+        minutes.setdefault(int((sample.get("started_at") or 0) // 60), []).append(sample)
+    total = 0.0
+    for group in minutes.values():
+        winner = min((s.get("source") or "" for s in group),
+                     key=lambda name: (_source_rank(name), name))
+        total += sum(s["value"] or 0 for s in group
+                     if (s.get("source") or "") == winner)
+    return total
+
+
 def daily_values(metric, days=14, until=None):
     """{'2026-09-21': 8231.0, …} — по одному числу на день."""
     end = until if until is not None else time.time()
@@ -64,13 +102,13 @@ def daily_values(metric, days=14, until=None):
     buckets = {}
     # Сон начинается вчера, а считается сегодняшним: выбираем с запасом в
     # сутки и отбрасываем лишнее уже по дню, которому замер принадлежит.
-    for sample in store.samples(metric=metric, since=start - 86400, until=end + 86400):
+    for sample in store.samples(metric=metric, since=start - 86400,
+                                until=end + 86400, limit=None):
         day = _sample_day(sample)
         if day < first_day:
             continue
-        buckets.setdefault(day, []).append(sample["value"])
-    return {day: metrics.aggregate(metric, values)
-            for day, values in sorted(buckets.items())}
+        buckets.setdefault(day, []).append(sample)
+    return {day: combine(metric, group) for day, group in sorted(buckets.items())}
 
 
 def baseline(metric, days=None, until=None, skip_today=True):
@@ -85,16 +123,35 @@ def baseline(metric, days=None, until=None, skip_today=True):
 
 def metric_today(metric, day=None):
     start, end = day_bounds(day)
-    samples = [s for s in store.samples(metric=metric, since=start - 86400, until=end)
+    samples = [s for s in store.samples(metric=metric, since=start - 86400,
+                                        until=end, limit=None)
                if _sample_day(s) == day_of(start)]
-    return metrics.aggregate(metric, [s["value"] for s in samples])
+    return combine(metric, samples)
+
+
+def _present(day=None):
+    """Какие метрики вообще есть за этот день — не только те, что мы ждали."""
+    start, end = day_bounds(day)
+    seen = set()
+    for sample in store.samples(since=start - 86400, until=end, limit=None):
+        if _sample_day(sample) == day_of(start):
+            seen.add(sample["metric"])
+    return seen
 
 
 def health_today(day=None):
-    """Каждая метрика дня рядом со своей нормой — без нормы это просто число."""
+    """Каждая метрика дня рядом со своей нормой — без нормы это просто число.
+
+    В сводку попадает всё, что реально пришло, а не короткий список
+    «шаги и сон»: иначе выгрузка из Здоровья молча теряла бы три четверти дня.
+    """
     start, _ = day_bounds(day)
+    order = list(DAILY)
+    for metric in sorted(_present(day)):
+        if metric not in order:
+            order.append(metric)
     out = {}
-    for metric in DAILY:
+    for metric in order:
         value = metric_today(metric, day)
         norm = baseline(metric, until=start + 86399)
         if value is None and norm is None:
@@ -214,16 +271,29 @@ def waiting_for_reply(hours=48, now=None):
 
 
 # --- состояние моста -----------------------------------------------------
+def last_activity_at():
+    """Когда в мост вообще что-то в последний раз попадало.
+
+    Не только `last_seen` устройства: выгрузка Здоровья и проход по chat.db
+    пишут курсор, и без него свежий импорт через шесть часов выглядел бы
+    как «телефон молчит».
+    """
+    times = [store.last_sync_at(), *store.cursors().values()]
+    times = [t for t in times if t]
+    return max(times) if times else None
+
+
 def bridge_state(now=None):
     now = now or time.time()
     devices = store.devices()
-    last = store.last_sync_at()
+    last = last_activity_at()
     silent_after = config.silence_hours * 3600
     return {
         "devices": [{**d, "silent_hours": None if not d["last_seen_at"]
                      else round((now - d["last_seen_at"]) / 3600, 1)}
                     for d in devices],
         "last_sync_at": last,
+        "sources": store.cursors(),
         "silent": bool(devices) and (last is None or now - last > silent_after),
         "state": store.states(),
         "pending_outbox": len(store.outbox("NEW", limit=100)),

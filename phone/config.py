@@ -45,7 +45,9 @@ class Config:
     # «кто ждёт ответа» он не нужен.
     store_text: bool = _bool("PHONE_STORE_TEXT", False)
     preview_chars: int = _int("PHONE_PREVIEW_CHARS", 160)
-    retention_days: int = _int("PHONE_RETENTION_DAYS", 400)
+    # Ноль — хранить всё. Выгрузка Здоровья приезжает за все годы, и срок
+    # в год молча съел бы её на первой же уборке.
+    retention_days: int = _int("PHONE_RETENTION_DAYS", 0)
 
     # Сколько часов молчания считать поломкой моста, а не тихим днём.
     silence_hours: int = _int("PHONE_SILENCE_HOURS", 6)

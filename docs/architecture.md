@@ -111,7 +111,8 @@ assistant/
     └── mcp.py            вызов инструмента MCP как действие
 
 phone/                    отдельный сервис: мост с iPhone и Apple Watch
-├── ingest.py             приём пакетов от ярлыков iOS
+├── apple/                выгрузка Здоровья, chat.db, CallHistory, копия iPhone
+├── ingest.py             приём форматов Apple и Health Auto Export
 ├── insights.py           норма человека, отклонения, кто ждёт ответа
 ├── mcp.py                сервер MCP (2026-07-28 и старые версии)
 └── tools.py              инструменты, которые видит модель

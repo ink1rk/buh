@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Приём данных с телефона.
+"""Приём данных: выгрузка Здоровья, Health Auto Export, базы Apple.
 
-Отправитель — ярлык iOS или приложение вроде Health Auto Export, а не наш
-клиент: формат приходит такой, какой смог собрать телефон. Поэтому здесь
-всё разбирается терпимо — время в трёх видах, числа строками, метрики под
-разными именами, — и ни одна кривая строка не роняет пакет целиком.
+Формат приходит таким, каким его отдал источник, а не таким, каким нам
+удобно. Поэтому здесь всё разбирается терпимо — время в трёх видах, числа
+строками и объектами `{"qty": …}`, метрики под именами HealthKit и
+приложения, — и ни одна кривая строка не роняет пакет целиком.
 
-Телефон не помнит, что уже отправлял: при плохой связи ярлык повторит пакет.
-Дедупликация по `external_id` — единственное, что отличает повтор от нового
-события, поэтому ключ строится всегда, даже если телефон его не прислал.
+Источник не помнит, что уже отправлял. Дедупликация по `external_id` —
+единственное, что отличает повтор от нового события, поэтому ключ строится
+всегда, даже если его не прислали.
 """
 import datetime
 import hashlib
@@ -67,8 +67,18 @@ def parse_time(value, default=None):
 def parse_number(value, default=None):
     if value is None or value == "":
         return default
+    if isinstance(value, bool):
+        return float(value)
     if isinstance(value, (int, float)):
         return float(value)
+    if isinstance(value, dict):
+        # Health Auto Export пишет величину объектом: {"qty": 5.2, "units": "km"}.
+        for key in ("qty", "value", "Avg", "avg", "sum", "total"):
+            if value.get(key) is not None:
+                return parse_number(value[key], default)
+        return default
+    if isinstance(value, (list, tuple)):
+        return parse_number(value[0], default) if value else default
     text = str(value).strip().replace(",", ".")
     match = re.search(r"-?\d+(\.\d+)?", text)
     return float(match.group()) if match else default
@@ -89,6 +99,15 @@ def fingerprint(*parts):
     return hashlib.sha1(raw.encode()).hexdigest()[:20]
 
 
+def _first(item, *keys):
+    """Первое осмысленное значение из тех имён, под которыми его шлют."""
+    for key in keys:
+        value = parse_number(item.get(key))
+        if value is not None:
+            return value
+    return None
+
+
 def _external_id(item, kind, *parts):
     for key in ("external_id", "id", "uuid", "identifier"):
         value = item.get(key)
@@ -97,17 +116,57 @@ def _external_id(item, kind, *parts):
     return f"{kind}:{fingerprint(*parts)}"
 
 
-def _report():
-    return {"new": 0, "duplicates": 0, "rejected": []}
+REJECTED_SHOWN = 20
+BATCH = 2000
 
 
-def _count(report, saved):
-    report["new" if saved else "duplicates"] += 1
+class Sink:
+    """Копит разобранные записи и отдаёт их в базу пачками.
+
+    Живой пакет с телефона — десятки строк, выгрузка «Здоровья» за пять лет —
+    миллионы. Одна дорога для обоих возможна только если писать пачками:
+    построчная запись превращает импорт в часы.
+    """
+
+    def __init__(self, save, size=BATCH):
+        self._save = save
+        self._size = size
+        self._rows = []
+        self.new = 0
+        self.duplicates = 0
+        self.rejected = []
+        self.rejected_count = 0
+
+    def add(self, row):
+        self._rows.append(row)
+        if len(self._rows) >= self._size:
+            self.flush()
+
+    def reject(self, index, reason):
+        self.rejected_count += 1
+        if len(self.rejected) < REJECTED_SHOWN:
+            self.rejected.append({"index": index, "reason": str(reason)})
+
+    def flush(self):
+        if not self._rows:
+            return
+        saved = self._save(self._rows)
+        self.new += saved
+        self.duplicates += len(self._rows) - saved
+        self._rows = []
+
+    def report(self):
+        self.flush()
+        out = {"new": self.new, "duplicates": self.duplicates,
+               "rejected": self.rejected}
+        if self.rejected_count > len(self.rejected):
+            out["rejected_count"] = self.rejected_count
+        return out
 
 
 # --- звонки --------------------------------------------------------------
 def ingest_calls(items, device_id=None):
-    report = _report()
+    sink = Sink(store.save_calls)
     for index, item in enumerate(items or []):
         try:
             started = parse_time(item.get("started_at") or item.get("start")
@@ -140,15 +199,15 @@ def ingest_calls(items, device_id=None):
                 "device_id": device_id,
             }
         except (ValueError, TypeError) as e:
-            report["rejected"].append({"index": index, "reason": str(e)})
+            sink.reject(index, e)
             continue
-        _count(report, store.save_call(call))
-    return report
+        sink.add(call)
+    return sink.report()
 
 
 # --- сообщения -----------------------------------------------------------
 def ingest_messages(items, device_id=None):
-    report = _report()
+    sink = Sink(store.save_messages)
     for index, item in enumerate(items or []):
         try:
             ts = parse_time(item.get("ts") or item.get("date") or item.get("time"))
@@ -175,13 +234,56 @@ def ingest_messages(items, device_id=None):
                 "device_id": device_id,
             }
         except (ValueError, TypeError) as e:
-            report["rejected"].append({"index": index, "reason": str(e)})
+            sink.reject(index, e)
             continue
-        _count(report, store.save_message(message))
-    return report
+        sink.add(message)
+    return sink.report()
 
 
 # --- здоровье ------------------------------------------------------------
+# Health Auto Export кладёт в одну точку сразу несколько величин: ночь — это
+# «сколько всего», «сколько глубокого», «сколько REM»; пульс за час — среднее,
+# минимум и максимум. Разворачиваем в отдельные замеры, иначе от ночи
+# останется одно число и стадии сна пропадут.
+COMPOUND = {
+    "sleep": {"asleep": "sleep", "totalSleep": "sleep", "inBed": "sleep_in_bed",
+              "core": "sleep_core", "deep": "sleep_deep", "rem": "sleep_rem",
+              "awake": "sleep_awake"},
+    "heart_rate": {"Avg": "heart_rate", "avg": "heart_rate",
+                   "Min": "heart_rate_min", "Max": "heart_rate_max"},
+    "resting_hr": {"Avg": "resting_hr", "Min": "resting_hr", "Max": "resting_hr"},
+    "walking_hr": {"Avg": "walking_hr"},
+    "blood_pressure": {"systolic": "blood_pressure_systolic",
+                       "diastolic": "blood_pressure_diastolic"},
+    "blood_glucose": {"Avg": "blood_glucose", "qty": "blood_glucose"},
+}
+
+
+def _expand(name, unit, point):
+    """Одна точка приложения — один или несколько наших замеров."""
+    if not isinstance(point, dict):
+        return []
+    metric = metrics.canonical(name)
+    plain = {k: v for k, v in point.items() if not isinstance(v, (dict, list))}
+    parts = COMPOUND.get(metric)
+    if parts:
+        out = []
+        for field, target in parts.items():
+            if point.get(field) in (None, ""):
+                continue
+            out.append({**plain, "metric": target, "unit": unit,
+                        "value": point[field]})
+        if out:
+            # Сон приходит окном «лёг — встал», а величины в нём — часами.
+            for item in out:
+                if point.get("sleepStart"):
+                    item.setdefault("started_at", point["sleepStart"])
+                if point.get("sleepEnd"):
+                    item.setdefault("ended_at", point["sleepEnd"])
+            return out
+    return [{**plain, "metric": name, "unit": unit}]
+
+
 def flatten_health(payload):
     """Health Auto Export отдаёт метрику пачкой; ярлык — по одному замеру."""
     if isinstance(payload, dict):
@@ -194,13 +296,13 @@ def flatten_health(payload):
             name = group.get("name") or group.get("metric")
             unit = group.get("units") or group.get("unit") or ""
             for point in group.get("data") or []:
-                flat.append({**point, "metric": name, "unit": unit})
+                flat.extend(_expand(name, unit, point))
         return flat
     return list(payload or [])
 
 
 def ingest_health(payload, device_id=None):
-    report = _report()
+    sink = Sink(store.save_samples)
     for index, item in enumerate(flatten_health(payload)):
         try:
             metric = metrics.canonical(item.get("metric") or item.get("name")
@@ -208,8 +310,11 @@ def ingest_health(payload, device_id=None):
             if not metric:
                 raise ValueError("метрика без имени")
             started = parse_time(item.get("started_at") or item.get("start")
+                                 or item.get("startDate") or item.get("sleepStart")
                                  or item.get("date") or item.get("ts"))
-            ended = parse_time(item.get("ended_at") or item.get("end") or "", started)
+            ended = parse_time(item.get("ended_at") or item.get("end")
+                               or item.get("endDate") or item.get("sleepEnd")
+                               or "", started)
             raw = item.get("value")
             if raw is None:
                 raw = item.get("qty", item.get("quantity"))
@@ -233,46 +338,69 @@ def ingest_health(payload, device_id=None):
                 "device_id": device_id,
             }
         except (ValueError, TypeError) as e:
-            report["rejected"].append({"index": index, "reason": str(e)})
+            sink.reject(index, e)
             continue
-        _count(report, store.save_sample(sample))
-    return report
+        sink.add(sample)
+    return sink.report()
+
+
+def _duration_minutes(item, started, ended):
+    """Длительность в минутах, чем бы её ни прислали.
+
+    Apple пишет минуты, Health Auto Export — секунды, и различить их по
+    самому числу нельзя. Зато есть окно «начало — конец»: из двух прочтений
+    верно то, что на него похоже.
+    """
+    span = max(ended - started, 0)
+    value = parse_number(item.get("duration"))
+    if value is None:
+        return span / 60
+    unit = str(item.get("duration_unit") or item.get("durationUnit") or "").lower()
+    if unit.startswith("s") or unit in ("сек", "с"):
+        return value / 60
+    if unit.startswith("h") or unit in ("ч", "час"):
+        return value * 60
+    if unit.startswith("m") or unit in ("мин",):
+        return value
+    if span > 0:
+        return value / 60 if abs(value - span) < abs(value * 60 - span) else value
+    return value / 60 if value > 600 else value
 
 
 def ingest_workouts(items, device_id=None):
-    report = _report()
+    sink = Sink(store.save_workouts)
     for index, item in enumerate(items or []):
         try:
             started = parse_time(item.get("started_at") or item.get("start")
-                                 or item.get("date"))
-            ended = parse_time(item.get("ended_at") or item.get("end") or "", started)
-            duration = parse_number(item.get("duration"))
-            if duration is None:
-                duration = max(ended - started, 0) / 60
-            elif duration > 600:
-                duration = duration / 60          # секунды, а не минуты
+                                 or item.get("startDate") or item.get("date"))
+            ended = parse_time(item.get("ended_at") or item.get("end")
+                               or item.get("endDate") or "", started)
+            duration = _duration_minutes(item, started, ended)
             workout = {
                 "external_id": _external_id(item, "wrk", round(started),
                                             round(duration, 2)),
                 "kind": (item.get("kind") or item.get("type") or item.get("name")
-                         or "").strip(),
+                         or item.get("workoutActivityType") or "").strip(),
                 "started_at": started,
                 "ended_at": ended,
                 "duration": duration,
-                "energy": parse_number(item.get("energy")
-                                       or item.get("active_energy")
-                                       or item.get("calories")),
-                "distance": parse_number(item.get("distance")),
-                "avg_hr": parse_number(item.get("avg_hr") or item.get("average_heart_rate")),
-                "max_hr": parse_number(item.get("max_hr") or item.get("max_heart_rate")),
+                "energy": _first(item, "energy", "active_energy", "calories",
+                                 "activeEnergyBurned", "activeEnergy",
+                                 "totalEnergy", "totalEnergyBurned"),
+                "distance": _first(item, "distance", "totalDistance",
+                                   "walkingAndRunningDistance", "cyclingDistance",
+                                   "swimmingDistance"),
+                "avg_hr": _first(item, "avg_hr", "average_heart_rate", "avgHeartRate",
+                                 "averageHeartRate"),
+                "max_hr": _first(item, "max_hr", "max_heart_rate", "maxHeartRate"),
                 "source": (item.get("source") or "").strip(),
                 "device_id": device_id,
             }
         except (ValueError, TypeError) as e:
-            report["rejected"].append({"index": index, "reason": str(e)})
+            sink.reject(index, e)
             continue
-        _count(report, store.save_workout(workout))
-    return report
+        sink.add(workout)
+    return sink.report()
 
 
 def ingest_state(state, device_id):
