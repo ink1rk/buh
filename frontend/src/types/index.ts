@@ -95,6 +95,14 @@ export interface DailyChallenge {
   is_completed?: boolean
 }
 
+export interface BudgetGlance {
+  has_plan: boolean
+  planned: number
+  spent: number
+  remaining: number
+  monthly_income: number
+}
+
 export interface DashboardData {
   greeting: Greeting
   quote: MotivationalQuote
@@ -111,6 +119,7 @@ export interface DashboardData {
   living_screen: LivingScreenLine[]
   daily_challenge: DailyChallenge | null
   proactive_alerts: ProactiveAlert[]
+  budget: BudgetGlance
 }
 
 export interface CapitalSlice {

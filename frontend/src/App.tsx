@@ -18,6 +18,7 @@ import { NetWorthPage } from '@/pages/NetWorthPage'
 import { TimelinePage } from '@/pages/TimelinePage'
 import { OperationsPage } from '@/pages/OperationsPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { BudgetPage } from '@/pages/BudgetPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="networth" element={<NetWorthPage />} />
             <Route path="timeline" element={<TimelinePage />} />
             <Route path="operations" element={<OperationsPage />} />
+            <Route path="budget" element={<BudgetPage />} />
             <Route path="profile" element={<ProfilePage />} />
             <Route path="goals" element={<GoalsPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />

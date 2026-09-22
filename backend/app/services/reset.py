@@ -17,6 +17,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.account import Account
+from app.models.budget import BudgetEnvelope
 from app.models.achievement import UserAchievement
 from app.models.calendar import CalendarEvent
 from app.models.capital import Asset, NetWorthSnapshot
@@ -39,6 +40,7 @@ WIPED = [
     ("операции", Transaction),
     ("счета", Account),
     ("цели", Goal),
+    ("бюджет", BudgetEnvelope),
     ("долги", Debt),
     ("подписки", Subscription),
     ("имущество", Asset),

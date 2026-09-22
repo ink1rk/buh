@@ -3,6 +3,7 @@ from datetime import date
 from pydantic import BaseModel, Field
 
 from app.schemas.account import DashboardBalances
+from app.schemas.budget import BudgetGlance
 from app.schemas.common import ORMModel
 
 
@@ -86,3 +87,4 @@ class DashboardOut(BaseModel):
     living_screen: list[LivingScreenLine] = Field(default_factory=list)
     daily_challenge: dict | None = None
     proactive_alerts: list[dict] = Field(default_factory=list)
+    budget: BudgetGlance = Field(default_factory=BudgetGlance)

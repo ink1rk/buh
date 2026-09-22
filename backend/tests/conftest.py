@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.database import Base, get_db
 from app.main import create_app
 from app.models.account import Account
+from app.models.budget import BudgetEnvelope  # noqa: F401 — таблица в metadata.create_all
 from app.models.capital import Asset
 from app.models.debt import Debt
 from app.models.goal import Goal

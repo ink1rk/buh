@@ -27,6 +27,7 @@ from app.schemas.dashboard import (
     RitualEvening,
     RitualMorning,
 )
+from app.services.budget_service import declared_monthly_budget, glance as budget_glance
 from app.services.coach_engine import ensure_today_challenge
 from app.services.content_bank import quote_for_date, widget_for_date
 from app.services.health_score import HealthInputs, compute_health
@@ -195,10 +196,12 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
 
     # Бюджетом расходы этого же месяца быть не могут: тогда сравнение сводится
     # к «потрачено 100% того, что потрачено», и подсказка про перерасход
-    # появляется всегда. Пока бюджет не из чего вывести, её не показываем.
+    # появляется всегда. Сначала — сумма конвертов, иначе 75% объявленного
+    # дохода. Пока ни того ни другого нет, подсказку не показываем.
+    monthly_budget = await declared_monthly_budget(db, profile)
+    budget = await budget_glance(db, profile, balances.expense_month)
     proactive_alerts = generate_proactive_alerts(
-        txs, subs, events, profile.monthly_income,
-        profile.monthly_income * 0.75 if profile.monthly_income else 0,
+        txs, subs, events, profile.monthly_income, monthly_budget,
     )
 
     challenge_row = await ensure_today_challenge(db)
@@ -256,6 +259,7 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         living_screen=living_screen,
         daily_challenge=daily_challenge,
         proactive_alerts=proactive_alerts,
+        budget=budget,
     )
 
 

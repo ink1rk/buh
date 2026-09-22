@@ -19,6 +19,7 @@ import {
   Activity,
   ReceiptText,
   UserRound,
+  PieChart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store/uiStore'
@@ -27,6 +28,7 @@ const links = [
   { to: '/', label: 'Штаб', icon: LayoutDashboard },
   { to: '/networth', label: 'Капитал', icon: Gem },
   { to: '/operations', label: 'Операции', icon: ReceiptText },
+  { to: '/budget', label: 'Бюджет', icon: PieChart },
   { to: '/timeline', label: 'Лента', icon: Activity },
   { to: '/goals', label: 'Цели', icon: Target },
   { to: '/analytics', label: 'Аналитика', icon: ChartNoAxesCombined },
