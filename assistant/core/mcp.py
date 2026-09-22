@@ -33,6 +33,12 @@ META_CAPABILITIES = "io.modelcontextprotocol/clientCapabilities"
 UNSUPPORTED_PROTOCOL_VERSION = -32022
 NAMED_METHODS = {"tools/call": "name", "resources/read": "uri", "prompts/get": "name"}
 
+# Сколько не трогать сервер, который только что не ответил. Разница между
+# «отказал» и «повис» тут решающая: отказ возвращается мгновенно, а повисший
+# сервер держит спрашивающего всё время ожидания. Без этой паузы каждый заход
+# на главный экран покупал бы себе новое ожидание.
+COOLDOWN = 30
+
 CLIENT_INFO = {"name": "jarvis-core", "version": "1.0"}
 
 
@@ -67,17 +73,25 @@ class McpClient:
         self._version = None
         self._session = None
         self._tools = None
+        self._silent_until = 0.0
 
     # -- транспорт -------------------------------------------------------
     def _post(self, body, headers):
+        left = self._silent_until - time.time()
+        if left > 0:
+            raise McpError(f"{self.name}: не отвечает, следующая попытка через "
+                           f"{round(left)} с", retryable=True)
         kwargs = {"timeout": self.timeout, "trust_env": False}
         if self.transport is not None:
             kwargs["transport"] = self.transport
         try:
             with httpx.Client(**kwargs) as client:
-                return client.post(self.url, json=body, headers=headers)
+                response = client.post(self.url, json=body, headers=headers)
         except httpx.HTTPError as e:
+            self._silent_until = time.time() + COOLDOWN
             raise McpError(f"{self.name}: {type(e).__name__}: {e}", retryable=True) from e
+        self._silent_until = 0.0
+        return response
 
     def _rpc(self, method, params, version, notification=False):
         """(результат, ошибка, ответ). Ошибку разбирает вызывающий."""
@@ -112,25 +126,32 @@ class McpClient:
 
     # -- согласование версии ---------------------------------------------
     def _prepare(self):
+        """Согласовать версию — не занимая замок на время сети.
+
+        Раньше замок держался всё согласование, и на повисшем сервере каждый
+        следующий спрашивающий ждал своей очереди: пять заходов на главный
+        экран складывались в сто секунд вместо двадцати. Теперь замок нужен
+        только чтобы записать результат; лишнее рукопожатие при гонке дешевле
+        очереди, а повторные попытки всё равно отсекает пауза в `_post`.
+        """
         if self._version:
             return self._version
+        agreed = self._negotiate()
         with self._lock:
-            if self._version:
-                return self._version
-            result, error, _ = self._rpc("server/discover", {}, LATEST)
-            if result is not None:
-                supported = result.get("supportedVersions") or [LATEST]
-                self._version = LATEST if LATEST in supported else self._handshake(
-                    _best(supported))
-                return self._version
-            if error and error.get("code") == UNSUPPORTED_PROTOCOL_VERSION:
-                supported = (error.get("data") or {}).get("supported") or []
-                chosen = _best(supported)
-                self._version = chosen if chosen == LATEST else self._handshake(chosen)
-                return self._version
-            # Сервер не знает `server/discover` — значит он старой эпохи.
-            self._version = self._handshake(LEGACY_PREFERRED)
+            self._version = self._version or agreed
             return self._version
+
+    def _negotiate(self):
+        result, error, _ = self._rpc("server/discover", {}, LATEST)
+        if result is not None:
+            supported = result.get("supportedVersions") or [LATEST]
+            return LATEST if LATEST in supported else self._handshake(_best(supported))
+        if error and error.get("code") == UNSUPPORTED_PROTOCOL_VERSION:
+            supported = (error.get("data") or {}).get("supported") or []
+            chosen = _best(supported)
+            return chosen if chosen == LATEST else self._handshake(chosen)
+        # Сервер не знает `server/discover` — значит он старой эпохи.
+        return self._handshake(LEGACY_PREFERRED)
 
     def _handshake(self, version):
         """Рукопожатие старой эпохи: одно на процесс, дальше живём сессией."""
@@ -177,6 +198,18 @@ class McpClient:
         return {"server": self.name, "tool": tool, "text": text,
                 "data": result.get("structuredContent"),
                 "is_error": bool(result.get("isError"))}
+
+    def read_only(self, tool):
+        """Обещал ли сервер, что инструмент ничего не меняет.
+
+        Отсутствие обещания считается «может менять» — так велит протокол, и
+        только такой порядок безопасен: сервер, забывший разметку, иначе
+        получил бы право писать через путь, предназначенный для чтения.
+        """
+        for item in self.tools():
+            if item.get("name") == tool:
+                return bool((item.get("annotations") or {}).get("readOnlyHint"))
+        return False
 
     def health(self):
         started = time.time()
@@ -242,7 +275,14 @@ class McpRegistry:
 
     def call_tool(self, suffix, arguments=None):
         """Позвать инструмент, не зная, за каким сервером он сейчас живёт."""
-        server, tool = self.find(suffix)
+        server, tool = self.resolve(None, suffix)
         if server is None:
             raise McpError(f"инструмента {suffix!r} нет ни на одном сервере MCP")
         return self.call(server, tool, arguments)
+
+    def resolve(self, server, tool):
+        """(сервер, точное имя): по прямому указанию или поиском по имени."""
+        return (server, tool) if server else self.find(tool)
+
+    def read_only(self, server, tool):
+        return self.get(server).read_only(tool)

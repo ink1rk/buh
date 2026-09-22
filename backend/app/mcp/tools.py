@@ -28,6 +28,9 @@ class ToolSpec:
     description: str
     input_schema: dict[str, Any]
     handler: Callable[[FinanceApiClient, dict[str, Any]], Awaitable[Any]]
+    # Читающий по умолчанию неверно: забытая пометка на пишущем инструменте
+    # молча открыла бы ему путь чтения, минуя подтверждение у вызывающего.
+    writes: bool = False
 
 
 def _schema(properties: dict[str, Any], required: list[str] | None = None) -> dict[str, Any]:
@@ -298,6 +301,7 @@ TOOLS: tuple[ToolSpec, ...] = (
             ["text"],
         ),
         handler=_add_transaction,
+        writes=True,
     ),
     ToolSpec(
         name="get_spending_analytics",
@@ -366,6 +370,7 @@ TOOLS: tuple[ToolSpec, ...] = (
             ["connection_id", "file_path"],
         ),
         handler=_import_statement,
+        writes=True,
     ),
     ToolSpec(
         name="sync_bank_connection",
@@ -382,6 +387,7 @@ TOOLS: tuple[ToolSpec, ...] = (
             ["connection_id"],
         ),
         handler=_sync_connection,
+        writes=True,
     ),
     ToolSpec(
         name="list_bank_imports",

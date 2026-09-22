@@ -6,6 +6,7 @@ import pytest
 
 from core.config import McpServer
 from core.mcp import LATEST, McpClient, McpError, McpRegistry
+from test_pipeline import core  # noqa: F401
 
 TOOLS = [{"name": "phone_today", "title": "Сегодня", "description": "сводка дня"},
          {"name": "phone_push", "description": "задание телефону"}]
@@ -285,3 +286,172 @@ def test_a_call_to_a_missing_server_is_refused_before_the_network(bus):
                             source="test")
 
     assert action.status == "FAILED"
+
+
+# --- чтение не должно быть лазейкой --------------------------------------
+MARKED = [{"name": "phone_today", "description": "сводка дня",
+           "annotations": {"readOnlyHint": True}},
+          {"name": "phone_push", "description": "задание телефону",
+           "annotations": {"readOnlyHint": False}},
+          {"name": "phone_maybe", "description": "без пометки"}]
+
+
+def test_a_promise_to_change_nothing_is_read_from_the_server():
+    reg = registry({"phone": FakeServer(tools=MARKED)})
+
+    assert reg.read_only("phone", "phone_today") is True
+    assert reg.read_only("phone", "phone_push") is False
+
+
+def test_a_tool_without_a_promise_counts_as_writing():
+    """Сервер, забывший разметку, не должен получать право писать даром."""
+    reg = registry({"phone": FakeServer(tools=MARKED)})
+
+    assert reg.read_only("phone", "phone_maybe") is False
+    assert reg.read_only("phone", "нет такого") is False
+
+
+@pytest.fixture
+def panel(core, monkeypatch):  # noqa: F811
+    """Эндпоинты берут ядро через get_core — привяжем его к нашему."""
+    from core import bootstrap
+
+    from providers.mcp import McpActionProvider
+
+    core.mcp = registry({"phone": FakeServer(tools=MARKED)})
+    core.actions.register(McpActionProvider(core.mcp))
+    monkeypatch.setattr(bootstrap, "_core", core)
+    return core
+
+
+def test_a_writing_tool_is_refused_on_the_reading_path(panel):
+    """Запуск ярлыка на телефоне — поступок, и подтверждение ему нужно."""
+    from core.api import api_mcp_read
+
+    answer = api_mcp_read({"tool": "phone_push", "arguments": {"text": "привет"}})
+
+    assert "может менять данные" in answer["error"]
+
+
+def test_a_tool_that_forgot_to_promise_is_refused_too(panel):
+    from core.api import api_mcp_read
+
+    assert "может менять данные" in api_mcp_read({"tool": "phone_maybe"})["error"]
+
+
+def test_a_reading_tool_still_goes_straight_through(panel):
+    from core.api import api_mcp_read
+
+    assert api_mcp_read({"tool": "phone_today"})["text"] == "Сон 7 ч"
+
+
+def test_a_change_is_not_confirmed_on_our_behalf(panel):
+    """Уровень риска MEDIUM — украшение, если подтверждать за владельца."""
+    from core.api import api_mcp_call
+
+    answer = api_mcp_call({"server": "phone", "tool": "phone_push",
+                           "arguments": {"text": "привет"}})
+
+    assert answer["status"] == "WAITING_APPROVAL"
+
+
+def test_a_change_the_owner_confirmed_goes_through(panel):
+    from core.api import api_mcp_call
+
+    answer = api_mcp_call({"server": "phone", "tool": "phone_push",
+                           "arguments": {"text": "привет"}, "user_confirmed": True})
+
+    assert answer["status"] == "SUCCESS"
+
+
+# --- повисший сервер не должен стопорить ответы --------------------------
+def test_a_hung_bridge_does_not_queue_everyone_behind_it():
+    """Отказ приходит мгновенно, а молчание держит спрашивающего.
+
+    Пока согласование версии занимало общий замок, пять заходов на главный
+    экран складывались в пять ожиданий подряд. Теперь первый платит своим
+    ожиданием, а остальные получают отказ сразу.
+    """
+    import threading
+    import time as clock
+
+    class Hung:
+        """Принимает соединение и не отвечает — как сервер под нагрузкой."""
+
+        def transport(self):
+            def handle(request):
+                clock.sleep(0.4)
+                raise httpx.ReadTimeout("тишина")
+            return httpx.MockTransport(handle)
+
+    one = McpClient("phone", "http://bridge/mcp", timeout=0.4,
+                    transport=Hung().transport())
+    spent = []
+
+    def ask():
+        started = clock.time()
+        try:
+            one.call("phone_today")
+        except McpError:
+            pass
+        spent.append(clock.time() - started)
+
+    threads = [threading.Thread(target=ask) for _ in range(5)]
+    started = clock.time()
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    whole = clock.time() - started
+
+    # Одно ожидание на всех, а не по одному на каждого.
+    assert whole < 1.2, (whole, spent)
+    assert max(spent) < 0.8, spent
+
+    # А пришедший следом уже не ждёт вовсе: мост помечен молчащим.
+    started = clock.time()
+    with pytest.raises(McpError):
+        one.call("phone_today")
+    assert clock.time() - started < 0.1
+
+
+def test_a_bridge_that_went_silent_is_left_alone_for_a_while():
+    class Hung:
+        def __init__(self):
+            self.tries = 0
+
+        def transport(self):
+            def handle(request):
+                self.tries += 1
+                raise httpx.ReadTimeout("тишина")
+            return httpx.MockTransport(handle)
+
+    server = Hung()
+    one = McpClient("phone", "http://bridge/mcp", transport=server.transport())
+    for _ in range(4):
+        with pytest.raises(McpError):
+            one.call("phone_today")
+
+    assert server.tries == 1
+
+
+def test_a_bridge_that_came_back_is_asked_again():
+    """Пауза не должна превращаться в приговор."""
+    from core import mcp as mcp_mod
+
+    server = FakeServer()
+    calls = {"n": 0}
+
+    def handle(request):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise httpx.ReadTimeout("тишина")
+        return server.handle(request)
+
+    one = McpClient("phone", "http://bridge/mcp", transport=httpx.MockTransport(handle))
+    with pytest.raises(McpError):
+        one.tools()
+    one._silent_until = 0.0  # как будто пауза вышла
+
+    assert [t["name"] for t in one.tools()] == ["phone_today", "phone_push"]
+    assert mcp_mod.COOLDOWN > 0

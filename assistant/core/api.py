@@ -393,29 +393,44 @@ def api_mcp(refresh: bool = False):
 
 @router.post("/mcp/read")
 def api_mcp_read(payload: dict = Body(...)):
-    """Чтение — напрямую: спросить данные не значит что-то совершить."""
+    """Чтение — напрямую: спросить данные не значит что-то совершить.
+
+    Но «не значит» относится только к инструментам, про которые сервер сам
+    сказал, что они ничего не меняют. Без такой пометки инструмент считается
+    пишущим и здесь не проходит: у моста телефона это, например, запуск
+    ярлыка, и ему место в движке действий — с подтверждением и журналом.
+    """
     from .mcp import McpError
 
     core = get_core()
     tool = payload.get("tool", "")
     try:
-        server = payload.get("server")
-        return (core.mcp.call(server, tool, payload.get("arguments") or {}) if server
-                else core.mcp.call_tool(tool, payload.get("arguments") or {}))
+        server, name = core.mcp.resolve(payload.get("server"), tool)
+        if server is None:
+            return {"error": f"инструмента {tool!r} нет ни на одном сервере MCP"}
+        if not core.mcp.read_only(server, name):
+            return {"error": f"{name} может менять данные: это действие, "
+                             f"а не чтение — вызывайте через /api/mcp/call"}
+        return core.mcp.call(server, name, payload.get("arguments") or {})
     except McpError as e:
         return {"error": str(e)}
 
 
 @router.post("/mcp/call")
 def api_mcp_call(payload: dict = Body(...)):
-    """Вызов, который что-то меняет, идёт через движок действий и журнал."""
+    """Вызов, который что-то меняет, идёт через движок действий и журнал.
+
+    Подтверждение по умолчанию не считается полученным. Иначе уровень риска
+    MEDIUM у `mcp.tool.call` был бы украшением: политика пропускает всё ниже
+    CRITICAL, если владелец уже сказал «да», — а тут за него говорили мы.
+    """
     core = get_core()
     action = core.actions.request(
         "mcp.tool.call",
         {"server": payload.get("server"), "tool": payload.get("tool", ""),
          "arguments": payload.get("arguments") or {}},
         source="api", requested_by="user:owner",
-        context={"user_confirmed": bool(payload.get("user_confirmed", True))})
+        context={"user_confirmed": bool(payload.get("user_confirmed"))})
     return action.as_dict()
 
 

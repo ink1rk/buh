@@ -56,6 +56,9 @@ def tool_descriptors() -> list[dict[str, Any]]:
             "name": tool.name,
             "description": tool.description,
             "inputSchema": tool.input_schema,
+            # Клиент решает по этой пометке, можно ли звать инструмент без
+            # подтверждения владельца. Поэтому её выставляет сервер, а не он.
+            "annotations": {"readOnlyHint": not tool.writes},
         }
         for tool in TOOLS
     ]

@@ -74,6 +74,21 @@ def parse_number(value, default=None):
     return float(match.group()) if match else default
 
 
+NAME_LIMIT = 80
+
+
+def clean_name(raw):
+    """Имя собеседника, пригодное для показа и для промпта.
+
+    Имя приходит из адресной книги и из caller ID, то есть его задаёт тот, кто
+    звонит или пишет. Дальше оно попадает в сводку дня, а сводка — в системную
+    часть промпта, рядом с фактами о владельце. Поэтому: одна строка (перевод
+    строки в промпте начинает новый раздел) и человеческая длина.
+    """
+    text = " ".join(str(raw or "").split())
+    return text[:NAME_LIMIT]
+
+
 def normalize_number(raw):
     """+7 (999) 123-45-67, 89991234567, 8 999 … — один и тот же человек."""
     digits = re.sub(r"\D", "", str(raw or ""))
@@ -131,7 +146,7 @@ def ingest_calls(items, device_id=None):
                                             round(started), round(duration)),
                 "direction": direction,
                 "status": status,
-                "peer_name": (item.get("peer_name") or item.get("name") or "").strip(),
+                "peer_name": clean_name(item.get("peer_name") or item.get("name")),
                 "peer_number": number,
                 "app": (item.get("app") or "phone").strip().lower(),
                 "started_at": started,
@@ -163,7 +178,7 @@ def ingest_messages(items, device_id=None):
                                             round(ts), len(text)),
                 "app": app if app in MESSAGE_APPS else "other",
                 "direction": direction,
-                "peer_name": (item.get("peer_name") or item.get("name") or "").strip(),
+                "peer_name": clean_name(item.get("peer_name") or item.get("name")),
                 "peer_number": number,
                 # Текст переписки — самое чувствительное, что есть в телефоне.
                 # По умолчанию от сообщения остаётся только форма: кто, когда,
