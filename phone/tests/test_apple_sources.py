@@ -98,7 +98,10 @@ def test_group_chats_are_skipped_but_the_cursor_moves(tmp_path):
 def test_attributed_body_gives_length_without_the_string(tmp_path):
     """С Ventura текст сидит в архиве NSAttributedString, не в колонке text."""
     text = "привет"
-    blob = b"xxxxNSString?????" + bytes([len(text)]) + text.encode()
+    raw = text.encode()
+    # В архиве длина — число байт UTF-8, не число букв: иначе от «привет»
+    # осталось бы три символа.
+    blob = b"xxxxNSString?????" + bytes([len(raw)]) + raw
     path = str(tmp_path / "chat.db")
     _chat_db(path, [{"rowid": 1, "ts": time.time(), "text": None, "body": blob}])
 
