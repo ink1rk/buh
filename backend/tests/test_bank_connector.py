@@ -832,6 +832,48 @@ def test_pdf_document_number_is_not_an_amount(monkeypatch):
     assert statement.operations[0].description == "Перевод клиенту Банка"
 
 
+def test_pdf_short_document_number_is_not_an_identifier(monkeypatch):
+    """Номер документа уходит из описания, но удостоверяет не всякий.
+
+    В таблице этот номер лежит в своей колонке, поэтому в описании его быть
+    не должно — иначе одна и та же выписка в двух форматах выглядит двумя
+    разными историями. Но короткий номер в выписке повторяется, и сверять по
+    нему операции нельзя: разные операции слились бы в одну.
+    """
+    _pdf_text(monkeypatch, (
+        "10.08.2026 09:00:00 2079 Для зачисления на счет",
+        "Заработная плата за Июль 2026 г.",
+        "+ 52 173.85 ₽",
+        "Итого зачислений за период: 52 173.85 ₽",
+    ))
+
+    operation = get_connector("ozon").parse_statement(b"%PDF-1.4", "vypiska.pdf").operations[0]
+
+    assert operation.description == "Для зачисления на счет Заработная плата за Июль 2026 г."
+    assert operation.external_id == ""
+    assert classify(operation) == ("salary", "income")
+
+
+def test_pdf_statement_period_is_not_taken_from_an_operation(monkeypatch):
+    """«За период с … по …» пишут и в описании операции.
+
+    Годовая выписка так объявила себя месячной: период взялся из строки про
+    выплату кешбэка.
+    """
+    _pdf_text(monkeypatch, (
+        "10.01.2026 09:00:00 Выплата кешбека за период с 10.12.2025 по 10.01.2026",
+        "+ 214.00 ₽",
+        "23.09.2025 09:00:00 Оплата товаров по карте 4092 сумма 83.00 в MAGNIT RU",
+        "- 83.00 ₽",
+    ))
+
+    statement = get_connector("ozon").parse_statement(b"%PDF-1.4", "vypiska.pdf")
+
+    # Период накрывает обе операции, а не одну декабрьскую строку.
+    assert statement.period_from == date(2025, 9, 23)
+    assert statement.period_to == date(2026, 1, 10)
+
+
 def test_pdf_income_without_a_sign_is_not_turned_into_a_loss(monkeypatch):
     """Без знака направление читается из формулировки, а не назначается."""
     _pdf_text(monkeypatch, (

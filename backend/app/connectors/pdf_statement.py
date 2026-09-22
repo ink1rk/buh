@@ -91,7 +91,8 @@ _EXPENSE_WORDS = (
     "purchase",
 )
 _PERIOD = re.compile(
-    r"(?:с|за период с|период)\s+(\d{2}[.\-/]\d{2}[.\-/]\d{4})\s*(?:по|-|—)\s*(\d{2}[.\-/]\d{2}[.\-/]\d{4})",
+    r"(?:с|за период с|период(?:\s+выписки)?:?)\s+(\d{2}[.\-/]\d{2}[.\-/]\d{4})"
+    r"\s*(?:по|-|—|–)\s*(\d{2}[.\-/]\d{2}[.\-/]\d{4})",
     re.IGNORECASE,
 )
 
@@ -158,6 +159,15 @@ _FIRST_MONEY = re.compile(rf"^(?P<amount>{_MONEY_BODY})", re.IGNORECASE)
 # или знаком валюты, и без такого признака строка суммой не считается.
 _MONEY_MARKS = re.compile(rf"[.,]\d{{1,2}}|{_CURRENCY}", re.IGNORECASE)
 _PAGE_NUMBER = re.compile(r"^\d{1,4}$")
+# После даты и времени в строке стоит номер документа, а описание начинается
+# со следующей строки. В таблице этот номер лежит в своей колонке и в описание
+# не попадает: пока он оставался в тексте, одна и та же выписка, загруженная
+# в двух форматах, выглядела двумя разными историями и удваивала операции.
+_DOCUMENT = re.compile(r"^(?P<id>\d{3,})(?:[\s,.]+|$)")
+# Идентификатором операции номер становится, только если он достаточно длинный,
+# чтобы быть уникальным: короткий номер повторяется, а по совпавшему
+# идентификатору сверка приняла бы разные операции за одну.
+_UNIQUE_DIGITS = 7
 _HEADER_WORDS = (
     "дата операции", "документ", "назначение платежа", "сумма операции",
     "российские рубли", "валюта",
@@ -221,15 +231,16 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
     rows: list[tuple] = []
 
     # Операция, у которой сумма ещё не встретилась: ждёт своих строк переноса.
-    started: tuple[date, list[str], str] | None = None
+    started: tuple[date, str, list[str], str] | None = None
 
-    def keep(occurred_on: date, raw_amount: str, body: str, source: str) -> None:
+    def keep(occurred_on: date, raw_amount: str, reference: str, body: str,
+             source: str) -> None:
         amount = parse_money(raw_amount)
         if amount is None or amount == 0:
             return
         description = re.sub(r"\s{2,}", " ", body).strip(" ·|-—")
         rows.append((occurred_on, amount, bool(_SIGNED.match(raw_amount)),
-                     description, source))
+                     reference, description, source))
 
     for line in text.splitlines():
         line = line.strip()
@@ -248,12 +259,18 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
                 totals += 1
                 continue
             body = line[date_match.end() :].strip()
+            document = _DOCUMENT.match(body)
+            reference = ""
+            if document:
+                body = body[document.end() :]
+                if len(document["id"]) >= _UNIQUE_DIGITS:
+                    reference = document["id"]
             # With two trailing amounts the rightmost one is the running balance.
             amounts, body = _trailing_amounts(body)
             if amounts:
-                keep(occurred_on, amounts[0], body, line)
+                keep(occurred_on, amounts[0], reference, body, line)
             else:
-                started = (occurred_on, [body] if body else [], line)
+                started = (occurred_on, reference, [body] if body else [], line)
             continue
 
         if not started:
@@ -261,11 +278,11 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
 
         money = _amount_of_money_line(line)
         if money is not None:
-            began, parts, source = started
-            keep(began, money, " ".join(parts), source)
+            began, reference, parts, source = started
+            keep(began, money, reference, " ".join(parts), source)
             started = None
         elif not _is_furniture(line):
-            started[1].append(line)
+            started[2].append(line)
 
     if started:
         dated_without_amount += 1
@@ -273,10 +290,10 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
     # Если где-то в файле минусы есть, банк помечает ими списания — и строка
     # без знака означает приход. Иначе зарплата в такой выписке становится
     # тратой: одна строка ошибается на две своих суммы.
-    signs_used = any(signed for _, _, signed, _, _ in rows)
+    signs_used = any(signed for _, _, signed, _, _, _ in rows)
     unsigned = guessed = 0
 
-    for occurred_on, amount, signed, description, line in rows:
+    for occurred_on, amount, signed, reference, description, line in rows:
         if not signed:
             unsigned += 1
             direction = _direction(description)
@@ -291,6 +308,7 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
                 amount=amount,
                 description=description,
                 merchant=description[:200],
+                external_id=reference,
                 raw={"line": line},
             )
         )
@@ -333,8 +351,14 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
 
     period = _PERIOD.search(text)
     if period:
-        statement.period_from = parse_statement_date(period.group(1)) or statement.period_from
-        statement.period_to = parse_statement_date(period.group(2)) or statement.period_to
+        # «За период с … по …» пишут и в описании операции — так период
+        # выписки однажды взялся из строки про выплату кешбэка, и годовая
+        # выписка объявила себя месячной. Заявленному периоду можно верить
+        # только когда он накрывает все прочитанные операции.
+        since = parse_statement_date(period.group(1))
+        until = parse_statement_date(period.group(2))
+        if since and until and since <= min(dates) and until >= max(dates):
+            statement.period_from, statement.period_to = since, until
 
     if totals:
         statement.warnings.append(

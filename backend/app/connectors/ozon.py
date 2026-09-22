@@ -121,10 +121,6 @@ _CARD_LINE = re.compile(
     re.IGNORECASE,
 )
 _PLAIN_PAYMENT = "оплата товаров"
-# В PDF номер документа попадает в начало описания: в таблице он лежит в своей
-# колонке. Его место — идентификатор операции: по нему выписка, загруженная
-# дважды в разных форматах, не удваивает историю.
-_REFERENCE = re.compile(r"^(?P<id>\d{7,})[\s,.]+")
 _TAIL = re.compile(
     r"[\s,;.]*(?:без\s+ндс|ндс\s+не\s+облагается|без\s+налога\s*\(ндс\))\.?\s*$",
     re.IGNORECASE,
@@ -143,10 +139,6 @@ def _place(text: str) -> str:
 def _name_places(statement: ParsedStatement) -> ParsedStatement:
     for operation in statement.operations:
         text = _TAIL.sub("", " ".join((operation.description or "").split()))
-        reference = _REFERENCE.match(text)
-        if reference:
-            operation.external_id = operation.external_id or reference["id"]
-            text = text[reference.end() :]
         place = _place(text)
         if place:
             head = _CARD_LINE.match(text)["head"].strip()
