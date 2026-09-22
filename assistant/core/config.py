@@ -80,7 +80,10 @@ def _mail_accounts():
     for name in _list("MAIL_ACCOUNTS"):
         key = name.upper().replace("-", "_")
         user = os.environ.get(f"MAIL_{key}_USER", "").strip()
-        password = os.environ.get(f"MAIL_{key}_PASSWORD", "")
+        # Краевые пробелы и перевод строки в пароле — всегда следы копирования,
+        # а тихий отказ на входе из-за них ищется долго. Внутренние пробелы не
+        # трогаем: в парольной фразе своего сервера они могут быть настоящими.
+        password = os.environ.get(f"MAIL_{key}_PASSWORD", "").strip()
         if not (user and password):
             continue                      # настроен наполовину — значит не настроен
         preset = MAIL_PRESETS.get(name.lower(), ("", 993, "", 465))
@@ -173,7 +176,7 @@ def _caldav_accounts():
     for name in _list("CALDAV_ACCOUNTS"):
         key = name.upper().replace("-", "_")
         user = os.environ.get(f"CALDAV_{key}_USER", "").strip()
-        password = os.environ.get(f"CALDAV_{key}_PASSWORD", "")
+        password = os.environ.get(f"CALDAV_{key}_PASSWORD", "").strip()
         url = os.environ.get(f"CALDAV_{key}_URL",
                              CALDAV_PRESETS.get(name.lower(), "")).strip()
         if user and password and url:
