@@ -14,6 +14,7 @@ from datetime import date, timedelta
 from app.models.calendar import CalendarEvent
 from app.models.subscription import Subscription
 from app.models.transaction import Transaction
+from app.services.ledger import is_income, spending
 
 
 def _days_in_month(d: date) -> int:
@@ -32,11 +33,12 @@ def generate_proactive_alerts(
 
     today = date.today()
     alerts: list[dict] = []
+    spent = spending(transactions)
 
     # 1) Budget pace today
     month_start = today.replace(day=1)
     dim = _days_in_month(today)
-    spent_month = sum(abs(t.amount) for t in transactions if t.occurred_on >= month_start and t.amount < 0)
+    spent_month = sum(abs(t.amount) for t in spent if t.occurred_on >= month_start)
     if monthly_budget > 0:
         pace_expected = monthly_budget * (today.day / dim)
         pace_pct = spent_month / monthly_budget * 100
@@ -44,7 +46,7 @@ def generate_proactive_alerts(
             alerts.append(
                 {
                     "icon": "gauge",
-                    "title": f"Уже потрачено {pace_pct:.0f}% дневного бюджета месяца",
+                    "title": f"Уже потрачено {pace_pct:.0f}% месячного бюджета",
                     "body": f"На {today.day}-й день месяца вы потратили {spent_month:,.0f} ₽ из {monthly_budget:,.0f} ₽.".replace(",", " "),
                     "tone": "warning" if spent_month > pace_expected * 1.15 else "neutral",
                     "category": "budget_pace",
@@ -94,13 +96,10 @@ def generate_proactive_alerts(
     # 4) Seasonal pattern (same month last year vs average)
     this_month_num = today.month
     same_month_last_year = [
-        t for t in transactions
-        if t.amount < 0 and t.occurred_on.month == this_month_num and t.occurred_on.year == today.year - 1
+        t for t in spent
+        if t.occurred_on.month == this_month_num and t.occurred_on.year == today.year - 1
     ]
-    other_months = [
-        t for t in transactions
-        if t.amount < 0 and t.occurred_on.month != this_month_num
-    ]
+    other_months = [t for t in spent if t.occurred_on.month != this_month_num]
     if same_month_last_year and other_months:
         avg_season = sum(abs(t.amount) for t in same_month_last_year)
         avg_other_monthly = sum(abs(t.amount) for t in other_months) / max(
@@ -117,14 +116,6 @@ def generate_proactive_alerts(
                 }
             )
 
-    # 5) Cash gap forecast
-    recent_30 = [t for t in transactions if t.occurred_on >= today - timedelta(days=30)]
-    burn = sum(abs(t.amount) for t in recent_30 if t.amount < 0) / 30
-    income_daily = sum(t.amount for t in recent_30 if t.amount > 0) / 30
-    if burn > income_daily and income_daily >= 0:
-        # naive: use just burn rate vs some notion handled by caller with real balance elsewhere
-        pass
-
     return alerts[:6]
 
 
@@ -135,7 +126,7 @@ def detect_behavior_patterns(transactions: list[Transaction]) -> list[dict]:
     """The 'financial psychologist' layer — finds *why*, not just *what*."""
 
     today = date.today()
-    window = [t for t in transactions if t.occurred_on >= today - timedelta(days=90) and t.amount < 0]
+    window = [t for t in spending(transactions) if t.occurred_on >= today - timedelta(days=90)]
     patterns: list[dict] = []
 
     # Weekday overspend pattern
@@ -178,14 +169,16 @@ def detect_behavior_patterns(transactions: list[Transaction]) -> list[dict]:
         )
 
     # Payday spending spike: find income days, check spend in following 3 days
-    incomes = [t for t in transactions if t.amount > 0 and t.transaction_type == "income" and t.occurred_on >= today - timedelta(days=180)]
+    incomes = [t for t in transactions
+               if is_income(t) and t.occurred_on >= today - timedelta(days=180)]
     ratios = []
+    spent = spending(transactions)
     for inc in incomes:
         window_start = inc.occurred_on
         window_end = inc.occurred_on + timedelta(days=3)
         spent_after = sum(
-            abs(t.amount) for t in transactions
-            if window_start <= t.occurred_on <= window_end and t.amount < 0
+            abs(t.amount) for t in spent
+            if window_start <= t.occurred_on <= window_end
         )
         if inc.amount > 0:
             ratios.append(spent_after / inc.amount)

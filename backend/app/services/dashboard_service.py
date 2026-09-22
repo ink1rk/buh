@@ -32,6 +32,7 @@ from app.services.content_bank import quote_for_date, widget_for_date
 from app.services.health_score import HealthInputs, compute_health
 from app.services.insights_engine import generate_insights
 from app.services.net_worth_service import build_net_worth
+from app.services.ledger import is_income, spending
 from app.services.proactive_engine import detect_behavior_patterns, generate_proactive_alerts
 
 
@@ -98,12 +99,8 @@ async def compute_balances(db: AsyncSession) -> DashboardBalances:
 
     # Income: only real inflows. Expense: consumption only — investments/savings/debt
     # moves are capital allocation, not lifestyle burn (critical for health score).
-    income = sum(t.amount for t in txs if t.amount > 0 and t.transaction_type == "income")
-    expense = sum(
-        abs(t.amount)
-        for t in txs
-        if t.amount < 0 and t.transaction_type in ("expense", "")
-    )
+    income = sum(t.amount for t in txs if is_income(t))
+    expense = sum(abs(t.amount) for t in spending(txs))
 
     liquid = sum(
         a.balance
@@ -196,8 +193,12 @@ async def build_dashboard(db: AsyncSession) -> DashboardOut:
         streak += 1
         cursor -= timedelta(days=1)
 
+    # Бюджетом расходы этого же месяца быть не могут: тогда сравнение сводится
+    # к «потрачено 100% того, что потрачено», и подсказка про перерасход
+    # появляется всегда. Пока бюджет не из чего вывести, её не показываем.
     proactive_alerts = generate_proactive_alerts(
-        txs, subs, events, profile.monthly_income, profile.monthly_income * 0.75 if profile.monthly_income else balances.expense_month
+        txs, subs, events, profile.monthly_income,
+        profile.monthly_income * 0.75 if profile.monthly_income else 0,
     )
 
     challenge_row = await ensure_today_challenge(db)

@@ -101,6 +101,23 @@ async def test_savings_rate_survives_a_profile_without_declared_income(client, s
 
 
 @pytest.mark.asyncio
+async def test_without_a_declared_budget_nothing_warns_about_overspending(client, seeded_db):
+    """Бюджетом расходы этого же месяца быть не могут.
+
+    Пока бюджет брался из них, сравнение сводилось к «потрачено 100% того,
+    что потрачено», и подсказка о перерасходе висела на главной всегда.
+    """
+    await clean_slate(seeded_db)
+    await seeded_db.commit()
+    await client.post("/api/v1/transactions", json={
+        "amount": -26000, "description": "Продукты"})
+
+    alerts = (await client.get("/api/v1/dashboard")).json()["proactive_alerts"]
+
+    assert not [a for a in alerts if a["category"] == "budget_pace"]
+
+
+@pytest.mark.asyncio
 async def test_one_real_operation_is_enough_to_start_grading(client, seeded_db):
     await clean_slate(seeded_db)
     await seeded_db.commit()

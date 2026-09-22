@@ -20,12 +20,10 @@ from app.schemas.ai import (
 )
 from app.services.dashboard_service import compute_balances, get_or_create_profile
 from app.services.fraud_engine import detect_anomalies
+from app.services.ledger import spending
 from app.services.purchase_analyzer import analyze_purchase
 
 router = APIRouter(prefix="/ai", tags=["ai"])
-
-
-_SPEND_TYPES = {"expense", ""}
 
 
 async def _context(db: AsyncSession) -> dict:
@@ -33,10 +31,7 @@ async def _context(db: AsyncSession) -> dict:
     txs = list((await db.execute(select(Transaction))).scalars())
     month_start = date.today().replace(day=1)
     # Top category = lifestyle spending only (never investments/savings/debt)
-    expenses = [
-        t for t in txs
-        if t.occurred_on >= month_start and t.amount < 0 and t.transaction_type in _SPEND_TYPES
-    ]
+    expenses = [t for t in spending(txs) if t.occurred_on >= month_start]
     by_cat: dict[str, float] = {}
     for t in expenses:
         by_cat[t.category] = by_cat.get(t.category, 0) + abs(t.amount)
