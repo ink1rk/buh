@@ -16,6 +16,7 @@ dist/
 # Data & secrets
 database/*.db
 database/chroma/
+database/statements/
 phone/*.db
 backend/.env
 .env

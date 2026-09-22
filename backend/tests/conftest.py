@@ -23,6 +23,18 @@ from app.models.user import UserProfile
 
 
 @pytest.fixture(autouse=True)
+def data_dir(monkeypatch, tmp_path):
+    """Тестам — свой каталог данных.
+
+    Иначе загрузка выписки в тесте кладёт её копию рядом с боевой базой, и
+    приватные файлы оказываются в рабочем дереве репозитория.
+    """
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "data_dir", tmp_path)
+
+
+@pytest.fixture(autouse=True)
 def encryption_key(monkeypatch):
     """В бою ключ настроен, и тесты должны жить в том же мире.
 

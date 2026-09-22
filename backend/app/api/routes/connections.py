@@ -32,6 +32,7 @@ from app.services.bank_sync import (
 router = APIRouter(prefix="/connections", tags=["connections"])
 
 MAX_STATEMENT_BYTES = 15 * 1024 * 1024
+KEEP_STATEMENTS = 10
 
 
 async def _to_out(db: AsyncSession, connection: BankConnection) -> ConnectionOut:
@@ -206,6 +207,10 @@ def _keep_original(connection_id: int, name: str, data: bytes) -> None:
     try:
         folder.mkdir(parents=True, exist_ok=True)
         (folder / f"{stamp}-c{connection_id}-{safe}").write_bytes(data)
+        # Годовая выписка весит под мегабайт, и это выписки — храним только
+        # последние: чинить разбор по файлу годовой давности всё равно нечего.
+        for old in sorted(folder.iterdir())[:-KEEP_STATEMENTS]:
+            old.unlink()
     except OSError:
         # Не смогли сохранить копию — это не повод не импортировать выписку.
         pass
