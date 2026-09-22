@@ -186,26 +186,48 @@ class EmailIntegration(Integration):
     type = "email"
     required = False
 
+    def __init__(self, watcher=None):
+        self.watcher = watcher
+
+    @property
+    def cfg(self):
+        # Отвечаем про те же ящики, которые опрашивает наблюдатель.
+        return self.watcher.cfg if self.watcher else config.email
+
     def configured(self):
-        return config.email.enabled
+        return self.cfg.enabled
 
     def health_check(self):
         if not self.configured():
             return Status.NOT_CONFIGURED, "ящики не настроены"
-        from providers.email import mailboxes
 
-        alive, broken = [], []
-        for mailbox in mailboxes():
-            try:
-                mailbox.check()
-                alive.append(mailbox.account.address)
-            except Exception as e:
-                broken.append(f"{mailbox.account.name}: {e}")
+        known = self.watcher.evidence() if self.watcher else {}
+        alive, broken = self._from(known) if known else self._ask(self.cfg)
         if broken and not alive:
             return Status.ERROR, "; ".join(broken)
         if broken:
             return Status.DEGRADED, "; ".join(broken)
         return Status.CONNECTED, ", ".join(alive)
+
+    @staticmethod
+    def _from(known):
+        return ([fact["address"] for fact in known.values() if not fact["error"]],
+                [f"{name}: {fact['error']}" for name, fact in known.items()
+                 if fact["error"]])
+
+    @staticmethod
+    def _ask(cfg):
+        """Спросить сами — пока опрос ещё ничего не рассказал."""
+        from providers.email import mailboxes
+
+        alive, broken = [], []
+        for mailbox in mailboxes(cfg):
+            try:
+                mailbox.check()
+                alive.append(mailbox.account.address)
+            except Exception as e:
+                broken.append(f"{mailbox.account.name}: {e}")
+        return alive, broken
 
 
 class FinanceIntegration(HttpIntegration):

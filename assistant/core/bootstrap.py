@@ -69,14 +69,16 @@ class Core:
             self.agents.register(self.personal, fallback=True)
 
         local, gateway = LocalProvider(), GatewayProvider()
+        # Опрос почты собирается раньше реестра: он же и отвечает на вопрос
+        # о здоровье ящиков, не входя в них лишний раз.
+        self.mail = MailWatcher(self)
         self.integrations = IntegrationRegistry(self.bus, [
             DatabaseIntegration(), LocalLLMIntegration(local),
             GatewayLLMIntegration(gateway), TelegramBotIntegration(),
-            TelegramUserIntegration(), EmailIntegration(),
+            TelegramUserIntegration(), EmailIntegration(self.mail),
             CalendarIntegration(), FinanceIntegration()]
             + [McpIntegration(client) for client in self.mcp.clients.values()])
 
-        self.mail = MailWatcher(self)
         self.calendar = CalendarWatcher(self)
         # Резолвер спрашивает расписание у кэша, а не у сети: ответ владельцу
         # не должен ждать CalDAV.

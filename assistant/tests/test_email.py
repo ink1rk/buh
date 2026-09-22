@@ -646,3 +646,53 @@ def test_old_letters_are_left_alone(core, mailbox):
 def test_the_watcher_stays_asleep_without_accounts(core):
     watcher = MailWatcher(core, EmailConfig(accounts=()))
     assert watcher.start() is False
+
+
+# --- здоровье ящиков без лишних входов -----------------------------------
+def test_the_health_of_a_mailbox_comes_from_the_polling(core, mailbox):
+    """Иначе панель логинится в ящик на каждый заход — и Яндекс рвёт связь."""
+    from core.integrations import EmailIntegration, Status
+
+    box = mailbox([letter(subject="Прошлое")])
+    box.check = lambda: (_ for _ in ()).throw(AssertionError("полез в ящик"))
+    watcher = MailWatcher(core, settings(), mailboxes=[box])
+    watcher.poll_once()
+
+    status, detail = EmailIntegration(watcher).health_check()
+
+    assert status is Status.CONNECTED
+    assert ACCOUNT.address in detail
+
+
+def test_one_dropped_connection_is_not_a_broken_mailbox(core, mailbox):
+    """Яндекс иногда обрывает соединение, а следующий опрос проходит."""
+    from core.integrations import EmailIntegration, Status
+
+    box = mailbox([letter(subject="Прошлое")])
+    watcher = MailWatcher(core, settings(), mailboxes=[box])
+    watcher.poll_once()
+
+    original = box.fetch_new
+    box.fetch_new = lambda state: (_ for _ in ()).throw(OSError("socket error: EOF"))
+    watcher.poll_once()
+    box.fetch_new = original
+
+    status, _ = EmailIntegration(watcher).health_check()
+    assert status is Status.CONNECTED, "мигание на один обрыв"
+
+
+def test_a_mailbox_silent_for_too_long_is_reported(core, mailbox):
+    from core.integrations import EmailIntegration, Status
+
+    box = mailbox([letter(subject="Прошлое")])
+    watcher = MailWatcher(core, settings(), mailboxes=[box])
+    watcher.poll_once()
+    box.fetch_new = lambda state: (_ for _ in ()).throw(OSError("нет связи"))
+    watcher.poll_once()
+    # Успеха давно не было — молчать об этом уже нельзя.
+    watcher.accounts[ACCOUNT.name]["ok_at"] = 0
+
+    status, detail = EmailIntegration(watcher).health_check()
+
+    assert status is Status.ERROR
+    assert "нет связи" in detail

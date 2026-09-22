@@ -15,6 +15,7 @@ import time
 from .config import config
 
 STATE_KEY = "email_last_uid"
+FIRST_DELAY = 20
 
 
 class MailWatcher:
@@ -25,6 +26,9 @@ class MailWatcher:
         self._stop = threading.Event()
         self._thread = None
         self.last = {"at": None, "new": 0, "skipped": 0, "errors": []}
+        # Что опрос узнал про каждый ящик. Он и так входит туда раз в
+        # несколько минут, и это лучший ответ на вопрос «ящик жив?».
+        self.accounts = {}
 
     @property
     def mailboxes(self):
@@ -46,8 +50,10 @@ class MailWatcher:
             try:
                 letters, state = mailbox.fetch_new(self._state(mailbox))
                 self._remember(mailbox, state)
+                self._witness(mailbox, None)
             except Exception as e:
                 result["errors"].append(f"{mailbox.account.name}: {e}")
+                self._witness(mailbox, e)
                 continue
             if state.get("first"):
                 # Первый запуск: прошлое ящика помечено и не разбирается.
@@ -86,6 +92,36 @@ class MailWatcher:
         self.last = result
         return result
 
+    # -- жив ли ящик ----------------------------------------------------
+    def _witness(self, mailbox, error):
+        fact = self.accounts.setdefault(mailbox.account.name, {"ok_at": 0})
+        fact.update({"at": time.time(), "address": mailbox.account.address,
+                     "error": str(error) if error else ""})
+        if not error:
+            fact["ok_at"] = time.time()
+
+    def evidence(self):
+        """Что опрос узнал про ящики — если узнал недавно.
+
+        Без этого проверка здоровья входит в ящик на каждый заход в панель, а
+        Яндекс такие входы считает и рвёт соединение: работающая почта
+        начинала показывать «socket error: EOF» и выглядеть сломанной.
+        """
+        now = time.time()
+        fresh = now - max(self.cfg.poll_seconds * 2, 600)
+        # Один обрыв — ещё не сломанный ящик: следующий опрос обычно проходит.
+        # Ящик считается живым, пока успех был недавно.
+        tolerated = now - max(self.cfg.poll_seconds * 3, 900)
+        seen = {}
+        for name, fact in self.accounts.items():
+            if fact["at"] < fresh:
+                continue
+            seen[name] = {**fact,
+                          "error": "" if fact["ok_at"] >= tolerated else fact["error"]}
+        # Частичное свидетельство — не свидетельство: про остальные ящики
+        # придётся спросить по-настоящему.
+        return seen if len(seen) == len(self.mailboxes) else {}
+
     # -- где остановились -----------------------------------------------
     def _key(self, mailbox):
         return f"{STATE_KEY}:{mailbox.account.name}"
@@ -115,12 +151,16 @@ class MailWatcher:
         return True
 
     def _loop(self):
-        # Первый проход с задержкой: на старте ядро ещё поднимает модели.
-        while not self._stop.wait(self.cfg.poll_seconds):
+        # Первый проход с небольшой задержкой: на старте ядро ещё поднимает
+        # модели, но и тянуть целый интервал нельзя — пока опрос молчит, на
+        # вопрос о здоровье ящиков приходится отвечать входом в них.
+        delay = min(self.cfg.poll_seconds, FIRST_DELAY)
+        while not self._stop.wait(delay):
             try:
                 self.poll_once()
             except Exception as e:
                 print("mail poll failed:", e)
+            delay = self.cfg.poll_seconds
 
     def stop(self):
         self._stop.set()

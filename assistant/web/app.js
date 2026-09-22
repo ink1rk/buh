@@ -214,6 +214,21 @@ pages[''] = {
             ? data.waiting.map((c) => commitment(c, '←')).join('')
             : empty('Никого не ждём');
 
+        const phone = data.phone;
+        const metric = ([, m]) => {
+            if (m.value === null || m.value === undefined) return '';
+            const shown = m.value >= 100 ? Math.round(m.value)
+                : Math.round(m.value * 10) / 10;
+            // Норма считается по собственным дням владельца, поэтому «меньше
+            // обычного» говорит больше, чем само число.
+            const off = m.baseline ? Math.round((m.value / m.baseline - 1) * 100) : 0;
+            return `<div class="stat quiet">
+                <div class="n">${shown.toLocaleString('ru-RU')}</div>
+                <div class="k">${esc(m.label || '')}${esc(m.unit ? ', ' + m.unit : '')}${
+                    Math.abs(off) >= 10 ? ` · ${off > 0 ? '+' : ''}${off}% к обычному` : ''}</div>
+            </div>`;
+        };
+
         const system = data.system.integrations.map((i) => {
             const tone = i.status === 'CONNECTED' ? 'ok' : i.status === 'ERROR' ? 'bad' : 'warn';
             return `<div class="row">
@@ -243,6 +258,20 @@ pages[''] = {
             <div class="list">${calendar.today.length
                 ? calendar.today.map(eventRow).join('')
                 : empty('Встреч на сегодня нет')}</div>` : ''}
+
+            ${phone ? `<h2>Самочувствие</h2>
+            ${Object.keys(phone.health || {}).length ? `<div class="grid cols-4">
+                ${Object.entries(phone.health).slice(0, 8).map(metric).join('')}
+            </div>` : `<div class="list">${empty(phone.text
+                || 'Телефон пока ничего не прислал')}</div>`}
+            ${(phone.attention || []).length ? `<div class="list">
+                ${phone.attention.map((item) => `<div class="row">
+                    <span class="badge ${item.severity === 'high' ? 'bad' : 'warn'}">
+                        <span class="dot"></span></span>
+                    <div class="grow"><div class="title">${esc(item.title || '')}</div>
+                        <div class="sub">${esc(item.detail || '')}</div></div>
+                </div>`).join('')}
+            </div>` : ''}` : ''}
 
             <h2>Новые сообщения</h2>
             <div class="list">${suggestions}</div>
