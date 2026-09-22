@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = "change-me-in-production-use-openssl-rand"
     encryption_key: str = ""
+    # Пустой токен выключает точку MCP целиком: среди её инструментов есть
+    # пишущие, а другой защиты у этого приложения нет.
+    mcp_token: str = ""
 
     # AI
     openai_api_key: str = ""

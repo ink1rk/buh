@@ -9,6 +9,7 @@ from app.api.routes import (
     connections,
     dashboard,
     goals,
+    mcp,
     misc,
     networth,
     profile_insights,
@@ -30,3 +31,4 @@ api_router.include_router(timeline.router)
 api_router.include_router(profile_insights.router)
 api_router.include_router(coach.router)
 api_router.include_router(connections.router)
+api_router.include_router(mcp.router)

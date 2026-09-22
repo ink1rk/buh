@@ -1,9 +1,13 @@
 """MCP server exposing the finance app to AI assistants.
 
-Speaks the Model Context Protocol directly over stdio (JSON-RPC 2.0, newline
-delimited). Implementing the three methods we need — `initialize`, `tools/list`,
-`tools/call` — keeps the only runtime dependency `httpx`, which the backend
-already has, and avoids breaking every time the MCP SDK reshuffles its API.
+Speaks the Model Context Protocol (JSON-RPC 2.0) directly. Implementing the
+three methods we need — `initialize`, `tools/list`, `tools/call` — keeps the
+only runtime dependency `httpx`, which the backend already has, and avoids
+breaking every time the MCP SDK reshuffles its API.
+
+`handle` knows nothing about transports: desktop clients get it over stdio via
+`serve_stdio`, and JARVIS gets the same messages over HTTP from
+`app.api.routes.mcp`.
 
 Run it from an assistant config:
 
@@ -57,7 +61,7 @@ def tool_descriptors() -> list[dict[str, Any]]:
     ]
 
 
-class McpStdioServer:
+class McpServer:
     def __init__(self, client: FinanceApiClient | None = None) -> None:
         self._client = client or FinanceApiClient()
 
@@ -114,7 +118,7 @@ class McpStdioServer:
         text = json.dumps(payload, ensure_ascii=False, indent=2, default=str)
         return {"content": [{"type": "text", "text": text}], "isError": False}
 
-    async def serve(self) -> None:
+    async def serve_stdio(self) -> None:
         loop = asyncio.get_running_loop()
         while True:
             line = await loop.run_in_executor(None, sys.stdin.readline)
@@ -166,7 +170,7 @@ def main() -> None:
     client = FinanceApiClient()
     logger.info("Finance MCP server started, API=%s", client.base_url)
     try:
-        asyncio.run(McpStdioServer(client).serve())
+        asyncio.run(McpServer(client).serve_stdio())
     except KeyboardInterrupt:  # pragma: no cover
         pass
 

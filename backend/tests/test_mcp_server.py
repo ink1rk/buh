@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 from app.mcp.client import FinanceApiClient, FinanceApiError
-from app.mcp.server import McpStdioServer, tool_descriptors
+from app.mcp.server import McpServer, tool_descriptors
 from app.mcp.tools import TOOLS, TOOLS_BY_NAME, call_tool
 
 TODAY = date(2026, 3, 20)
@@ -130,7 +130,7 @@ def test_descriptors_use_the_wire_field_name():
 
 @pytest.mark.asyncio
 async def test_initialize_echoes_supported_protocol(api_client):
-    server = McpStdioServer(api_client)
+    server = McpServer(api_client)
     response = await server.handle(
         {
             "jsonrpc": "2.0",
@@ -148,7 +148,7 @@ async def test_initialize_echoes_supported_protocol(api_client):
 
 @pytest.mark.asyncio
 async def test_initialize_falls_back_for_unknown_protocol(api_client):
-    response = await McpStdioServer(api_client).handle(
+    response = await McpServer(api_client).handle(
         {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "1999-01-01"}}
     )
     assert response["result"]["protocolVersion"] == "2025-06-18"
@@ -156,14 +156,14 @@ async def test_initialize_falls_back_for_unknown_protocol(api_client):
 
 @pytest.mark.asyncio
 async def test_notifications_get_no_response(api_client):
-    assert await McpStdioServer(api_client).handle(
+    assert await McpServer(api_client).handle(
         {"jsonrpc": "2.0", "method": "notifications/initialized"}
     ) is None
 
 
 @pytest.mark.asyncio
 async def test_unknown_method_returns_method_not_found(api_client):
-    response = await McpStdioServer(api_client).handle(
+    response = await McpServer(api_client).handle(
         {"jsonrpc": "2.0", "id": 7, "method": "resources/list"}
     )
     assert response["error"]["code"] == -32601
@@ -171,7 +171,7 @@ async def test_unknown_method_returns_method_not_found(api_client):
 
 @pytest.mark.asyncio
 async def test_tools_list_exposes_every_tool(api_client):
-    response = await McpStdioServer(api_client).handle(
+    response = await McpServer(api_client).handle(
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}
     )
     assert len(response["result"]["tools"]) == len(TOOLS)
@@ -179,7 +179,7 @@ async def test_tools_list_exposes_every_tool(api_client):
 
 @pytest.mark.asyncio
 async def test_tools_call_returns_text_content(api_client):
-    response = await McpStdioServer(api_client).handle(
+    response = await McpServer(api_client).handle(
         {
             "jsonrpc": "2.0",
             "id": 3,
@@ -196,7 +196,7 @@ async def test_tools_call_returns_text_content(api_client):
 
 @pytest.mark.asyncio
 async def test_unknown_tool_is_a_tool_error_not_a_protocol_error(api_client):
-    response = await McpStdioServer(api_client).handle(
+    response = await McpServer(api_client).handle(
         {
             "jsonrpc": "2.0",
             "id": 4,
@@ -211,7 +211,7 @@ async def test_unknown_tool_is_a_tool_error_not_a_protocol_error(api_client):
 
 @pytest.mark.asyncio
 async def test_missing_required_argument_is_reported_to_the_model(api_client):
-    response = await McpStdioServer(api_client).handle(
+    response = await McpServer(api_client).handle(
         {
             "jsonrpc": "2.0",
             "id": 5,
@@ -228,7 +228,7 @@ async def test_api_outage_surfaces_as_tool_error():
     def refuse(_request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused")
 
-    server = McpStdioServer(
+    server = McpServer(
         FinanceApiClient("http://down.test/api/v1", transport=httpx.MockTransport(refuse))
     )
     response = await server.handle(
