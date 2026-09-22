@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from pathlib import Path
 from datetime import date
 
 import httpx
@@ -761,20 +762,43 @@ def test_a_table_with_absurdly_many_rows_is_refused():
         read_csv_rows(huge.encode())
 
 
-def _pdf(lines: list[str]) -> bytes:
+def _cyrillic_font() -> str | None:
+    """Шрифт с кириллицей: встроенные в reportlab её не содержат.
+
+    Без него русский текст уходит в PDF пустыми глифами, и проверять словарь
+    разбора — русский целиком — было бы не на чем.
+    """
+    from reportlab.pdfbase import pdfmetrics, ttfonts
+
+    for path in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/Library/Fonts/Arial Unicode.ttf",
+    ):
+        if Path(path).exists():
+            try:
+                pdfmetrics.registerFont(ttfonts.TTFont("cyr", path))
+                return "cyr"
+            except Exception:  # noqa: BLE001 - шрифт есть, но не читается
+                continue
+    return None
+
+
+def _pdf(lines: list[str], font: str | None = None) -> bytes:
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas
 
+    face = font or "Helvetica"
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
-    pdf.setFont("Helvetica", 9)
+    pdf.setFont(face, 9)
     y = 800
     for line in lines:
         pdf.drawString(40, y, line)
         y -= 12
         if y < 40:
             pdf.showPage()
-            pdf.setFont("Helvetica", 9)
+            pdf.setFont(face, 9)
             y = 800
     pdf.save()
     return buffer.getvalue()
@@ -815,3 +839,37 @@ def test_a_layout_it_did_not_understand_is_refused_not_guessed():
 
     with pytest.raises(StatementParseError, match="не понял вёрстку"):
         get_connector("ozon").parse_statement(_pdf(lines), "statement.pdf")
+
+
+def test_a_credit_is_not_a_debit_just_because_the_bank_omits_the_plus():
+    """Банк ставит минус на списания; строка без знака — это приход.
+
+    Иначе зарплата в такой выписке ошибается на две своих суммы.
+    """
+    statement = get_connector("ozon").parse_statement(
+        _pdf([
+            "Data Opisanie Summa, RUB Ostatok",
+            "02.03.2026 Pyaterochka -1 234,56 48 765,44",
+            "05.03.2026 Zachislenie zarplaty 180 000,00 228 765,44",
+            "07.03.2026 Ozon -3 299,00 225 466,44",
+        ]),
+        "statement.pdf",
+    )
+
+    assert [op.amount for op in statement.operations] == [-1234.56, 180000.0, -3299.0]
+
+
+def test_without_any_signs_the_wording_still_decides():
+    font = _cyrillic_font()
+    if font is None:
+        pytest.skip("нет шрифта с кириллицей — словарь разбора проверить нечем")
+
+    statement = get_connector("ozon").parse_statement(
+        _pdf([
+            "02.03.2026 Оплата Пятёрочка 1 234,56",
+            "05.03.2026 Зачисление зарплаты 180 000,00",
+        ], font),
+        "statement.pdf",
+    )
+
+    assert [op.amount for op in statement.operations] == [-1234.56, 180000.0]

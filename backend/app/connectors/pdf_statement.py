@@ -142,8 +142,10 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
         )
 
     statement = ParsedStatement()
-    unsigned = guessed = totals = dated_without_amount = 0
-    any_signed = False
+    totals = dated_without_amount = 0
+    # Знаки приходится решать вторым проходом: означает ли отсутствие минуса
+    # приход, видно только по файлу целиком.
+    rows: list[tuple] = []
 
     for line in text.splitlines():
         line = line.strip()
@@ -180,13 +182,22 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
             continue
 
         description = re.sub(r"\s{2,}", " ", body).strip(" ·|-—")
-        if _SIGNED.match(raw_amount):
-            any_signed = True
-        else:
+        rows.append((occurred_on, amount, bool(_SIGNED.match(raw_amount)),
+                     description, line))
+
+    # Если где-то в файле минусы есть, банк помечает ими списания — и строка
+    # без знака означает приход. Иначе зарплата в такой выписке становится
+    # тратой: одна строка ошибается на две своих суммы.
+    signs_used = any(signed for _, _, signed, _, _ in rows)
+    unsigned = guessed = 0
+
+    for occurred_on, amount, signed, description, line in rows:
+        if not signed:
             unsigned += 1
             direction = _direction(description)
             if direction == 0:
-                guessed += 1
+                direction = 1 if signs_used else 0
+                guessed += not signs_used
             amount = abs(amount) * (1 if direction > 0 else -1)
 
         statement.operations.append(
@@ -217,7 +228,7 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
             "Выгрузите выписку в CSV или XLSX: там колонки на месте."
         )
 
-    if not any_signed and guessed * 2 > len(statement.operations):
+    if not signs_used and guessed * 2 > len(statement.operations):
         # Ни знаков, ни понятных формулировок: такой файл банк печатал в две
         # колонки, и в тексте от них ничего не осталось. Записать всё расходом
         # — значит испортить и историю, и капитал.
@@ -240,7 +251,12 @@ def parse_pdf_statement(data: bytes) -> ParsedStatement:
         statement.warnings.append(
             f"Строк с итогами и остатками пропущено: {totals} (это не операции)."
         )
-    if unsigned:
+    if unsigned and signs_used:
+        statement.warnings.append(
+            f"У {unsigned} операций знака не было — в этой выписке минусом "
+            "помечены списания, поэтому они прочитаны как приход. Проверьте их."
+        )
+    elif unsigned:
         statement.warnings.append(
             f"У {unsigned} операций в PDF не было знака — направление определено "
             f"по описанию, из них наугад: {guessed}. Проверьте их на странице «Банки»."

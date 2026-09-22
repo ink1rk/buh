@@ -6,6 +6,8 @@ services:
     restart: unless-stopped
     environment:
       DEBUG: "false"
+      # Показательные данные на боевой машине не нужны: деньги здесь настоящие.
+      SEED_DEMO: "false"
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       MCP_TOKEN: ${MCP_TOKEN:-}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
