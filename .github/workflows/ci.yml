@@ -40,3 +40,64 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  itms-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: itms/api
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: itms
+          POSTGRES_PASSWORD: itms
+          POSTGRES_DB: itms_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U itms"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      ITMS_ENV: test
+      ITMS_DATABASE_URL: postgresql+asyncpg://itms:itms@localhost:5432/itms_test
+      ITMS_STORAGE_BACKEND: local
+      ITMS_LOCAL_STORAGE_PATH: /tmp/itms-ci-files
+      ITMS_BOOTSTRAP_OWNER_PASSWORD: owner-password-1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check .
+      - name: Migrations up/down/up
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+          alembic upgrade head
+      - name: Tests
+        run: pytest -q
+
+  itms-web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: itms/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: itms/web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
