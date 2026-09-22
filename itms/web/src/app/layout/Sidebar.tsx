@@ -16,6 +16,7 @@ import {
   Upload,
   Users,
   Workflow,
+  Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { NavLink } from "react-router-dom";
@@ -40,6 +41,7 @@ const PRIMARY: NavItem[] = [
   { to: "/diagrams", labelKey: "nav.diagrams", icon: Workflow },
   { to: "/racks", labelKey: "nav.racks", icon: GalleryVertical },
   { to: "/projects", labelKey: "nav.projects", icon: FolderKanban },
+  { to: "/power", labelKey: "nav.power", icon: Zap },
   { to: "/locations", labelKey: "nav.locations", icon: MapPin },
   { to: "/documents", labelKey: "nav.documents", icon: FileText },
   { to: "/directory", labelKey: "nav.directory", icon: Users },

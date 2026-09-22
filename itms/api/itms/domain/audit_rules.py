@@ -30,6 +30,7 @@ from itms.models.network import (
     Vlan,
     Vrf,
 )
+from itms.models.power import PowerLink, PowerNode
 from itms.models.projects import Project, Task
 
 CI_CRITICAL_FIELDS = frozenset(
@@ -142,6 +143,14 @@ def configure_audit() -> None:
             critical_fields=frozenset({"u_height", "max_power_w", "max_weight_kg"}),
         ),
     )
+    register_audit(
+        PowerNode,
+        AuditConfig(
+            entity_type="POWER_NODE",
+            critical_fields=frozenset({"max_load_w", "rated_current_a", "voltage_v"}),
+        ),
+    )
+    register_audit(PowerLink, AuditConfig(entity_type="POWER_LINK", label_attr="status"))
     register_audit(Project, AuditConfig(entity_type="PROJECT", label_attr="key"))
     register_audit(Task, AuditConfig(entity_type="TASK", label_attr="title"))
     register_audit(

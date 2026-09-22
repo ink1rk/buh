@@ -436,3 +436,41 @@ class HealthStatus(StrEnum):
     ON_TRACK = "ON_TRACK"
     AT_RISK = "AT_RISK"
     DELAYED = "DELAYED"
+
+
+class PowerNodeType(StrEnum):
+    INPUT = "INPUT"
+    PANEL = "PANEL"
+    BREAKER = "BREAKER"
+    LINE = "LINE"
+    TRANSFER_SWITCH = "TRANSFER_SWITCH"
+    UPS = "UPS"
+    PDU = "PDU"
+    OUTLET = "OUTLET"
+    PSU = "PSU"
+    GENERIC_LOAD = "GENERIC_LOAD"
+
+
+class FeedSide(StrEnum):
+    A = "A"
+    B = "B"
+    SINGLE = "SINGLE"
+
+
+class PhaseLabel(StrEnum):
+    L1 = "L1"
+    L2 = "L2"
+    L3 = "L3"
+    L1L2L3 = "L1L2L3"
+
+
+class FailoverVerdict(StrEnum):
+    RESILIENT = "RESILIENT"
+    AT_RISK = "AT_RISK"
+    SINGLE_FEED = "SINGLE_FEED"
+    SAME_FEED = "SAME_FEED"
+    UNKNOWN = "UNKNOWN"
+
+
+#: Откуда взялся замер. Это не тип PostgreSQL: в таблице стоит CHECK.
+MEASUREMENT_SOURCES = frozenset({"MANUAL", "PDU", "UPS", "METER", "IMPORT", "MONITORING"})
