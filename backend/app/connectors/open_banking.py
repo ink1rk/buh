@@ -12,9 +12,12 @@ change rather than a rewrite, and so the mapping is already tested.
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 import uuid
 from datetime import date, datetime
 from typing import Any
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 
@@ -22,10 +25,61 @@ from app.connectors.base import ParsedStatement, RawOperation, parse_money
 
 COMPLETED_STATUSES = {"acceptedsettlementcompleted", "booked", "completed"}
 MAX_PAGES = 50
+DEFAULT_PORTS = {"http": 80, "https": 443}
 
 
 class OpenBankingError(RuntimeError):
     """The bank rejected the request or returned something unusable."""
+
+
+def ensure_public_url(url: str) -> str:
+    """Refuse an address that points back inside our own network.
+
+    The bank's API address is typed in by hand, and the client answers with the
+    body of whatever it reached. Left unchecked, that turns a text field into a
+    window onto everything running on the host — the assistant on :8800, the
+    phone bridge with its health history on :8820, a cloud metadata service.
+    """
+    parts = urlsplit(url)
+    if parts.scheme not in DEFAULT_PORTS:
+        raise OpenBankingError(
+            f"Адрес Открытого API должен начинаться с http:// или https://, "
+            f"а не с «{parts.scheme or url[:40]}»"
+        )
+    host = (parts.hostname or "").strip()
+    if not host:
+        raise OpenBankingError("В адресе Открытого API банка нет имени хоста")
+    if host.lower() == "localhost" or host.lower().endswith(".localhost"):
+        raise OpenBankingError("Адрес localhost ведёт внутрь машины, а не в банк")
+    for address in _resolve(host):
+        if not address.is_global:
+            raise OpenBankingError(
+                f"Адрес {host} ведёт внутрь сети ({address}), а не в банк. "
+                "Проверьте адрес Открытого API."
+            )
+    return url
+
+
+def _resolve(host: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    try:
+        return [ipaddress.ip_address(host)]
+    except ValueError:
+        pass
+    try:
+        infos = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
+    except socket.gaierror:
+        # Имя не разрешается — запрос всё равно никуда не уйдёт.
+        return []
+    return [ipaddress.ip_address(info[4][0]) for info in infos]
+
+
+def _origin(url: str) -> tuple[str, str, int]:
+    parts = urlsplit(url)
+    return (
+        parts.scheme,
+        (parts.hostname or "").lower(),
+        parts.port or DEFAULT_PORTS.get(parts.scheme, 0),
+    )
 
 
 class OpenBankingClient:
@@ -46,7 +100,7 @@ class OpenBankingClient:
             )
         if not access_token:
             raise OpenBankingError("Не задан токен доступа к Открытому API банка")
-        self._base_url = base_url.rstrip("/")
+        self._base_url = ensure_public_url(base_url.rstrip("/"))
         self._access_token = access_token
         self._timeout = timeout
         self._transport = transport
@@ -86,8 +140,21 @@ class OpenBankingClient:
                 next_url = (payload.get("Links") or {}).get("next")
                 if not next_url:
                     break
-                url, params = next_url, None
+                url, params = self._next_page(str(next_url)), None
         return payloads
+
+    def _next_page(self, candidate: str) -> str:
+        """Where the bank says the next page is — if it is still the bank.
+
+        Every request carries the access token, so a `Links.next` pointing at
+        another host would hand that token to whoever owns it.
+        """
+        url = urljoin(self._base_url + "/", candidate)
+        if _origin(url) != _origin(self._base_url):
+            raise OpenBankingError(
+                "Банк увёл выгрузку на другой адрес — туда токен доступа не отправляем"
+            )
+        return url
 
     async def list_accounts(self) -> list[dict]:
         pages = await self._get_pages("accounts")

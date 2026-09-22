@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors import StatementParseError, available_providers, get_connector
+from app.connectors.open_banking import OpenBankingError, ensure_public_url
 from app.core.database import get_db
 from app.core.security import EncryptionUnavailable
 from app.models.account import Account
@@ -81,6 +82,16 @@ async def list_connections(db: AsyncSession = Depends(get_db)):
     return [await _to_out(db, row) for row in rows]
 
 
+def _check_api_url(raw: str | None) -> None:
+    """Отказать сразу, а не в момент первой синхронизации."""
+    if not (raw or "").strip():
+        return
+    try:
+        ensure_public_url(raw.strip())
+    except OpenBankingError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @router.post("", response_model=ConnectionOut)
 async def create_connection(payload: ConnectionCreate, db: AsyncSession = Depends(get_db)):
     try:
@@ -91,6 +102,7 @@ async def create_connection(payload: ConnectionCreate, db: AsyncSession = Depend
     if payload.mode == "api" and not connector.supports_api:
         raise HTTPException(400, f"{connector.title}: прямое подключение по API недоступно")
 
+    _check_api_url(payload.api_base_url)
     connection = BankConnection(
         provider=connector.provider,
         label=payload.label or connector.title,
@@ -120,6 +132,7 @@ async def update_connection(
     connection = await _get_connection(db, connection_id)
     data = payload.model_dump(exclude_unset=True)
     access_token = data.pop("access_token", None)
+    _check_api_url(data.get("api_base_url"))
     for key, value in data.items():
         setattr(connection, key, value)
     if access_token is not None:
@@ -140,6 +153,24 @@ async def delete_connection(connection_id: int, db: AsyncSession = Depends(get_d
     return {"deleted": connection_id}
 
 
+async def _read_within_limit(file: UploadFile) -> bytes:
+    """Читать по частям: проверка после полного чтения ничего не ограничивает.
+
+    Размер запроса стоит ограничить и на входе, в nginx; здесь — чтобы память
+    не зависела от того, что прислали.
+    """
+    chunks: list[bytes] = []
+    size = 0
+    while chunk := await file.read(256 * 1024):
+        size += len(chunk)
+        if size > MAX_STATEMENT_BYTES:
+            raise HTTPException(
+                413, "Файл больше 15 МБ — выгрузите выписку за меньший период"
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @router.post("/{connection_id}/statement", response_model=ImportOut)
 async def upload_statement(
     connection_id: int,
@@ -147,9 +178,7 @@ async def upload_statement(
     db: AsyncSession = Depends(get_db),
 ):
     connection = await _get_connection(db, connection_id)
-    data = await file.read()
-    if len(data) > MAX_STATEMENT_BYTES:
-        raise HTTPException(413, "Файл больше 15 МБ — выгрузите выписку за меньший период")
+    data = await _read_within_limit(file)
     await ensure_account(db, connection, connection.label)
     try:
         run = await import_statement_file(db, connection, data, file.filename or "statement")

@@ -668,3 +668,94 @@ def test_a_pdf_that_hides_the_direction_is_refused(monkeypatch):
 
     with pytest.raises(StatementParseError, match="CSV"):
         get_connector("ozon").parse_statement(b"%PDF-1.4", "statement.pdf")
+
+
+# --- адрес банка как окно внутрь сети --------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://127.0.0.1:8820/v1",
+        "http://localhost:8800/api",
+        "http://10.0.0.5/api",
+        "http://[::1]/api",
+        "http://169.254.169.254/latest/meta-data",
+        "file:///etc/passwd",
+        "https://",
+    ],
+)
+def test_the_bank_address_cannot_point_inside_our_network(url):
+    """Клиент возвращает тело того, до кого дотянулся.
+
+    Без проверки поле «адрес Открытого API» — это окно на всё, что слушает на
+    машине: ассистент, мост телефона с историей здоровья, служба метаданных.
+    """
+    with pytest.raises(OpenBankingError):
+        OpenBankingClient(url, "token")
+
+
+def test_a_real_bank_address_is_accepted():
+    client = OpenBankingClient("https://bank.example/open-api/", "token")
+
+    assert client is not None
+
+
+@pytest.mark.asyncio
+async def test_the_access_token_does_not_follow_the_bank_elsewhere():
+    """Links.next вёл куда угодно, а токен уходил с каждым запросом."""
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(
+            200,
+            json={
+                "Data": {"Transaction": []},
+                "Links": {"next": "https://attacker.example/collect"},
+            },
+        )
+
+    client = OpenBankingClient(
+        "https://bank.example", "token-123", transport=httpx.MockTransport(handler)
+    )
+
+    with pytest.raises(OpenBankingError, match="токен"):
+        await client.list_accounts()
+    assert all("attacker" not in url for url in seen)
+
+
+@pytest.mark.asyncio
+async def test_a_relative_next_page_still_works():
+    pages: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        pages.append(str(request.url))
+        if "page=2" in str(request.url):
+            return httpx.Response(200, json={"Data": {"Account": [{"accountId": "2"}]}})
+        return httpx.Response(
+            200,
+            json={
+                "Data": {"Account": [{"accountId": "1"}]},
+                "Links": {"next": "accounts?page=2"},
+            },
+        )
+
+    client = OpenBankingClient(
+        "https://bank.example", "token", transport=httpx.MockTransport(handler)
+    )
+
+    assert len(await client.list_accounts()) == 2
+    assert pages[1] == "https://bank.example/accounts?page=2"
+
+
+def test_a_table_with_absurdly_many_rows_is_refused():
+    """Размер файла ничего не говорит о таблице внутри."""
+    from app.connectors.tabular import MAX_ROWS
+
+    huge = "Дата операции;Сумма операции в валюте счёта;Описание операции\n" + (
+        "12.03.2026;-1,00;Кофе\n" * (MAX_ROWS + 5)
+    )
+
+    with pytest.raises(StatementParseError, match="строк"):
+        read_csv_rows(huge.encode())

@@ -143,6 +143,25 @@ def detect_columns(rows: list[list[Any]]) -> tuple[int, dict[str, int]]:
     return best_row, best_mapping
 
 
+# A year of card history is a few thousand rows. These caps exist because the
+# file size says nothing about the table inside: a 5 MB XLSX is a zip, and it
+# can declare millions of rows that cost gigabytes once expanded row by row.
+MAX_ROWS = 100_000
+MAX_COLUMNS = 200
+
+
+def _limited(rows: Any) -> list[list[Any]]:
+    result: list[list[Any]] = []
+    for row in rows:
+        if len(result) >= MAX_ROWS:
+            raise StatementParseError(
+                f"В выписке больше {MAX_ROWS} строк — это не похоже на выписку "
+                "по счёту. Выгрузите период поменьше."
+            )
+        result.append(list(row)[:MAX_COLUMNS])
+    return result
+
+
 def read_csv_rows(data: bytes) -> list[list[str]]:
     text = _decode(data)
     sample = "\n".join(text.splitlines()[:20])
@@ -150,7 +169,7 @@ def read_csv_rows(data: bytes) -> list[list[str]]:
     if sample.count(delimiter) == 0:
         delimiter = ","
     reader = csv.reader(io.StringIO(text), delimiter=delimiter)
-    return [list(row) for row in reader]
+    return _limited(reader)
 
 
 def read_xlsx_rows(data: bytes) -> list[list[Any]]:
@@ -162,7 +181,7 @@ def read_xlsx_rows(data: bytes) -> list[list[Any]]:
     workbook = load_workbook(io.BytesIO(data), data_only=True, read_only=True)
     try:
         sheet = workbook[workbook.sheetnames[0]]
-        return [list(row) for row in sheet.iter_rows(values_only=True)]
+        return _limited(sheet.iter_rows(values_only=True))
     finally:
         workbook.close()
 
