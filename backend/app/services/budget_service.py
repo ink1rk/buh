@@ -32,6 +32,9 @@ from app.services.ledger import is_income, is_spending
 
 HISTORY_MONTHS = 12
 MIN_PROPOSE = 50.0
+# Черновик не должен сразу быть больше дохода: иначе «распределить месяц»
+# предлагает план, который заведомо не сходится.
+PLAN_SHARE_OF_INCOME = 0.8
 
 
 def _nice(amount: float) -> float:
@@ -103,6 +106,18 @@ async def spent_this_month(db: AsyncSession) -> dict[str, float]:
     return dict(by_cat)
 
 
+def scale_limits(limits: dict[str, float], income: float) -> dict[str, float]:
+    """Ужать предложенные лимиты, если в сумме они больше доли дохода."""
+    if income <= 0:
+        return limits
+    total = sum(limits.values())
+    target = income * PLAN_SHARE_OF_INCOME
+    if total <= 0 or total <= target:
+        return {category: _nice(amount) for category, amount in limits.items()}
+    factor = target / total
+    return {category: _nice(amount * factor) for category, amount in limits.items()}
+
+
 async def list_envelopes(db: AsyncSession) -> list[BudgetEnvelope]:
     rows = list(
         (
@@ -140,18 +155,22 @@ async def build_plan(db: AsyncSession, profile: UserProfile) -> BudgetPlan:
     envelopes = await list_envelopes(db)
     planned = [ _envelope_out(row, spent.get(row.category, 0.0), averages.get(row.category, 0.0)) for row in envelopes ]
     taken = {row.category for row in envelopes}
+    raw = {
+        category: average
+        for category, average in averages.items()
+        if category not in taken and average >= MIN_PROPOSE
+    }
+    income_for_draft = profile.monthly_income or suggested_income
+    proposed = scale_limits(raw, income_for_draft)
     suggestions = []
-    for category, average in sorted(averages.items(), key=lambda item: -item[1]):
-        if category in taken or average < MIN_PROPOSE:
-            continue
-        proposed = _nice(average)
+    for category, average in sorted(raw.items(), key=lambda item: -item[1]):
         suggestions.append(
             BudgetSuggestion(
                 category=category,
                 name=category_name(category),
                 color=category_color(category),
                 average_last_12m=round(average, 2),
-                proposed_limit=proposed,
+                proposed_limit=proposed.get(category, _nice(average)),
                 spent_this_month=round(spent.get(category, 0.0), 2),
             )
         )
@@ -207,12 +226,14 @@ async def seed_from_history(
     if existing and not replace:
         return await build_plan(db, profile)
     averages, _, suggested_income = await history_averages(db)
-    payload = [
-        BudgetEnvelopeIn(category=category, monthly_limit=_nice(average))
-        for category, average in averages.items()
-        if average >= MIN_PROPOSE
-    ]
     income = profile.monthly_income if profile.monthly_income else suggested_income
+    raw = {category: average for category, average in averages.items() if average >= MIN_PROPOSE}
+    limits = scale_limits(raw, income)
+    payload = [
+        BudgetEnvelopeIn(category=category, monthly_limit=limit)
+        for category, limit in limits.items()
+        if limit > 0
+    ]
     return await replace_plan(db, profile, payload, monthly_income=income or None)
 
 

@@ -11,6 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.transaction import Transaction
 
 
+def test_draft_limits_shrink_to_fit_declared_income():
+    from app.services.budget_service import scale_limits
+
+    scaled = scale_limits({"groceries": 80_000, "cafe": 40_000}, income=80_000)
+    assert sum(scaled.values()) <= 80_000 * 0.8 + 500
+
+
 @pytest.mark.asyncio
 async def test_budget_starts_as_a_suggestion_from_history(client: AsyncClient):
     plan = (await client.get("/api/v1/budget")).json()
@@ -24,6 +31,8 @@ async def test_budget_starts_as_a_suggestion_from_history(client: AsyncClient):
     groceries = next(row for row in plan["suggestions"] if row["category"] == "groceries")
     assert groceries["proposed_limit"] > 0
     assert groceries["name"] == "продукты"
+    proposed_total = sum(row["proposed_limit"] for row in plan["suggestions"])
+    assert proposed_total <= plan["monthly_income"] * 0.8 + 500
 
 
 @pytest.mark.asyncio
