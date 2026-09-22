@@ -8,13 +8,14 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from itms.core.context import current_context
 from itms.core.errors import Conflict, Invalid, NotFound
 from itms.domain.projects import (
     Dependency,
@@ -45,7 +46,9 @@ from itms.models.projects import (
     ProjectCi,
     ProjectMember,
     Task,
+    TaskCheck,
     TaskCi,
+    TaskComment,
     TaskDependency,
     TimeEntry,
 )
@@ -1089,3 +1092,138 @@ def _phase_progress(
             ]
         )
     return result
+
+
+_CLOSED = frozenset({TaskStatus.DONE, TaskStatus.CANCELLED})
+
+
+async def inbox(session: AsyncSession) -> list[dict[str, Any]]:
+    """Открытые задачи всех проектов, разложенные по сроку."""
+    today = date.today()
+    soon = today + timedelta(days=7)
+    rows = (
+        await session.execute(
+            select(Task, Project)
+            .join(Project, Project.id == Task.project_id)
+            .where(Task.status.notin_(_CLOSED))
+            .order_by(Task.due_date.asc().nulls_last(), Project.key, Task.number)
+        )
+    ).all()
+    names = await _names(session, {task.assignee_id for task, _ in rows})
+    result = []
+    for task, project in rows:
+        due = task.due_date
+        if due is None:
+            bucket = "undated"
+        elif due < today:
+            bucket = "overdue"
+        elif due == today:
+            bucket = "today"
+        elif due <= soon:
+            bucket = "upcoming"
+        else:
+            bucket = "later"
+        result.append(
+            {
+                "id": task.id,
+                "project_id": project.id,
+                "project_key": project.key,
+                "project_name": project.name,
+                "label": f"{project.key}-{task.number}",
+                "title": task.title,
+                "status": task.status.value,
+                "priority": task.priority.value,
+                "due_date": due,
+                "assignee_name": names.get(task.assignee_id) if task.assignee_id else None,
+                "bucket": bucket,
+            }
+        )
+    return result
+
+
+async def task_work(
+    session: AsyncSession, project_id: uuid.UUID, task_id: uuid.UUID
+) -> dict[str, Any]:
+    await _task(session, project_id, task_id)
+    comments = list(
+        (
+            await session.execute(
+                select(TaskComment)
+                .where(TaskComment.task_id == task_id)
+                .order_by(TaskComment.created_at)
+            )
+        ).scalars()
+    )
+    checks = list(
+        (
+            await session.execute(
+                select(TaskCheck)
+                .where(TaskCheck.task_id == task_id)
+                .order_by(TaskCheck.order_index, TaskCheck.title)
+            )
+        ).scalars()
+    )
+    return {
+        "comments": [_comment_row(row) for row in comments],
+        "checks": [_check_row(row) for row in checks],
+    }
+
+
+async def add_comment(
+    session: AsyncSession, project_id: uuid.UUID, task_id: uuid.UUID, body: str
+) -> dict[str, Any]:
+    await _task(session, project_id, task_id)
+    text_body = body.strip()
+    if not text_body:
+        raise Invalid("Комментарий пуст", code_hint="invalid")
+    session.add(
+        TaskComment(
+            task_id=task_id,
+            body=text_body,
+            author_label=current_context().actor_label or "",
+            created_at=datetime.now(UTC),
+        )
+    )
+    await session.flush()
+    return await task_work(session, project_id, task_id)
+
+
+async def add_check(
+    session: AsyncSession, project_id: uuid.UUID, task_id: uuid.UUID, title: str
+) -> dict[str, Any]:
+    await _task(session, project_id, task_id)
+    name = title.strip()
+    if not name:
+        raise Invalid("Укажите пункт чеклиста", code_hint="invalid")
+    session.add(TaskCheck(task_id=task_id, title=name, done=False, order_index=0))
+    await session.flush()
+    return await task_work(session, project_id, task_id)
+
+
+async def update_check(
+    session: AsyncSession,
+    project_id: uuid.UUID,
+    task_id: uuid.UUID,
+    check_id: uuid.UUID,
+    done: bool,
+) -> dict[str, Any]:
+    await _task(session, project_id, task_id)
+    row = await session.get(TaskCheck, check_id)
+    if row is None or row.task_id != task_id:
+        raise NotFound("Пункт чеклиста не найден", entity_id=str(check_id))
+    row.done = done
+    await session.flush()
+    return await task_work(session, project_id, task_id)
+
+
+def _comment_row(row: TaskComment) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "body": row.body,
+        "author_label": row.author_label,
+        "created_at": row.created_at,
+    }
+
+
+def _check_row(row: TaskCheck) -> dict[str, Any]:
+    return {"id": row.id, "title": row.title, "done": row.done}

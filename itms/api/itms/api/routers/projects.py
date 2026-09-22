@@ -6,8 +6,12 @@ from fastapi import APIRouter
 
 from itms.api.deps import SessionDep, requires
 from itms.api.schemas.projects import (
+    CheckCreate,
+    CheckUpdate,
     CiLink,
+    CommentCreate,
     DependencyCreate,
+    InboxItem,
     MemberWrite,
     MilestoneCreate,
     MilestoneUpdate,
@@ -21,6 +25,7 @@ from itms.api.schemas.projects import (
     TaskCiLink,
     TaskCreate,
     TaskUpdate,
+    TaskWork,
     TimeEntryCreate,
 )
 from itms.api.schemas.transition import SnapshotCreate, SnapshotRead, TransitionView
@@ -34,6 +39,12 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 async def list_projects(session: SessionDep) -> list[ProjectSummary]:
     rows = await project_service.list_projects(session)
     return [ProjectSummary.model_validate(row) for row in rows]
+
+
+@router.get("/inbox", response_model=list[InboxItem], dependencies=[requires(Permission.CI_READ)])
+async def inbox(session: SessionDep) -> list[InboxItem]:
+    rows = await project_service.inbox(session)
+    return [InboxItem.model_validate(row) for row in rows]
 
 
 @router.post(
@@ -164,6 +175,57 @@ async def delete_milestone(
 async def add_task(project_id: uuid.UUID, payload: TaskCreate, session: SessionDep) -> ProjectView:
     view = await project_service.add_task(session, project_id, payload.model_dump())
     return ProjectView.model_validate(view)
+
+
+@router.get(
+    "/{project_id}/tasks/{task_id}/work",
+    response_model=TaskWork,
+    dependencies=[requires(Permission.CI_READ)],
+)
+async def task_work(project_id: uuid.UUID, task_id: uuid.UUID, session: SessionDep) -> TaskWork:
+    return TaskWork.model_validate(await project_service.task_work(session, project_id, task_id))
+
+
+@router.post(
+    "/{project_id}/tasks/{task_id}/comments",
+    response_model=TaskWork,
+    status_code=201,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def add_comment(
+    project_id: uuid.UUID, task_id: uuid.UUID, payload: CommentCreate, session: SessionDep
+) -> TaskWork:
+    view = await project_service.add_comment(session, project_id, task_id, payload.body)
+    return TaskWork.model_validate(view)
+
+
+@router.post(
+    "/{project_id}/tasks/{task_id}/checks",
+    response_model=TaskWork,
+    status_code=201,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def add_check(
+    project_id: uuid.UUID, task_id: uuid.UUID, payload: CheckCreate, session: SessionDep
+) -> TaskWork:
+    view = await project_service.add_check(session, project_id, task_id, payload.title)
+    return TaskWork.model_validate(view)
+
+
+@router.patch(
+    "/{project_id}/tasks/{task_id}/checks/{check_id}",
+    response_model=TaskWork,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def update_check(
+    project_id: uuid.UUID,
+    task_id: uuid.UUID,
+    check_id: uuid.UUID,
+    payload: CheckUpdate,
+    session: SessionDep,
+) -> TaskWork:
+    view = await project_service.update_check(session, project_id, task_id, check_id, payload.done)
+    return TaskWork.model_validate(view)
 
 
 @router.patch(

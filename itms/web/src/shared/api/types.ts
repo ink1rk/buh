@@ -745,6 +745,25 @@ export interface ProjectMilestone {
   completed_at: string | null;
 }
 
+export interface InboxItem {
+  id: string;
+  project_id: string;
+  project_key: string;
+  project_name: string;
+  label: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  assignee_name: string | null;
+  bucket: string;
+}
+
+export interface TaskWork {
+  comments: Array<{ id: string; body: string; author_label: string; created_at: string }>;
+  checks: Array<{ id: string; title: string; done: boolean }>;
+}
+
 export interface ProjectTask {
   id: string;
   number: number;

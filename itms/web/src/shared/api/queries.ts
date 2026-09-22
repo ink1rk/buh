@@ -24,8 +24,10 @@ import type {
   RackElevation,
   RackSummary,
   PowerOverview,
+  InboxItem,
   ProjectSummary,
   ProjectView,
+  TaskWork,
   DocumentDetail,
   DocumentSummary,
   DocumentVersion,
@@ -104,6 +106,8 @@ export const keys = {
   rack: (id: string) => ["racks", id] as const,
   projects: ["projects"] as const,
   project: (id: string) => ["projects", id] as const,
+  inbox: ["projects", "inbox"] as const,
+  taskWork: (projectId: string, taskId: string) => ["projects", projectId, "work", taskId] as const,
   power: ["power"] as const,
   transition: (id: string) => ["projects", id, "transition"] as const,
 };
@@ -370,6 +374,21 @@ export function usePower() {
   return useQuery({
     queryKey: keys.power,
     queryFn: () => api.get<PowerOverview>("/power"),
+  });
+}
+
+export function useInbox() {
+  return useQuery({
+    queryKey: keys.inbox,
+    queryFn: () => api.get<InboxItem[]>("/projects/inbox"),
+  });
+}
+
+export function useTaskWork(projectId: string | undefined, taskId: string | undefined) {
+  return useQuery({
+    queryKey: keys.taskWork(projectId ?? "", taskId ?? ""),
+    queryFn: () => api.get<TaskWork>(`/projects/${projectId}/tasks/${taskId}/work`),
+    enabled: Boolean(projectId && taskId),
   });
 }
 
@@ -680,6 +699,12 @@ export const mutations = {
     api.post<ProjectView>(`/projects/${id}/tasks`, body),
   updateTask: (id: string, taskId: string, body: Record<string, unknown>) =>
     api.patch<ProjectView>(`/projects/${id}/tasks/${taskId}`, body),
+  addComment: (id: string, taskId: string, body: string) =>
+    api.post<TaskWork>(`/projects/${id}/tasks/${taskId}/comments`, { body }),
+  addCheck: (id: string, taskId: string, title: string) =>
+    api.post<TaskWork>(`/projects/${id}/tasks/${taskId}/checks`, { title }),
+  updateCheck: (id: string, taskId: string, checkId: string, done: boolean) =>
+    api.patch<TaskWork>(`/projects/${id}/tasks/${taskId}/checks/${checkId}`, { done }),
   addDependency: (id: string, body: Record<string, unknown>) =>
     api.post<ProjectView>(`/projects/${id}/dependencies`, body),
   linkProjectCi: (id: string, body: Record<string, unknown>) =>

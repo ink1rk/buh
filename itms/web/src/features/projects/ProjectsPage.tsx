@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
 import { describeError } from "@/shared/api/errors";
-import { keys, mutations, useApiMutation, useProjects } from "@/shared/api/queries";
-import type { ProjectSummary } from "@/shared/api/types";
+import { keys, mutations, useApiMutation, useInbox, useProjects } from "@/shared/api/queries";
+import type { InboxItem, ProjectSummary } from "@/shared/api/types";
 import { Badge, type Tone } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
 import { DataTable, type Column } from "@/shared/ui/DataTable";
@@ -87,6 +87,45 @@ function CreateProjectDialog({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
+function Inbox({ onOpen }: { onOpen: (projectId: string) => void }) {
+  const { t } = useI18n();
+  const { data } = useInbox();
+  const buckets = [
+    ["overdue", t("projects.overdue")],
+    ["today", t("projects.today")],
+    ["upcoming", t("projects.upcoming")],
+    ["undated", t("projects.undated")],
+  ] as const;
+  return (
+    <div className="mb-4 grid gap-3 md:grid-cols-4" data-testid="project-inbox">
+      {buckets.map(([bucket, label]) => {
+        const rows = (data ?? []).filter((item: InboxItem) => item.bucket === bucket);
+        return (
+          <section key={bucket} className="surface rounded-lg p-3" data-testid={`inbox-${bucket}`}>
+            <h2 className="mb-2 text-xs font-medium text-muted">
+              {label} · {rows.length}
+            </h2>
+            <ul className="flex flex-col gap-1">
+              {rows.slice(0, 6).map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    className="w-full truncate text-left text-sm"
+                    onClick={() => onOpen(item.project_id)}
+                  >
+                    <span className="mr-2 font-mono text-xs text-muted">{item.label}</span>
+                    {item.title}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ProjectsPage() {
   const { t, te } = useI18n();
   const navigate = useNavigate();
@@ -149,6 +188,7 @@ export function ProjectsPage() {
           </Button>
         }
       />
+      <Inbox onOpen={(projectId) => navigate(`/projects/${projectId}`)} />
       <DataTable
         columns={columns}
         rows={data ?? []}

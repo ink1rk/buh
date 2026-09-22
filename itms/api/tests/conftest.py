@@ -41,6 +41,8 @@ TABLES_TO_CLEAR = (
     "power_feed",
     "power_node",
     "audit_change",
+    "task_comment",
+    "task_check",
     "time_entry",
     "task_dependency",
     "task_ci",

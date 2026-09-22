@@ -12,6 +12,8 @@ import {
   useProject,
 } from "@/shared/api/queries";
 import type { ProjectView, ScheduleItem } from "@/shared/api/types";
+import { CalendarPanel } from "@/features/projects/CalendarPanel";
+import { TaskPanel, waitingOn } from "@/features/projects/TaskPanel";
 import { TransitionPanel } from "@/features/projects/TransitionPanel";
 import { Badge, type Tone } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
@@ -60,6 +62,8 @@ export function ProjectPage() {
   const { t, te } = useI18n();
   const { data, isLoading } = useProject(projectId);
   const [tab, setTab] = useState("overview");
+  const [openTask, setOpenTask] = useState<string | null>(null);
+  const moveDue = useProjectWrite(projectId ?? "");
 
   if (isLoading || !data || !projectId) {
     return <p className="text-sm text-muted">{t("app.loading")}</p>;
@@ -95,16 +99,34 @@ export function ProjectPage() {
           { id: "tasks", label: t("projects.tasks"), badge: data.tasks.length },
           { id: "board", label: t("projects.board") },
           { id: "schedule", label: t("projects.schedule") },
+          { id: "calendar", label: t("projects.calendar") },
           { id: "infra", label: t("projects.infrastructure"), badge: data.cis.length },
           { id: "transition", label: t("projects.transition") },
         ]}
       />
       {tab === "overview" && <Overview projectId={projectId} view={data} />}
-      {tab === "tasks" && <Tasks projectId={projectId} view={data} />}
-      {tab === "board" && <Board projectId={projectId} view={data} />}
+      {tab === "tasks" && <Tasks projectId={projectId} view={data} onOpen={setOpenTask} />}
+      {tab === "board" && <Board projectId={projectId} view={data} onOpen={setOpenTask} />}
       {tab === "schedule" && <Schedule view={data} />}
+      {tab === "calendar" && (
+        <CalendarPanel
+          view={data}
+          onOpen={setOpenTask}
+          onMove={(taskId, due) =>
+            moveDue.mutate(() => mutations.updateTask(projectId, taskId, { due_date: due }))
+          }
+        />
+      )}
       {tab === "infra" && <Infrastructure projectId={projectId} view={data} />}
       {tab === "transition" && <TransitionPanel projectId={projectId} />}
+      {openTask && (
+        <TaskPanel
+          projectId={projectId}
+          taskId={openTask}
+          view={data}
+          onClose={() => setOpenTask(null)}
+        />
+      )}
     </div>
   );
 }
@@ -339,7 +361,15 @@ function Overview({ projectId, view }: { projectId: string; view: ProjectView })
   );
 }
 
-function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
+function Tasks({
+  projectId,
+  view,
+  onOpen,
+}: {
+  projectId: string;
+  view: ProjectView;
+  onOpen: (taskId: string) => void;
+}) {
   const { t, te } = useI18n();
   const { data: employees } = useEmployees();
   const write = useProjectWrite(projectId);
@@ -409,9 +439,18 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
             </thead>
             <tbody>
               {view.tasks.map((task) => (
-                <tr key={task.id} className="border-t border-app">
+                <tr
+                  key={task.id}
+                  className="cursor-pointer border-t border-app"
+                  onClick={() => onOpen(task.id)}
+                >
                   <td className="py-1.5 pr-2 font-mono text-xs">{task.label}</td>
-                  <td className="py-1.5 pr-2">{task.title}</td>
+                  <td className="py-1.5 pr-2">
+                    {task.title}
+                    {waitingOn(task.id, view).length > 0 && (
+                      <span className="ml-2 text-xs text-[rgb(var(--danger))]">{t("projects.waiting")}</span>
+                    )}
+                  </td>
                   <td className="py-1.5 pr-2">
                     <div className="flex items-center gap-1">
                       <Select
@@ -419,6 +458,7 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
                         options={optionsOf(task.status, TASK_NEXT[task.status] ?? [], (value) =>
                           te("taskStatus", value),
                         )}
+                        onClick={(event) => event.stopPropagation()}
                         onChange={(event) => {
                           const next = event.currentTarget.value;
                           write.mutate(() =>
@@ -430,7 +470,8 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
                         <Button
                           size="sm"
                           data-testid={`advance-${task.label}`}
-                          onClick={() => {
+                          onClick={(event) => {
+                            event.stopPropagation();
                             const next = (TASK_NEXT[task.status] ?? [])[0];
                             if (!next) return;
                             write.mutate(() =>
@@ -534,7 +575,15 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
   );
 }
 
-function Board({ projectId, view }: { projectId: string; view: ProjectView }) {
+function Board({
+  projectId,
+  view,
+  onOpen,
+}: {
+  projectId: string;
+  view: ProjectView;
+  onOpen: (taskId: string) => void;
+}) {
   const { t, te } = useI18n();
   const write = useProjectWrite(projectId);
 
@@ -569,10 +618,14 @@ function Board({ projectId, view }: { projectId: string; view: ProjectView }) {
                   key={task.id}
                   draggable
                   onDragStart={(event) => event.dataTransfer.setData("text/plain", task.id)}
+                  onClick={() => onOpen(task.id)}
                   className="cursor-grab rounded-md border border-app bg-[rgb(var(--surface))] p-2 text-sm"
                 >
                   <p className="font-mono text-[0.65rem] text-muted">{task.label}</p>
                   <p>{task.title}</p>
+                  {waitingOn(task.id, view).length > 0 && (
+                    <p className="text-xs text-[rgb(var(--danger))]">{t("projects.waiting")}</p>
+                  )}
                 </article>
               ))}
           </div>
