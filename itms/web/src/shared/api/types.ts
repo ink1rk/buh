@@ -262,7 +262,279 @@ export interface Meta {
   import_targets: string[];
   import_fields: Record<string, string[]>;
   import_required_fields: Record<string, string[]>;
+  device_roles: string[];
+  interface_types: string[];
+  cable_media: string[];
+  cable_categories: string[];
+  connection_statuses: string[];
+  vlan_modes: string[];
+  ip_statuses: string[];
+  ip_roles: string[];
+  panel_sides: string[];
   power_defaults: Record<string, number>;
+}
+
+export interface Manufacturer {
+  id: string;
+  name: string;
+  support_url: string | null;
+  notes: string | null;
+}
+
+export interface PortTemplate {
+  id: string;
+  name_pattern: string;
+  count: number;
+  start_index: number;
+  interface_type: string;
+  speed_mbps: number | null;
+  poe_capable: boolean;
+  position: number;
+}
+
+export interface DeviceModel {
+  id: string;
+  manufacturer_id: string;
+  manufacturer: Manufacturer;
+  model: string;
+  part_number: string | null;
+  default_role: string;
+  u_height: number;
+  is_full_depth: boolean;
+  depth_mm: number | null;
+  weight_kg: number | null;
+  psu_count: number;
+  power_nameplate_w: number | null;
+  power_max_w: number | null;
+  power_factor: number | null;
+  utilization_factor: number | null;
+  airflow: string | null;
+  notes: string | null;
+  port_templates: PortTemplate[];
+}
+
+export interface Device {
+  id: string;
+  device_model_id: string | null;
+  model: DeviceModel | null;
+  device_role: string;
+  asset_tag: string | null;
+  hostname: string | null;
+  mgmt_ip: string | null;
+  mgmt_mac: string | null;
+  firmware: string | null;
+  os_version: string | null;
+  purchase_date: string | null;
+  warranty_until: string | null;
+  psu_count: number;
+  power_nameplate_w: number | null;
+  power_max_w: number | null;
+  notes: string | null;
+}
+
+export interface DeviceRow {
+  id: string;
+  name: string;
+  code: string | null;
+  status: string;
+  criticality: string;
+  location_id: string | null;
+  device_role: string;
+  hostname: string | null;
+  mgmt_ip: string | null;
+  serial_number: string | null;
+  asset_tag: string | null;
+  warranty_until: string | null;
+  model_label: string | null;
+}
+
+export interface PortUsage {
+  total: number;
+  free: number;
+  used: number;
+}
+
+export interface EndpointRef {
+  interface_id: string;
+  interface_name: string;
+  ci_id: string;
+  ci_name: string | null;
+}
+
+export interface ConnectionBrief {
+  id: string;
+  label: string | null;
+  status: string;
+  medium: string;
+  length_m: number | null;
+  peer: EndpointRef | null;
+}
+
+export interface InterfaceRow {
+  id: string;
+  ci_id: string;
+  name: string;
+  position: number | null;
+  interface_type: string;
+  medium: string | null;
+  speed_mbps: number | null;
+  mac: string | null;
+  description: string;
+  purpose: string | null;
+  admin_enabled: boolean;
+  oper_status: string;
+  is_management: boolean;
+  mtu: number | null;
+  panel_side: string | null;
+  paired_interface_id: string | null;
+  lag_parent_id: string | null;
+  ip_addresses: string[];
+  vlans: Array<{ vlan_id: string; vid: number; name: string; mode: string }>;
+  connection: ConnectionBrief | null;
+}
+
+export interface ConnectionRow {
+  id: string;
+  label: string | null;
+  medium: string;
+  category: string | null;
+  status: string;
+  length_m: number | null;
+  speed_mbps: number | null;
+  color: string | null;
+  is_redundant: boolean;
+  redundancy_group: string | null;
+  route_id: string | null;
+  installed_on: string | null;
+  description: string;
+  a_end: EndpointRef | null;
+  b_end: EndpointRef | null;
+}
+
+export interface ConnectionResult {
+  connection: ConnectionRow;
+  warnings: string[];
+}
+
+export interface TraceResult {
+  start: EndpointRef;
+  endpoint: EndpointRef | null;
+  segments: Array<{ connection_id: string; label: string | null; length_m: number | null }>;
+  passed_through: Array<{ ci_id: string; ci_name: string | null }>;
+  total_length_m: number | null;
+  is_direct: boolean;
+  truncated: boolean;
+}
+
+export interface RedundancyGroup {
+  group: string;
+  members: Array<{ id: string; label: string | null; status: string }>;
+  issues: string[];
+}
+
+export interface FreePortsRow {
+  ci_id: string;
+  name: string;
+  device_role: string;
+  total: number;
+  free: number;
+}
+
+export interface CableRoute {
+  id: string;
+  name: string;
+  route_type: string | null;
+  from_location_id: string | null;
+  to_location_id: string | null;
+  length_m: number | null;
+  capacity: number | null;
+  notes: string | null;
+}
+
+export interface Vrf {
+  id: string;
+  name: string;
+  rd: string | null;
+  description: string | null;
+}
+
+export interface VlanRow {
+  id: string;
+  vid: number;
+  name: string;
+  site_id: string | null;
+  site_name: string | null;
+  purpose: string | null;
+  description: string | null;
+  prefix_count: number;
+}
+
+export interface PrefixRow {
+  id: string;
+  cidr: string;
+  version: number;
+  vrf_id: string | null;
+  vrf_name: string | null;
+  vlan_id: string | null;
+  vlan_label: string | null;
+  gateway: string | null;
+  site_id: string | null;
+  description: string | null;
+  usable_total: number;
+  used: number;
+  free: number;
+  utilisation_pct: number;
+}
+
+export interface IpAddressRow {
+  id: string;
+  address: string;
+  prefix_id: string | null;
+  vrf_id: string | null;
+  interface_id: string | null;
+  interface_name: string | null;
+  ci_id: string | null;
+  ci_name: string | null;
+  dns_name: string | null;
+  role: string;
+  status: string;
+  description: string | null;
+}
+
+export interface IpAddress {
+  id: string;
+  address: string;
+  vrf_id: string | null;
+  prefix_id: string | null;
+  interface_id: string | null;
+  ci_id: string | null;
+  dns_name: string | null;
+  role: string;
+  status: string;
+  description: string | null;
+  created_at: string;
+}
+
+export interface PrefixDetail {
+  prefix: PrefixRow;
+  capacity: {
+    usable_total: number;
+    used: number;
+    free: number;
+    utilisation_pct: number;
+    network_address: string;
+    broadcast_address: string | null;
+    netmask: string;
+  };
+  next_free: string[];
+  addresses: IpAddressRow[];
+}
+
+export interface WarrantyRow {
+  id: string;
+  name: string;
+  warranty_until: string;
+  device_role: string;
 }
 
 export interface ImportJob {

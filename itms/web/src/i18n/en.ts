@@ -24,6 +24,10 @@ export const en: DeepPartial<Dictionary> = {
   nav: {
     dashboard: "Dashboard",
     objects: "Objects",
+    devices: "Hardware",
+    network: "Network",
+    ipam: "IP addressing",
+    catalog: "Model catalogue",
     locations: "Locations",
     documents: "Documentation",
     directory: "People",
