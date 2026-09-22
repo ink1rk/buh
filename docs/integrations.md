@@ -32,7 +32,8 @@ class Integration:
 | `llm.local` | llm | `GET /api/tags` у Ollama | да |
 | `llm.gateway` | llm | `GET /v1/models` у шлюза | да |
 | `telegram.bot` | messaging | `getMe` через прокси | да |
-| `telegram.user` | messaging | `/health` сервиса tg-user + признак авторизации | нет |
+| `telegram.user` | messaging | `/health` сервиса tg-user + признак авторизации. Входящие чаты не собираем | нет |
+| `calendar` | caldav | вход в каждый календарь; платежи из финансов подмешиваются в то же окно | нет |
 | `finance` | finance | `GET /networth` у финансового API | нет |
 | `mcp.<имя>` | mcp | перечисление инструментов на сервере MCP | нет |
 
@@ -63,8 +64,7 @@ class Integration:
 
 Интеграция, у которой ещё нет провайдера действий, добавляется как класс с
 `health_check()`; действия к ней подключаются отдельно через `ActionProvider`
-(см. `docs/actions.md`). Планируемые: `calendar`, `bank`, `market`, `ozon`,
-`taxi`.
+(см. `docs/actions.md`). Планируемые: `bank`, `market`, `ozon`, `taxi`.
 
 Сервис, который тянет на отдельный процесс (свой формат данных, свой поток
 входящих, своя база), подключается не классом, а по MCP: `MCP_SERVERS` и

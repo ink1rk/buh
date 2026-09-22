@@ -15,6 +15,11 @@ def settings(**overrides):
     return CalendarConfig(accounts=(ACCOUNT,), **overrides)
 
 
+@pytest.fixture(autouse=True)
+def no_finance_calendar(monkeypatch):
+    monkeypatch.setattr("core.finance_bridge.finance_schedule", lambda days=14: [])
+
+
 @pytest.fixture
 def now():
     from core.config import config
@@ -206,3 +211,26 @@ def test_reminders_are_off_when_nothing_is_configured(watcher, core, now):
                     cfg=settings(remind_minutes=()))
     watch.refresh()
     assert watch.check_reminders() == []
+
+
+def test_finance_payments_join_the_schedule(watcher, now, monkeypatch):
+    """Платеж из финансов — такая же встреча, как созвон в CalDAV."""
+    from core.config import config
+
+    day = (now + datetime.timedelta(days=2)).date()
+    pay = Event(
+        uid="finance:1",
+        summary="Интернет · 890 ₽",
+        start=datetime.datetime.combine(day, datetime.time.min, tzinfo=config.tz),
+        end=datetime.datetime.combine(day, datetime.time.min, tzinfo=config.tz)
+            + datetime.timedelta(days=1),
+        all_day=True,
+        calendar="финансы",
+        account="finance",
+    )
+    monkeypatch.setattr("core.finance_bridge.finance_schedule", lambda days=14: [pay])
+    watch = watcher([])
+    watch.refresh()
+
+    ahead = watch.upcoming()
+    assert any(e.uid == "finance:1" and "Интернет" in e.summary for e in ahead)

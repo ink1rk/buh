@@ -105,5 +105,5 @@ GET    /api/conversations/{id}                 диалог + эпизоды
 GET    /api/conversations/{id}/messages
 DELETE /api/conversations/{id}
 GET    /api/episodes?contact_id=…|conversation_id=…
-POST   /api/ingest/telegram                    входящее сообщение от tg-user
+POST   /api/ingest/telegram                    выключено: чужие чаты не собираем
 ```

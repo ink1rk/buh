@@ -43,7 +43,8 @@ class MailWatcher:
         from . import pipeline
 
         result = {"at": time.time(), "new": 0, "skipped": 0, "duplicates": 0,
-                  "stale": 0, "started": [], "skipped_senders": [], "errors": []}
+                  "stale": 0, "financial": 0, "started": [],
+                  "skipped_senders": [], "errors": []}
         skipped = {}
         oldest = time.time() - self.cfg.max_age_hours * 3600
         for mailbox in self.mailboxes:
@@ -61,9 +62,11 @@ class MailWatcher:
 
             for letter in letters:
                 if not letter.get("personal"):
-                    # Рассылки не заводят контакт и не ждут ответа: иначе
-                    # входящие превратились бы в рекламную ленту. Но отбор не
-                    # безошибочен, поэтому отсеянное видно владельцу.
+                    # Чек и счёт — не человек, но это деньги: их место
+                    # в финансовом календаре, а не во входящих с подсказкой.
+                    if self._looks_money(letter) and self._to_finance(letter):
+                        result["financial"] = result.get("financial", 0) + 1
+                        continue
                     result["skipped"] += 1
                     skipped[letter.get("address")] = skipped.get(
                         letter.get("address"), 0) + 1
@@ -140,6 +143,21 @@ class MailWatcher:
         db.set_setting(self._key(mailbox),
                        json.dumps({"uid": state.get("uid", 0),
                                    "uidvalidity": state.get("uidvalidity", 0)}))
+
+    def _looks_money(self, letter):
+        from providers.email import looks_financial
+
+        return looks_financial(letter.get("address"), letter.get("subject"),
+                               letter.get("text"))
+
+    def _to_finance(self, letter):
+        from .finance_bridge import push_mail
+
+        try:
+            return bool(push_mail(letter))
+        except Exception as e:
+            print("finance mail push failed:", e)
+            return False
 
     # -- фоновый поток --------------------------------------------------
     def start(self):

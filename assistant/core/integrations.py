@@ -145,7 +145,9 @@ class TelegramUserIntegration(HttpIntegration):
                 data = client.get(self.url).json()
             if not data.get("authorized"):
                 return Status.DEGRADED, "сессия не авторизована"
-            return Status.CONNECTED, "авторизован"
+            if config.telegram.ingest_incoming:
+                return Status.CONNECTED, "авторизован"
+            return Status.CONNECTED, "авторизован, входящие не собираем"
         except Exception as e:
             return Status.ERROR, str(e)
 

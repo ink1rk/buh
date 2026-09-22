@@ -193,6 +193,14 @@ async def _goals(client: FinanceApiClient, _args: dict[str, Any]) -> Any:
     return await client.get("/goals")
 
 
+async def _budget(client: FinanceApiClient, _args: dict[str, Any]) -> Any:
+    return await client.get("/budget")
+
+
+async def _calendar(client: FinanceApiClient, _args: dict[str, Any]) -> Any:
+    return await client.get("/calendar")
+
+
 async def _analyze_purchase(client: FinanceApiClient, args: dict[str, Any]) -> Any:
     item = str(args.get("item") or "").strip()
     price = args.get("price")
@@ -328,6 +336,18 @@ TOOLS: tuple[ToolSpec, ...] = (
         description="Финансовые цели с прогрессом и вероятностью достижения.",
         input_schema=_schema({}),
         handler=_goals,
+    ),
+    ToolSpec(
+        name="get_budget",
+        description="Месячный план расходов: конверты, факт, остаток.",
+        input_schema=_schema({}),
+        handler=_budget,
+    ),
+    ToolSpec(
+        name="list_calendar",
+        description="Финансовый календарь: платежи, зарплата, счета из писем.",
+        input_schema=_schema({}),
+        handler=_calendar,
     ),
     ToolSpec(
         name="analyze_purchase",

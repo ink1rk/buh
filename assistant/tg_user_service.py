@@ -18,7 +18,9 @@ API_HASH = os.environ["TG_API_HASH"]
 SESSION = os.environ.get("TG_SESSION", "/opt/assistant/tg_user.session")
 SOCKS = os.environ.get("TG_SOCKS", "172.20.20.231:1080")
 ASSISTANT = os.environ.get("ASSISTANT_URL", "http://127.0.0.1:8800")
-NOTIFY = os.environ.get("TG_NOTIFY", "1") == "1"
+# По умолчанию чужие чаты не пушим: владелец их видит сам, а контекст
+# из истории получался хуже живого Telegram. Каналы и отправка остаются.
+NOTIFY = os.environ.get("TG_NOTIFY", "0") == "1"
 NOTIFY_GROUPS = os.environ.get("TG_NOTIFY_GROUPS", "0") == "1"   # only mentions
 NOTIFY_COOLDOWN = int(os.environ.get("TG_NOTIFY_COOLDOWN", "60"))  # per chat, seconds
 PROXY = ("socks5", SOCKS.split(":")[0], int(SOCKS.split(":")[1]))

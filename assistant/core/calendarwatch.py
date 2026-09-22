@@ -50,6 +50,12 @@ class CalendarWatcher:
                                             window_end))
             except Exception as e:
                 errors.append(f"{client.account.name}: {e}")
+        try:
+            from .finance_bridge import finance_schedule
+
+            events.extend(finance_schedule(self.cfg.horizon_days))
+        except Exception as e:
+            errors.append(f"finance: {e}")
         events.sort(key=lambda item: item.start)
         with self._lock:
             # Пустой ответ из-за сетевой ошибки не должен стирать расписание:
@@ -140,7 +146,11 @@ class CalendarWatcher:
 
     # -- фоновый поток ----------------------------------------------------
     def start(self):
-        if not self.cfg.enabled or self._thread is not None:
+        if self._thread is not None:
+            return False
+        # Без CalDAV всё равно забираем платежи из финансов: для владельца
+        # это одно расписание, а не два приложения.
+        if not self.cfg.enabled and not config.finance_api:
             return False
         self._thread = threading.Thread(target=self._loop, daemon=True,
                                         name="calendar-watch")

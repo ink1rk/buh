@@ -86,6 +86,8 @@ class CalendarEventCreate(BaseModel):
     color: str = "#a78bfa"
     notes: str = ""
     reminder_days_before: int = 3
+    source: str = ""
+    external_id: str = ""
 
 
 class CalendarEventOut(ORMModel):
@@ -99,6 +101,8 @@ class CalendarEventOut(ORMModel):
     notes: str
     is_completed: bool
     reminder_days_before: int
+    source: str = ""
+    external_id: str = ""
 
 
 class CalendarEventUpdate(BaseModel):

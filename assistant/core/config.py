@@ -44,6 +44,9 @@ class TelegramConfig:
     owner_id: int = _int("TG_ALLOWED_ID", 0)
     proxy: str = os.environ.get("TG_PROXY", "http://172.20.20.231:8080")
     user_service_url: str = os.environ.get("TG_USER_URL", "http://127.0.0.1:8810")
+    # Чужие чаты владелец и так видит. Сбор входящих выключен: контекст
+    # из них получался хуже, чем просто открыть Telegram.
+    ingest_incoming: bool = field(default_factory=lambda: _bool("TG_INGEST", False))
 
 
 # Чтобы в окружении хранились только логин и пароль, а не порты провайдера.

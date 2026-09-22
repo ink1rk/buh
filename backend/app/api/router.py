@@ -10,6 +10,7 @@ from app.api.routes import (
     connections,
     dashboard,
     goals,
+    ingest,
     mcp,
     misc,
     networth,
@@ -24,6 +25,7 @@ api_router.include_router(accounts.router)
 api_router.include_router(transactions.router)
 api_router.include_router(goals.router)
 api_router.include_router(budget.router)
+api_router.include_router(ingest.router)
 api_router.include_router(ai.router)
 api_router.include_router(analytics.router)
 api_router.include_router(misc.router)

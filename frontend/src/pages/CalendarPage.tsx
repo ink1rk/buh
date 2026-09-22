@@ -15,6 +15,7 @@ interface Event {
   color: string
   notes: string
   recurrence: string
+  source?: string
 }
 
 interface Draft {
@@ -239,6 +240,7 @@ export function CalendarPage() {
                 <div className="display text-lg font-semibold">{e.title}</div>
                 <div className="text-sm text-[var(--text-soft)]">
                   {e.event_date} · {typeLabel(e.event_type)}
+                  {e.source === 'mail' ? ' · из письма' : ''}
                 </div>
               </div>
               {e.amount > 0 && (

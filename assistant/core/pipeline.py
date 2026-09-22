@@ -18,6 +18,7 @@ from domain import contacts as contacts_mod
 from domain import conversations as conversations_mod
 
 from . import audit, channels, db, intents as intents_mod
+from .config import config
 from .events import E, new_id
 
 BOT_PLATFORM = "telegram:bot"          # the owner's own dialogue with the assistant
@@ -84,6 +85,11 @@ def handle_message(core, text, session="default", interface="telegram",
             "correlation_id": correlation_id}
 
 
+def telegram_ingest_allowed():
+    """Чужие чаты в Telegram больше не разбираем: владелец их и так видит."""
+    return bool(config.telegram.ingest_incoming)
+
+
 def ingest_incoming(core, payload, channel="telegram"):
     """Somebody wrote to the owner: store it, then prepare reply options.
 
@@ -91,6 +97,9 @@ def ingest_incoming(core, payload, channel="telegram"):
     тем, как из них достаётся человек и чем отправляется ответ.
     """
     channel = channels.get(channel) if isinstance(channel, str) else channel
+    if channel.name == "telegram" and not telegram_ingest_allowed():
+        return {"disabled": True, "channel": "telegram",
+                "reason": "сбор сообщений Telegram выключен"}
     correlation_id = new_id("corr-")
     peer_id = channel.conversation_key(payload)
     text = (payload.get("text") or "").strip()

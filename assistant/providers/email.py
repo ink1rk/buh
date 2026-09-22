@@ -185,6 +185,71 @@ def mark_sender(address, robot=True):
     return sender_lists()
 
 
+# Чеки и счета — не люди, но и не мусор: это деньги, их место в финансах.
+FINANCIAL_ROBOTS = {
+    "receipt", "invoice", "bill", "billing", "order", "orders",
+    "echeck", "check", "cheque", "account", "accounts",
+}
+MONEY_SUBJECT = re.compile(
+    r"(счет|счёт|чек|оплат|квитанц|invoice|receipt|\bbill\b|подписк|"
+    r"списан|платеж|платёж|задолжен|к оплате)",
+    re.I,
+)
+AMOUNT_RE = re.compile(
+    r"(?:сумма|к оплате|итог|total|amount)[:\s]*"
+    r"(\d{1,3}(?:[ \u00a0]\d{3})+|\d+)(?:[.,](\d{2}))?"
+    r"|"
+    r"(?<!\d)(\d{1,3}(?:[ \u00a0]\d{3})+)(?:[.,](\d{2}))?\s*(?:₽|руб|RUB)",
+    re.I,
+)
+DUE_RE = re.compile(
+    r"(?:оплатит[ьте]|до|срок|due)\s+(\d{1,2})[./](\d{1,2})[./](\d{2,4})",
+    re.I,
+)
+
+
+def extract_amount(text):
+    match = AMOUNT_RE.search(text or "")
+    if not match:
+        return None
+    whole = (match.group(1) or match.group(3) or "").replace(" ", "").replace("\u00a0", "")
+    cents = match.group(2) or match.group(4)
+    try:
+        value = float(whole)
+    except ValueError:
+        return None
+    if cents:
+        value += int(cents) / 100
+    return round(value, 2) if value > 0 else None
+
+
+def extract_due_date(text, default=None):
+    match = DUE_RE.search(text or "")
+    if not match:
+        return default
+    day, month, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
+    if year < 100:
+        year += 2000
+    try:
+        from datetime import date
+        return date(year, month, day)
+    except ValueError:
+        return default
+
+
+def looks_financial(address, subject="", text=""):
+    """Письмо про деньги: чек, счёт, списание. Не человек, но и не реклама."""
+    local = (address or "").lower().split("@")[0]
+    names = {local, local.rstrip("0123456789-_."),
+             re.split(r"[^a-z]", local, maxsplit=1)[0]}
+    if names.intersection(FINANCIAL_ROBOTS):
+        return True
+    blob = f"{subject or ''}\n{text or ''}"
+    if MONEY_SUBJECT.search(subject or "") and extract_amount(blob):
+        return True
+    return False
+
+
 def looks_personal(sender, headers, cfg=None, lists=None):
     """Письмо от человека, а не от рассылки.
 

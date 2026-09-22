@@ -67,6 +67,8 @@ def core(monkeypatch):
     instance.telegram_provider = provider
     # Enrichment runs in the background in production; keep tests deterministic.
     monkeypatch.setattr(instance.enricher, "on_message", lambda *a, **k: None)
+    # Сбор чужих чатов выключен; эти тесты проверяют сам конвейер.
+    monkeypatch.setattr(pipeline, "telegram_ingest_allowed", lambda: True)
     yield instance
     instance.stop()
 
@@ -78,6 +80,13 @@ def incoming(text="Ну что, сервер поднялся?", peer_id="4242",
 
 
 # --- incoming message flow ------------------------------------------------
+def test_telegram_ingest_is_off_unless_explicitly_enabled():
+    assert pipeline.telegram_ingest_allowed() is False
+    result = pipeline.ingest_incoming(None, incoming())
+    assert result["disabled"] is True
+    assert result["channel"] == "telegram"
+
+
 def test_incoming_message_creates_contact_conversation_and_suggestions(core):
     result = pipeline.ingest_incoming(core, incoming())
     assert result["options"] == ["Да, готово.", "Сегодня закончу.",

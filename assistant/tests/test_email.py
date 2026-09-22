@@ -696,3 +696,30 @@ def test_a_mailbox_silent_for_too_long_is_reported(core, mailbox):
 
     assert status is Status.ERROR
     assert "нет связи" in detail
+
+
+def test_a_receipt_is_money_not_a_person():
+    from providers.email import extract_amount, looks_financial
+
+    assert looks_financial("receipt@shop.ru", "Чек", "Сумма: 1 200 ₽")
+    assert extract_amount("К оплате: 3 450,50 ₽") == 3450.5
+    assert not looks_financial("anna@example.com", "Привет", "как дела")
+
+
+def test_a_receipt_goes_to_finance_not_the_inbox(core, mailbox, monkeypatch):
+    sent = []
+    monkeypatch.setattr("core.finance_bridge.push_mail",
+                        lambda letter: sent.append(letter) or {"id": 1})
+    box = mailbox([letter(subject="Прошлое")])
+    watcher = MailWatcher(core, settings(), mailboxes=[box])
+    catch_up(watcher)
+
+    box.fake.deliver(letter(sender="receipt@ozon.ru", subject="Чек заказа",
+                            body="Сумма: 2 400 ₽"))
+    report = watcher.poll_once()
+
+    assert report["financial"] == 1
+    assert report["skipped"] == 0
+    assert report["new"] == 0
+    assert sent and sent[0]["address"] == "receipt@ozon.ru"
+    assert pipeline.list_suggestions() == []

@@ -64,7 +64,7 @@ Integration (tg_user_service)
 |---|---|---|
 | `assistant` | `assistant.py` + `core/` | Ядро, HTTP API (`:8800`), Web UI (`/ui`), навыки, фоновые воркеры |
 | `assistant-telegram` | `tg_bot.py` | Канал владельца: команды, уведомления, кнопки |
-| `tg-user` | `tg_user_service.py` | Аккаунт владельца (Telethon): входящие, отправка от его имени |
+| `tg-user` | `tg_user_service.py` | Аккаунт владельца (Telethon): каналы, отправка от его имени. Чужие чаты не собираем |
 | `assistant-phone` | `phone/` | Мост с iPhone и Apple Watch (`:8820`): приём по HTTP, выдача по MCP ([phone.md](phone.md)) |
 
 Ядро не хранит логику Telegram, а бот не хранит бизнес-логику: бот забирает

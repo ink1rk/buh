@@ -49,8 +49,23 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
 
 
+def _ensure_calendar_ingest_columns(sync_conn):
+    """create_all не добавляет колонки в уже существующую таблицу."""
+    rows = sync_conn.exec_driver_sql("PRAGMA table_info(calendar_events)").fetchall()
+    names = {row[1] for row in rows}
+    if "external_id" not in names:
+        sync_conn.exec_driver_sql(
+            "ALTER TABLE calendar_events ADD COLUMN external_id VARCHAR(200) DEFAULT ''"
+        )
+    if "source" not in names:
+        sync_conn.exec_driver_sql(
+            "ALTER TABLE calendar_events ADD COLUMN source VARCHAR(32) DEFAULT ''"
+        )
+
+
 async def init_db() -> None:
     from app import models  # noqa: F401
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_ensure_calendar_ingest_columns)

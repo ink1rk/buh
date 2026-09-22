@@ -324,13 +324,25 @@ def _finance_fetch():
             flow = h.get(f"{FINANCE_API}/analytics/cashflow").json()
         except Exception:
             flow = {}
+        try:
+            goals = h.get(f"{FINANCE_API}/goals").json()
+        except Exception:
+            goals = []
+        try:
+            calendar = h.get(f"{FINANCE_API}/calendar").json()
+        except Exception:
+            calendar = []
     delta = nw.get("delta", {}) or {}
     amounts = {n.get("id"): n.get("amount") for n in (flow.get("nodes") or [])}
     return {"current": nw.get("current"), "month": delta.get("month"),
             "year": delta.get("year"), "widget": (dash.get("widget") or {}).get("title"),
-            "income": amounts.get("income"), "expense": amounts.get("expense"),
+            "income": amounts.get("income") or (dash.get("balances") or {}).get("income_month"),
+            "expense": amounts.get("expense") or (dash.get("balances") or {}).get("expense_month"),
             "invest": amounts.get("invest"), "savings": amounts.get("savings"),
-            "free": amounts.get("free")}
+            "free": amounts.get("free"),
+            "budget": dash.get("budget") or {},
+            "goals": goals if isinstance(goals, list) else [],
+            "calendar": calendar if isinstance(calendar, list) else []}
 
 
 def finance_context():
@@ -345,13 +357,26 @@ def finance_context():
             lines += [
                 f"- доход за месяц: {money(d['income'])}",
                 f"- расходы за месяц: {money(d['expense'])}",
-                f"- в инвестиции: {money(d['invest'])}, в накопления: {money(d['savings'])}",
-                f"- свободный остаток: {money(d['free'])}",
             ]
+        budget = d.get("budget") or {}
+        if budget.get("has_plan"):
+            lines.append(
+                f"- бюджет месяца: потрачено {money(budget.get('spent'))} "
+                f"из {money(budget.get('planned'))}, осталось {money(budget.get('remaining'))}")
+        elif d.get("expense") is not None:
+            lines.append("- плана расходов ещё нет — цифры есть, распределить можно в приложении")
+        for goal in (d.get("goals") or [])[:3]:
+            lines.append(
+                f"- цель «{goal.get('title')}»: {money(goal.get('current_amount'))} "
+                f"из {money(goal.get('target_amount'))}")
+        upcoming = [e for e in (d.get("calendar") or []) if e.get("event_date")][:4]
+        if upcoming:
+            lines.append("ближайшие платежи: " + ", ".join(
+                f"{e.get('title')} {e.get('event_date')}"
+                + (f" {money(e.get('amount'))}" if e.get("amount") else "")
+                for e in upcoming))
         if d.get("widget"):
             lines.append(f"- виджет дня в приложении: {d['widget']}")
-        lines.append("Разбивки расходов по категориям и истории операций здесь нет — "
-                     "если спросят, так и скажи и предложи посмотреть в приложении.")
         return "\n".join(lines)
     except Exception as e:
         return f"(финансовые данные недоступны: {e})"

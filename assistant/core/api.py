@@ -96,7 +96,11 @@ def api_notifications_digest(limit: int = 20):
 # --- suggested replies ---------------------------------------------------
 @router.post("/ingest/telegram")
 def api_ingest_telegram(payload: dict = Body(...)):
-    """tg-user pushes incoming messages here."""
+    """Раньше tg-user складывал сюда чужие чаты. Больше не разбираем."""
+    from fastapi import HTTPException
+
+    if not pipeline.telegram_ingest_allowed():
+        raise HTTPException(410, "сбор сообщений Telegram выключен")
     return pipeline.ingest_incoming(get_core(), payload)
 
 
