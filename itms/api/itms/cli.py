@@ -17,7 +17,7 @@ from itms.domain.audit_rules import configure_audit
 from itms.models.catalog import Manufacturer
 from itms.models.cmdb import Ci, Location
 from itms.models.diagram import Diagram
-from itms.models.directory import Organization
+from itms.models.directory import Employee, Organization
 from itms.models.enums import (
     CableCategory,
     CableMedium,
@@ -30,12 +30,15 @@ from itms.models.enums import (
     IpRole,
     LocationType,
     PanelSide,
+    Priority,
+    ProjectStatus,
     RackFace,
     SupportLine,
     VlanMode,
     ZeroUSide,
 )
 from itms.models.network import Interface
+from itms.models.projects import Project
 from itms.services import (
     auth_service,
     catalog_service,
@@ -46,6 +49,7 @@ from itms.services import (
     ipam_service,
     location_service,
     network_service,
+    project_service,
     rack_service,
 )
 
@@ -92,6 +96,7 @@ async def seed_demo() -> None:
                 )
             await _ensure_demo_diagram(session, floor.id)
             await _ensure_demo_rack(session, server_room.id)
+            await _ensure_demo_project(session)
             if seeded:
                 print("Демонстрационные данные уже есть")
                 return
@@ -232,6 +237,101 @@ async def _ensure_demo_diagram(session: AsyncSession, floor_id: uuid.UUID) -> No
     )
 
 
+async def _ensure_demo_project(session: AsyncSession) -> None:
+    """Проект перехода серверной: этапы, цепочка FS и связь со стойкой R1."""
+    existing = (
+        await session.execute(select(Project.id).where(Project.key == "PWR"))
+    ).scalar_one_or_none()
+    if existing:
+        return
+    engineer = (
+        await session.execute(select(Employee).where(Employee.full_name == "Иванов Иван"))
+    ).scalar_one_or_none()
+    today = date.today()
+    view = await project_service.create_project(
+        session,
+        {
+            "key": "PWR",
+            "name": "Увеличение мощности серверной",
+            "description": (
+                "Переход серверной из текущего состояния к целевому: обследование ввода, "
+                "расчёт нагрузки, согласование, монтаж и обновление модели."
+            ),
+            "status": ProjectStatus.IN_PROGRESS,
+            "priority": Priority.HIGH,
+            "owner_id": engineer.id if engineer else None,
+            "start_date": today,
+            "due_date": today + timedelta(days=26),
+            "budget_planned": 1_500_000,
+        },
+    )
+    project_id = view["project"]["id"]
+    phase_names = ["Обследование", "Расчёт", "Согласование", "Монтаж", "Ввод"]
+    phase_ids: list[uuid.UUID] = []
+    for index, name in enumerate(phase_names, start=1):
+        view = await project_service.add_phase(
+            session, project_id, {"name": name, "order_index": index}
+        )
+        phase_ids.append(next(item["id"] for item in view["phases"] if item["name"] == name))
+    view = await project_service.add_milestone(
+        session,
+        project_id,
+        {
+            "name": "Согласование получено",
+            "due_date": today + timedelta(days=15),
+            "description": "Технические условия согласованы",
+        },
+    )
+    milestone_id = next(item["id"] for item in view["milestones"])
+    plan = [
+        ("Обследовать ввод", 0, 0, 4, 480, None),
+        ("Рассчитать нагрузку", 1, 5, 8, 360, None),
+        ("Согласовать технические условия", 2, 9, 15, 240, milestone_id),
+        ("Смонтировать оборудование", 3, 16, 23, 960, None),
+        ("Обновить модель", 4, 24, 26, 180, None),
+        ("Подготовить спецификацию", 1, 5, 6, 120, None),
+    ]
+    task_ids: list[uuid.UUID] = []
+    for title, phase_index, start_offset, due_offset, estimate, milestone in plan:
+        view = await project_service.add_task(
+            session,
+            project_id,
+            {
+                "title": title,
+                "phase_id": phase_ids[phase_index],
+                "milestone_id": milestone,
+                "assignee_id": engineer.id if engineer else None,
+                "start_date": today + timedelta(days=start_offset),
+                "due_date": today + timedelta(days=due_offset),
+                "estimate_min": estimate,
+                "priority": Priority.HIGH if phase_index == 3 else Priority.MEDIUM,
+            },
+        )
+        task_ids.append(next(item["id"] for item in view["tasks"] if item["title"] == title))
+    chain = [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5)]
+    for predecessor, successor in chain:
+        await project_service.add_dependency(
+            session,
+            project_id,
+            {
+                "predecessor_id": task_ids[predecessor],
+                "successor_id": task_ids[successor],
+                "dep_kind": "FS",
+                "lag_days": 0,
+            },
+        )
+    for code, involvement in (("R1", "изменяется"), ("SRV-01", "затронут")):
+        ci = await _ci_by_code(session, code)
+        if ci:
+            await project_service.link_ci(
+                session, project_id, {"ci_id": ci.id, "involvement": involvement}
+            )
+    if engineer:
+        await project_service.add_member(
+            session, project_id, {"employee_id": engineer.id, "role": "владелец"}
+        )
+
+
 async def _ensure_demo_rack(session: AsyncSession, server_room_id: uuid.UUID) -> None:
     """Стойка серверной: сервер на оба фасада, коммутатор и панель спереди, PDU сбоку."""
     if await _ci_by_code(session, "R1"):
@@ -300,9 +400,7 @@ async def _ensure_demo_rack(session: AsyncSession, server_room_id: uuid.UUID) ->
                 "status": CiStatus.ACTIVE,
             },
         )
-        await device_service.upsert_device(
-            session, pdu.id, {"device_role": DeviceRole.PDU}
-        )
+        await device_service.upsert_device(session, pdu.id, {"device_role": DeviceRole.PDU})
     await rack_service.place_mount(
         session,
         rack_id,

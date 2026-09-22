@@ -379,3 +379,60 @@ class CustomFieldType(StrEnum):
     SELECT = "SELECT"
     MULTISELECT = "MULTISELECT"
     URL = "URL"
+
+
+class Priority(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class ProjectStatus(StrEnum):
+    DRAFT = "DRAFT"
+    PLANNING = "PLANNING"
+    IN_PROGRESS = "IN_PROGRESS"
+    ON_HOLD = "ON_HOLD"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class TaskStatus(StrEnum):
+    NEW = "NEW"
+    IN_PROGRESS = "IN_PROGRESS"
+    ON_HOLD = "ON_HOLD"
+    BLOCKED = "BLOCKED"
+    REVIEW = "REVIEW"
+    DONE = "DONE"
+    CANCELLED = "CANCELLED"
+
+
+class TaskType(StrEnum):
+    TASK = "TASK"
+    SUBTASK = "SUBTASK"
+    INCIDENT = "INCIDENT"
+    PROBLEM = "PROBLEM"
+    REQUEST = "REQUEST"
+    MAINTENANCE = "MAINTENANCE"
+    CHANGE_TASK = "CHANGE_TASK"
+
+
+class DependencyKind(StrEnum):
+    """FS — финиш-старт, SS — старт-старт, FF — финиш-финиш, SF — старт-финиш."""
+
+    FS = "FS"
+    SS = "SS"
+    FF = "FF"
+    SF = "SF"
+
+
+class MilestoneStatus(StrEnum):
+    PLANNED = "PLANNED"
+    REACHED = "REACHED"
+    MISSED = "MISSED"
+
+
+class HealthStatus(StrEnum):
+    ON_TRACK = "ON_TRACK"
+    AT_RISK = "AT_RISK"
+    DELAYED = "DELAYED"

@@ -11,6 +11,7 @@ from itms.models.catalog import DeviceModel, Manufacturer
 from itms.models.datacenter import Rack, RackMount
 from itms.models.diagram import Diagram
 from itms.models.network import Connection, Device, Interface, Prefix
+from itms.models.projects import Project, Task, TaskDependency
 from itms.services import network_service
 
 pytestmark = pytest.mark.anyio
@@ -21,6 +22,7 @@ async def test_seed_demo_builds_network_topology() -> None:
     await seed_demo()
 
     async with session_scope() as session:
+
         async def count(model: type) -> int:
             return (await session.execute(select(func.count()).select_from(model))).scalar_one()
 
@@ -32,11 +34,12 @@ async def test_seed_demo_builds_network_topology() -> None:
         assert await count(Diagram) == 1
         assert await count(Rack) == 1
         assert await count(RackMount) == 4
+        assert await count(Project) == 1
+        assert await count(Task) == 6
+        assert await count(TaskDependency) == 5
 
         start = (
-            await session.execute(
-                select(Interface.id).where(Interface.name == "eth1")
-            )
+            await session.execute(select(Interface.id).where(Interface.name == "eth1"))
         ).scalar_one()
         path = await network_service.trace(session, start)
         assert path["passed_through"]

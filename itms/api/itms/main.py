@@ -23,6 +23,7 @@ from itms.api.routers import (
     locations,
     network,
     ops,
+    projects,
     racks,
 )
 from itms.core.config import settings
@@ -100,6 +101,7 @@ app.include_router(devices.interfaces_router, prefix=prefix)
 app.include_router(network.router, prefix=prefix)
 app.include_router(diagrams.router, prefix=prefix)
 app.include_router(racks.router, prefix=prefix)
+app.include_router(projects.router, prefix=prefix)
 app.include_router(ipam.router, prefix=prefix)
 app.include_router(directory.router, prefix=prefix)
 app.include_router(documents.router, prefix=prefix)

@@ -669,6 +669,152 @@ export interface RackElevation {
   warehouse: WarehouseItem[];
 }
 
+export interface ProjectSummary {
+  id: string;
+  key: string;
+  name: string;
+  status: string;
+  priority: string;
+  owner_name: string | null;
+  start_date: string | null;
+  due_date: string | null;
+  progress_pct: number;
+  health: string;
+  task_count: number;
+  open_task_count: number;
+}
+
+export interface ProjectPhase {
+  id: string;
+  name: string;
+  order_index: number;
+  start_date: string | null;
+  end_date: string | null;
+  status: string;
+  progress_pct: number;
+}
+
+export interface ProjectMilestone {
+  id: string;
+  name: string;
+  due_date: string | null;
+  status: string;
+  description: string;
+  completed_at: string | null;
+}
+
+export interface ProjectTask {
+  id: string;
+  number: number;
+  label: string;
+  title: string;
+  description: string;
+  task_type: string;
+  status: string;
+  priority: string;
+  phase_id: string | null;
+  milestone_id: string | null;
+  parent_id: string | null;
+  assignee_id: string | null;
+  assignee_name: string | null;
+  start_date: string | null;
+  due_date: string | null;
+  estimate_min: number;
+  spent_min: number;
+  progress_pct: number;
+  order_index: number;
+  cis: Array<{ ci_id: string; code: string | null; name: string; role: string }>;
+  time_entries: Array<{
+    id: string;
+    task_id: string;
+    employee_id: string;
+    employee_name: string | null;
+    work_date: string;
+    minutes: number;
+    note: string;
+  }>;
+}
+
+export interface ProjectDependency {
+  id: string;
+  predecessor_id: string;
+  successor_id: string;
+  dep_kind: string;
+  lag_days: number;
+}
+
+export interface ScheduleItem {
+  task_id: string;
+  number: number;
+  label: string;
+  title: string;
+  phase_id: string | null;
+  parent_id: string | null;
+  status: string;
+  duration_days: number;
+  es: number;
+  ef: number;
+  ls: number;
+  lf: number;
+  float_days: number;
+  critical: boolean;
+  start_date: string;
+  finish_date: string;
+  planned_start: string | null;
+  planned_finish: string | null;
+}
+
+export interface ProjectView {
+  project: {
+    id: string;
+    key: string;
+    name: string;
+    description: string;
+    status: string;
+    priority: string;
+    owner_id: string | null;
+    owner_name: string | null;
+    start_date: string | null;
+    due_date: string | null;
+    actual_start_date: string | null;
+    actual_end_date: string | null;
+    budget_planned: number | null;
+    budget_actual: number | null;
+    progress_pct: number;
+    task_count: number;
+    open_task_count: number;
+  };
+  phases: ProjectPhase[];
+  milestones: ProjectMilestone[];
+  tasks: ProjectTask[];
+  dependencies: ProjectDependency[];
+  cis: Array<{
+    ci_id: string;
+    code: string | null;
+    name: string;
+    ci_type: string;
+    involvement: string;
+  }>;
+  members: Array<{ employee_id: string; full_name: string; role: string }>;
+  schedule: {
+    anchor: string;
+    length_days: number;
+    items: ScheduleItem[];
+    milestones: Array<{
+      id: string;
+      name: string;
+      due_date: string | null;
+      offset_days: number | null;
+      status: string;
+      overdue: boolean;
+    }>;
+  };
+  health: {
+    status: string;
+    findings: Array<{ rule: string; level: string; message: string; entity_ids: string[] }>;
+  };
+}
+
 export interface ImportJob {
   id: string;
   target: string;
