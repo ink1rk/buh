@@ -35,8 +35,11 @@ PLACES = (
     ("mos.transport", "Московский транспорт"),
     ("mosgortrans", "Московский транспорт"),
     ("vkusvill", "ВкусВилл"),
+    ("magnoliya", "Магнолия"),
     ("winelab", "Винлаб"),
     ("epgu", "Госуслуги"),
+    ("платформе ozon", "Ozon"),
+    ("ozon", "Ozon"),
 )
 
 _CITIES = {
@@ -204,7 +207,7 @@ def build_review(transactions, today: date | None = None) -> StatementReview:
     categories = [item for item in categories if item.share >= 0.01][:8]
 
     places = []
-    for name, amount in sorted(by_place.items(), key=lambda item: -item[1])[:8]:
+    for name, amount in sorted(by_place.items(), key=lambda item: -item[1]):
         cats = place_cat[name]
         main = max(cats, key=cats.get) if cats else "other"
         places.append(
@@ -217,6 +220,8 @@ def build_review(transactions, today: date | None = None) -> StatementReview:
                 category=main,
             )
         )
+    other_names = [place.name for place in places if place.category == "other"][:3]
+    places = places[:8]
 
     advice = _advice(
         n=n,
@@ -228,6 +233,7 @@ def build_review(transactions, today: date | None = None) -> StatementReview:
         transfers=transfers / n,
         categories=categories,
         places=places,
+        other_names=other_names,
         month_spent=month_spent,
     )
     tone = "warning" if rate is not None and rate < 0.1 else (
@@ -265,6 +271,7 @@ def _advice(
     transfers: float,
     categories: list[ReviewSlice],
     places: list[ReviewPlace],
+    other_names: list[str],
     month_spent: dict[tuple[int, int], float],
 ) -> list[ReviewNote]:
     notes: list[ReviewNote] = []
@@ -334,18 +341,13 @@ def _advice(
 
     other = next((item for item in categories if item.category == "other"), None)
     if other and other.share >= 0.15:
-        unclear = [
-            place.name for place in places
-            if place.category == "other"
-        ][:3]
-        where = ", ".join(unclear) if unclear else "крупные места без понятного имени"
+        body = f"Это {rub(other.per_month)} в месяц без категории."
+        if other_names:
+            body += f" Крупнейшее: {', '.join(other_names)}."
         notes.append(
             ReviewNote(
                 title=f"«Прочее» всё ещё {_pct(other.share)}",
-                body=(
-                    f"Это {rub(other.per_month)} в месяц без категории. "
-                    f"Крупнейшее: {where}."
-                ),
+                body=body,
                 tone="neutral",
             )
         )
