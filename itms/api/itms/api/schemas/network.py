@@ -46,6 +46,13 @@ class ManufacturerRead(ORMModel):
     notes: str | None
 
 
+class LibraryInstallRead(BaseModel):
+    manufacturers_created: int
+    manufacturers_skipped: int
+    models_created: int
+    models_skipped: int
+
+
 class PortTemplateWrite(BaseModel):
     name_pattern: str = Field(min_length=1, max_length=64)
     count: int = Field(default=1, ge=1, le=512)

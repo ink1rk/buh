@@ -65,6 +65,11 @@ export const en: DeepPartial<Dictionary> = {
     comment: "Comment",
     mention: "Mention",
   },
+  catalog: {
+    installLibrary: "Install library",
+    libraryInstalled: "Models added: {created}. Already present: {skipped}",
+    libraryHint: "Typical vendor datasheets. A second install does not duplicate them",
+  },
   auth: {
     title: "Sign in",
     email: "Email",

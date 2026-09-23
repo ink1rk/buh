@@ -665,6 +665,13 @@ export const mutations = {
   validateImport: (id: string) => api.post<ImportJob>(`/imports/${id}/validate`),
   applyImport: (id: string) => api.post<ImportJob>(`/imports/${id}/apply`),
 
+  installCatalogLibrary: () =>
+    api.post<{
+      manufacturers_created: number;
+      manufacturers_skipped: number;
+      models_created: number;
+      models_skipped: number;
+    }>("/catalog/library"),
   createManufacturer: (body: Record<string, unknown>) =>
     api.post<Manufacturer>("/catalog/manufacturers", body),
   updateManufacturer: (id: string, body: Record<string, unknown>) =>

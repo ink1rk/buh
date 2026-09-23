@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from itms.core.errors import Conflict, NotFound
+from itms.domain.catalog_library import LIBRARY
 from itms.domain.network import expand_port_template
 from itms.models.catalog import DeviceModel, Manufacturer, PortTemplate
 from itms.models.network import Device
@@ -214,6 +215,79 @@ async def add_port_template(
     return template
 
 
+async def install_library(session: AsyncSession) -> dict[str, int]:
+    """Ставит библиотеку моделей. Повторный вызов не создаёт дубликаты."""
+    manufacturers: dict[str, Manufacturer] = {}
+    created_manufacturers = 0
+    skipped_manufacturers = 0
+    created_models = 0
+    skipped_models = 0
+    for spec in LIBRARY:
+        key = spec.manufacturer.lower()
+        if key not in manufacturers:
+            found = (
+                await session.execute(
+                    select(Manufacturer).where(func.lower(Manufacturer.name) == key)
+                )
+            ).scalar_one_or_none()
+            if found is None:
+                found = await create_manufacturer(
+                    session, {"name": spec.manufacturer, "notes": "Библиотека каталога"}
+                )
+                created_manufacturers += 1
+            else:
+                skipped_manufacturers += 1
+            manufacturers[key] = found
+        manufacturer = manufacturers[key]
+        exists = (
+            await session.execute(
+                select(DeviceModel.id)
+                .where(
+                    DeviceModel.manufacturer_id == manufacturer.id,
+                    DeviceModel.model == spec.model,
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if exists:
+            skipped_models += 1
+            continue
+        await create_model(
+            session,
+            {
+                "manufacturer_id": manufacturer.id,
+                "model": spec.model,
+                "default_role": spec.default_role,
+                "u_height": spec.u_height,
+                "is_full_depth": spec.is_full_depth,
+                "weight_kg": spec.weight_kg,
+                "psu_count": spec.psu_count,
+                "power_nameplate_w": spec.power_nameplate_w,
+                "power_max_w": spec.power_max_w,
+                "notes": spec.notes,
+                "port_templates": [
+                    {
+                        "name_pattern": port.name_pattern,
+                        "count": port.count,
+                        "start_index": port.start_index,
+                        "interface_type": port.interface_type,
+                        "speed_mbps": port.speed_mbps,
+                        "poe_capable": port.poe_capable,
+                        "position": port.position,
+                    }
+                    for port in spec.ports
+                ],
+            },
+        )
+        created_models += 1
+    return {
+        "manufacturers_created": created_manufacturers,
+        "manufacturers_skipped": skipped_manufacturers,
+        "models_created": created_models,
+        "models_skipped": skipped_models,
+    }
+
+
 async def delete_port_template(session: AsyncSession, template_id: uuid.UUID) -> None:
     template = await session.get(PortTemplate, template_id)
     if template is None:
@@ -223,7 +297,10 @@ async def delete_port_template(session: AsyncSession, template_id: uuid.UUID) ->
 
 
 def template_preview(template: PortTemplate) -> list[str]:
-    names = [name for name, _ in expand_port_template(
-        template.name_pattern, template.count, template.start_index
-    )]
+    names = [
+        name
+        for name, _ in expand_port_template(
+            template.name_pattern, template.count, template.start_index
+        )
+    ]
     return names if len(names) <= 6 else [*names[:3], "…", *names[-2:]]
