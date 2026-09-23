@@ -342,7 +342,7 @@ export const ru = {
   },
   search: {
     title: "Поиск",
-    placeholder: "Объект, IP, серийный номер, документ, сотрудник…",
+    placeholder: "Поиск по объектам, IP, документам, задачам…",
     nothing: "Ничего не найдено",
     hint: "Ctrl + K — поиск и быстрые действия",
     actions: "Действия",
@@ -1099,6 +1099,12 @@ export const ru = {
       CANCELLED: "Отменён",
     },
     gapLevel: { OK: "Сходится", WARNING: "Предупреждение", BLOCKER: "Блокер" },
+    userRole: {
+      OWNER: "Владелец",
+      ENGINEER: "Инженер",
+      OPERATOR: "Оператор",
+      VIEWER: "Наблюдатель",
+    },
     hypervisorPlatform: {
       PROXMOX: "Proxmox",
       VMWARE: "VMware",

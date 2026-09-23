@@ -93,8 +93,28 @@ function RackCard({ rack, onOpen }: { rack: RackSummary; onOpen: () => void }) {
   const filled = rack.u_height > 0 ? Math.round((used / rack.u_height) * slots) : 0;
   const powerHot = rack.max_power_w != null && rack.power_w > rack.max_power_w;
   const showWeight = rack.weight_kg > 0 || rack.max_weight_kg != null;
+  const occupancy = rack.u_height > 0 ? used / rack.u_height : 0;
+  const glow = occupancy >= 0.9 ? "glow-danger" : occupancy >= 0.7 ? "glow-warn" : "glow-accent";
+  const ring = 2 * Math.PI * 18;
   return (
     <button type="button" onClick={onOpen} className="card flex gap-4 p-4 text-left transition-transform hover:-translate-y-px">
+      <svg viewBox="0 0 48 48" className={`h-12 w-12 shrink-0 ${rack.u_height > 0 ? glow : ""}`} aria-hidden>
+        <circle cx="24" cy="24" r="18" fill="none" stroke="rgb(var(--bg))" strokeWidth="4" />
+        <circle
+          cx="24"
+          cy="24"
+          r="18"
+          fill="none"
+          stroke={occupancy >= 0.9 ? "rgb(var(--danger))" : occupancy >= 0.7 ? "rgb(var(--warn))" : "rgb(var(--accent))"}
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={`${occupancy * ring} ${ring}`}
+          transform="rotate(-90 24 24)"
+        />
+        <text x="24" y="27" textAnchor="middle" fill="rgb(var(--text))" fontSize="11" fontWeight="650">
+          {used}
+        </text>
+      </svg>
       <span className="relative flex h-56 w-16 shrink-0 rounded-lg bg-[rgb(var(--bg))] px-2 py-1.5" aria-hidden>
         <span className="absolute inset-y-2 left-1 w-0.5 rounded-full bg-[rgb(var(--border))]" />
         <span className="absolute inset-y-2 right-1 w-0.5 rounded-full bg-[rgb(var(--border))]" />

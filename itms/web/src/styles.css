@@ -61,7 +61,14 @@
 
   body {
     margin: 0;
-    background: rgb(var(--bg));
+    background-color: rgb(var(--bg));
+    background-image:
+      radial-gradient(900px 520px at 12% -8%, rgb(72 128 255 / 0.16), transparent 58%),
+      radial-gradient(640px 420px at 100% 8%, rgb(74 186 132 / 0.07), transparent 52%),
+      url("/atmosphere.svg");
+    background-size: auto, auto, cover;
+    background-attachment: fixed;
+    background-position: center;
     color: rgb(var(--text));
     font-family: var(--font-sans);
     font-size: var(--text-base);
@@ -103,15 +110,22 @@
 }
 
 @utility surface {
-  background: rgb(var(--surface));
+  background: rgb(var(--surface) / 0.92);
   border: 1px solid rgb(var(--border));
+  backdrop-filter: blur(16px);
 }
 
 @utility card {
-  background: rgb(var(--surface));
-  border: 1px solid rgb(var(--border));
+  background: rgb(var(--surface) / 0.78);
+  border: 1px solid rgb(255 255 255 / 0.62);
   border-radius: 1rem;
   box-shadow: var(--shadow-card);
+  backdrop-filter: blur(18px);
+}
+
+.dark .card {
+  background: rgb(var(--surface) / 0.46);
+  border-color: rgb(255 255 255 / 0.14);
 }
 
 @utility surface-muted {
@@ -151,6 +165,28 @@
 }
 
 @layer components {
+  .glass-bar {
+    background: rgb(var(--surface) / 0.55);
+    border-color: rgb(255 255 255 / 0.14);
+    backdrop-filter: blur(18px);
+  }
+
+  .glow-ok {
+    filter: drop-shadow(0 0 10px rgb(var(--ok) / 0.7));
+  }
+
+  .glow-warn {
+    filter: drop-shadow(0 0 10px rgb(var(--warn) / 0.72));
+  }
+
+  .glow-danger {
+    filter: drop-shadow(0 0 10px rgb(var(--danger) / 0.72));
+  }
+
+  .glow-accent {
+    filter: drop-shadow(0 0 10px rgb(var(--accent) / 0.65));
+  }
+
   .row-hover:hover {
     background: rgb(var(--surface-muted));
   }

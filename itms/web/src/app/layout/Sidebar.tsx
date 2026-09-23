@@ -225,7 +225,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex shrink-0 flex-col border-r border-app bg-[rgb(var(--sidebar))] py-3",
+        "glass-bar flex shrink-0 flex-col border-r py-3",
         collapsed ? "w-14 px-1.5" : "w-[15.25rem] px-2.5",
       )}
     >

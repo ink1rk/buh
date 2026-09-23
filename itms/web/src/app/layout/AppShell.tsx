@@ -15,11 +15,11 @@ export function AppShell() {
   useHotkey("b", toggleNav, { ctrl: true });
 
   return (
-    <div className="flex h-full bg-app">
+    <div className="flex h-full">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar />
-        <main className="min-h-0 flex-1 overflow-y-auto bg-app px-4 py-5 sm:px-6">
+        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
           <div className="mx-auto flex max-w-[1600px] flex-col gap-4">
             <Outlet />
           </div>

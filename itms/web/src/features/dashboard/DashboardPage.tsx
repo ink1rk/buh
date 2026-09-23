@@ -54,8 +54,11 @@ function Ring({
   const gap = segments.filter((segment) => segment.count > 0).length > 1 ? 7 : 0;
   let offset = 0;
   const sum = segments.reduce((acc, segment) => acc + segment.count, 0) || 1;
+  const critical = segments.find((segment) => segment.key === "CRITICAL")?.count ?? 0;
+  const high = segments.find((segment) => segment.key === "HIGH")?.count ?? 0;
+  const glow = total <= 0 ? "" : critical > 0 ? "glow-danger" : high > 0 ? "glow-warn" : "glow-ok";
   return (
-    <svg viewBox="0 0 148 148" className="h-40 w-40 shrink-0">
+    <svg viewBox="0 0 148 148" className={`h-40 w-40 shrink-0 ${glow}`}>
       <circle cx="74" cy="74" r={radius} fill="none" stroke="rgb(var(--bg))" strokeWidth="14" />
       {segments.map((segment) => {
         const arc = (segment.count / sum) * length;

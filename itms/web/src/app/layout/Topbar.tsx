@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, Monitor, Moon, Search, Sun } from "lucide-react";
+import { LogOut, Monitor, Moon, Search, Settings, Sun } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { NotificationBell } from "@/features/projects/NotificationBell";
@@ -14,7 +14,7 @@ const THEME_CYCLE: Theme[] = ["light", "dark", "system"];
 const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const;
 
 export function Topbar() {
-  const { t, locale, setLocale } = useI18n();
+  const { t, te, locale, setLocale } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: session } = useSession();
@@ -60,11 +60,11 @@ export function Topbar() {
     .join("");
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b border-app bg-app px-4 sm:px-5">
+    <header className="glass-bar flex h-14 shrink-0 items-center gap-3 border-b px-4 sm:px-5">
       <button
         type="button"
         onClick={() => setPaletteOpen(true)}
-        className="flex h-9 w-full max-w-lg items-center gap-2 rounded-lg border border-app bg-[rgb(var(--surface))] px-3 text-left text-sm text-muted transition-colors hover:text-app"
+        className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-app bg-[rgb(var(--surface)/0.45)] px-3 text-left text-sm text-muted transition-colors hover:text-app"
       >
         <Search size={15} strokeWidth={1.75} />
         <span className="flex-1 truncate">{t("search.placeholder")}</span>
@@ -83,6 +83,9 @@ export function Topbar() {
           {locale}
         </button>
         <NotificationBell />
+        <IconButton label={t("nav.settings")} onClick={() => navigate("/settings")}>
+          <Settings size={16} strokeWidth={1.75} />
+        </IconButton>
         <IconButton label={themeLabel} onClick={cycleTheme}>
           <ThemeIcon size={16} strokeWidth={1.75} />
         </IconButton>
@@ -93,7 +96,9 @@ export function Topbar() {
           </span>
           <div className="text-right">
             <p className="text-xs leading-4 font-semibold">{session?.display_name}</p>
-            <p className="text-[0.68rem] leading-4 text-muted">{session?.email}</p>
+            <p className="text-[0.68rem] leading-4 text-muted" title={session?.email}>
+              {te("userRole", session?.role)}
+            </p>
           </div>
         </div>
         <IconButton label={t("nav.logout")} onClick={() => logout.mutate(undefined)}>
