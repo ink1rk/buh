@@ -29,6 +29,7 @@ class Permission(StrEnum):
     AUDIT_READ = "audit:read"
     SETTINGS_WRITE = "settings:write"
     USER_MANAGE = "user:manage"
+    USER_GRANT_OWNER = "user:grant_owner"
     EXPORT_RUN = "export:run"
 
 
@@ -53,6 +54,7 @@ ROLE_PERMISSIONS: dict[UserRole, frozenset[Permission]] = {
             Permission.FILE_UPLOAD,
             Permission.EXPORT_RUN,
             Permission.AUDIT_READ,
+            Permission.USER_MANAGE,
         }
     ),
     UserRole.OPERATOR: _READ_ONLY | frozenset({Permission.DOCUMENT_WRITE, Permission.FILE_UPLOAD}),

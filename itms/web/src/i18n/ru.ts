@@ -375,6 +375,13 @@ export const ru = {
     measurementTtl: "Срок актуальности замера, дней",
     disbalance: "Допустимый дисбаланс фаз, %",
     passwordHint: "Не короче 10 символов",
+    users: "Пользователи",
+    usersHint: "Письмо не отправляется: пароль задаёт администратор. Блокировка не удаляет историю.",
+    addUser: "Добавить пользователя",
+    lastLogin: "Последний вход",
+    deactivate: "Заблокировать",
+    activate: "Разблокировать",
+    changeRole: "Сменить роль",
     powerDefaultsHint:
       "Значения задаются переменными окружения и используются расчётом электрики на следующих этапах",
   },
@@ -1109,6 +1116,11 @@ export const ru = {
       ENGINEER: "Инженер",
       OPERATOR: "Оператор",
       VIEWER: "Наблюдатель",
+    },
+    userStatus: {
+      ACTIVE: "Активен",
+      DISABLED: "Заблокирован",
+      INVITED: "Приглашён",
     },
     hypervisorPlatform: {
       PROXMOX: "Proxmox",

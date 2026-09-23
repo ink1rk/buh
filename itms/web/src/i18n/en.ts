@@ -65,6 +65,15 @@ export const en: DeepPartial<Dictionary> = {
     comment: "Comment",
     mention: "Mention",
   },
+  settings: {
+    users: "Users",
+    usersHint: "No email is sent: an administrator sets the password. Blocking keeps the audit history.",
+    addUser: "Add user",
+    lastLogin: "Last sign-in",
+    deactivate: "Block",
+    activate: "Unblock",
+    changeRole: "Change role",
+  },
   catalog: {
     installBlueprints: "Install platform templates",
     blueprintsInstalled: "Objects added: {created}. Links: {links}. Already present: {skipped}",

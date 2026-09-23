@@ -6,6 +6,7 @@ import { api } from "@/shared/api/client";
 import { describeError } from "@/shared/api/errors";
 import { keys, mutations, useApiMutation, useMeta, useSession } from "@/shared/api/queries";
 import { Button } from "@/shared/ui/Button";
+import { UsersPanel } from "./UsersPanel";
 import { Field, Input } from "@/shared/ui/Field";
 import { KeyValue, PageHeader, Panel } from "@/shared/ui/Layout";
 import { toast } from "@/shared/ui/toast";
@@ -201,6 +202,7 @@ export function SettingsPage() {
           />
         </Panel>
       </div>
+      <UsersPanel />
     </>
   );
 }

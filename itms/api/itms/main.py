@@ -28,6 +28,7 @@ from itms.api.routers import (
     power,
     projects,
     racks,
+    users,
     virtualization,
 )
 from itms.core.config import settings
@@ -111,6 +112,7 @@ app.include_router(notifications.router, prefix=prefix)
 app.include_router(power.router, prefix=prefix)
 app.include_router(ipam.router, prefix=prefix)
 app.include_router(directory.router, prefix=prefix)
+app.include_router(users.router, prefix=prefix)
 app.include_router(documents.router, prefix=prefix)
 app.include_router(files.router, prefix=prefix)
 app.include_router(floorplans.router, prefix=prefix)

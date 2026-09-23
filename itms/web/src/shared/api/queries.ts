@@ -665,6 +665,28 @@ export const mutations = {
   validateImport: (id: string) => api.post<ImportJob>(`/imports/${id}/validate`),
   applyImport: (id: string) => api.post<ImportJob>(`/imports/${id}/apply`),
 
+  createUser: (body: Record<string, unknown>) =>
+    api.post<{
+      id: string;
+      email: string;
+      display_name: string;
+      role: string;
+      status: string;
+      last_login_at: string | null;
+    }>("/users", body),
+  updateUser: (
+    id: string,
+    body: Record<string, unknown>,
+    provenance?: Provenance,
+  ) =>
+    api.patch<{
+      id: string;
+      email: string;
+      display_name: string;
+      role: string;
+      status: string;
+      last_login_at: string | null;
+    }>(`/users/${id}`, body, provenance),
   installBlueprints: () =>
     api.post<{
       nodes_created: number;
