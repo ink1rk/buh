@@ -39,7 +39,7 @@ export function Dialog({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgb(8_9_11/0.55)] p-4 pt-[8vh] backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgb(6_9_14/0.62)] p-4 pt-[8vh]">
       <button
         type="button"
         aria-label="Закрыть"

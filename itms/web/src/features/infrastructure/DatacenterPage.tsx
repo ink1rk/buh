@@ -34,7 +34,7 @@ export function DatacenterPage() {
           <Link
             key={item.to}
             to={item.to}
-            className="surface rounded-lg px-4 py-3.5 transition-colors hover:bg-[rgb(var(--surface-muted))]"
+            className="card px-4 py-3.5 transition-colors hover:bg-[rgb(var(--surface-muted))]"
           >
             <p className="text-sm font-semibold">{item.title}</p>
             <p className="mt-1 text-[13px] leading-5 text-muted">{item.hint}</p>

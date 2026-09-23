@@ -16,7 +16,7 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn("surface shadow-card rounded-lg", className)}>
+    <section className={cn("card", className)}>
       {(title || actions) && (
         <header className="flex items-center justify-between gap-3 border-b border-app px-4 py-3">
           <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
@@ -66,7 +66,7 @@ export function Metric({
         ? "text-[rgb(var(--warn))]"
         : "text-app";
   return (
-    <div className="surface shadow-card rounded-lg px-3.5 py-3" title={hint}>
+    <div className="card px-3.5 py-3" title={hint}>
       <p className="text-[0.7rem] font-medium tracking-[0.08em] text-muted uppercase">{label}</p>
       <p className={cn("mt-1.5 text-2xl leading-none font-semibold tabular-nums tracking-tight", color)}>
         {value}

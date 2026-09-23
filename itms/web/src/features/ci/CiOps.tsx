@@ -57,7 +57,7 @@ export function CiOps({ ci, related }: { ci: Ci; related: RelatedMap | undefined
   return (
     <div className="grid gap-3 lg:grid-cols-3">
       {showDevice && (
-        <section className="surface rounded-lg px-4 py-3">
+        <section className="card px-4 py-3">
           <h2 className="text-[13px] font-medium text-muted">{t("nav.network")}</h2>
           {profile && (
             <dl className="mt-2 flex flex-col gap-2">
@@ -109,7 +109,7 @@ export function CiOps({ ci, related }: { ci: Ci; related: RelatedMap | undefined
       )}
 
       {showPower && node && (
-        <section className="surface rounded-lg px-4 py-3">
+        <section className="card px-4 py-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-[13px] font-medium text-muted">{t("nav.power")}</h2>
             <Link to="/power" className="text-xs text-accent">
@@ -143,7 +143,7 @@ export function CiOps({ ci, related }: { ci: Ci; related: RelatedMap | undefined
       )}
 
       {showRelations && (
-        <section className="surface rounded-lg px-4 py-3">
+        <section className="card px-4 py-3">
           <h2 className="text-[13px] font-medium text-muted">{t("ci.related")}</h2>
           {owner && (
             <p className="mt-2 text-sm">

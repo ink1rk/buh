@@ -63,22 +63,42 @@ function AttentionCard({
   value,
   label,
   hint,
-  hot,
+  tone,
   onClick,
 }: {
   value: number;
   label: string;
   hint?: string;
-  hot: boolean;
+  tone: "danger" | "warn" | "accent" | "ok" | "neutral";
   onClick: () => void;
 }) {
+  const wash =
+    tone === "danger"
+      ? "border-[rgb(var(--danger)/0.4)] bg-[rgb(var(--danger)/0.14)]"
+      : tone === "warn"
+        ? "border-[rgb(var(--warn)/0.4)] bg-[rgb(var(--warn)/0.12)]"
+        : tone === "ok"
+          ? "border-[rgb(var(--ok)/0.35)] bg-[rgb(var(--ok)/0.12)]"
+          : tone === "accent"
+            ? "border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.14)]"
+            : "bg-[rgb(var(--surface))]";
+  const number =
+    tone === "danger"
+      ? "text-[rgb(var(--danger))]"
+      : tone === "warn"
+        ? "text-[rgb(var(--warn))]"
+        : tone === "ok"
+          ? "text-[rgb(var(--ok))]"
+          : tone === "accent"
+            ? "text-[rgb(var(--accent))]"
+            : "text-app";
   return (
     <button
       type="button"
       onClick={onClick}
-      className="surface rounded-lg px-3.5 py-3 text-left transition-colors hover:bg-[rgb(var(--surface-muted))]"
+      className={`card px-3.5 py-3 text-left transition-colors hover:brightness-110 ${wash}`}
     >
-      <p className={`text-2xl leading-none font-semibold tabular-nums ${hot ? "text-[rgb(var(--danger))]" : "text-app"}`}>
+      <p className={`text-2xl leading-none font-semibold tabular-nums ${number}`}>
         {value}
       </p>
       <p className="mt-2 text-[13px] font-medium">{label}</p>
@@ -186,37 +206,37 @@ export function DashboardPage() {
           <AttentionCard
             value={data.counters.ci_critical}
             label={t("dashboard.ciCritical")}
-            hot={data.counters.ci_critical > 0}
+            tone={data.counters.ci_critical > 0 ? "danger" : "neutral"}
             onClick={() => navigate("/ci?criticality=CRITICAL")}
           />
           <AttentionCard
             value={overdue.length}
             label={t("dashboard.overdueTasks")}
-            hot={overdue.length > 0}
+            tone={overdue.length > 0 ? "warn" : "neutral"}
             onClick={() => navigate("/work")}
           />
           <AttentionCard
             value={data.counters.ci_attention}
             label={t("dashboard.ciAttention")}
-            hot={data.counters.ci_attention > 0}
+            tone={data.counters.ci_attention > 0 ? "warn" : "neutral"}
             onClick={() => navigate("/ci?status=DEGRADED")}
           />
           <AttentionCard
             value={quality.ci_without_owner}
             label={t("dashboard.withoutOwner")}
-            hot={quality.ci_without_owner > 0}
+            tone={quality.ci_without_owner > 0 ? "accent" : "neutral"}
             onClick={() => navigate("/ci?missing=owner")}
           />
           <AttentionCard
             value={changesToday}
             label={t("dashboard.changesToday")}
-            hot={false}
+            tone={changesToday > 0 ? "ok" : "neutral"}
             onClick={() => navigate("/audit")}
           />
           <AttentionCard
             value={data.counters.documents_review_due}
             label={t("dashboard.documentsReview")}
-            hot={data.counters.documents_review_due > 0}
+            tone={data.counters.documents_review_due > 0 ? "accent" : "neutral"}
             onClick={() => navigate("/documents")}
           />
         </div>

@@ -7,10 +7,9 @@ import { describeError } from "@/shared/api/errors";
 import { keys, mutations, useApiMutation, useLocations, useRacks } from "@/shared/api/queries";
 import type { RackSummary } from "@/shared/api/types";
 import { Button } from "@/shared/ui/Button";
-import { DataTable, type Column } from "@/shared/ui/DataTable";
 import { Dialog } from "@/shared/ui/Dialog";
 import { Field, Input, Select } from "@/shared/ui/Field";
-import { FormError, PageHeader } from "@/shared/ui/Layout";
+import { EmptyState, FormError, PageHeader, Spinner } from "@/shared/ui/Layout";
 import { toast } from "@/shared/ui/toast";
 
 function CreateRackDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -87,60 +86,48 @@ function CreateRackDialog({ open, onClose }: { open: boolean; onClose: () => voi
   );
 }
 
-export function RacksPage() {
+function RackCard({ rack, onOpen }: { rack: RackSummary; onOpen: () => void }) {
   const { t, te } = useI18n();
+  const used = Math.min(rack.used_front, rack.u_height);
+  const fill = rack.u_height > 0 ? (used / rack.u_height) * 100 : 0;
+  const powerHot = rack.max_power_w != null && rack.power_w > rack.max_power_w;
+  return (
+    <button type="button" onClick={onOpen} className="card flex gap-3 p-3 text-left transition-colors hover:bg-[rgb(var(--surface-muted))]">
+      <span
+        className="relative h-36 w-12 shrink-0 overflow-hidden rounded-md border border-app bg-[rgb(var(--bg))]"
+        aria-hidden
+      >
+        <span
+          className="absolute inset-x-1 bottom-1 rounded-sm bg-[rgb(var(--accent))]"
+          style={{ height: `${Math.max(fill, used > 0 ? 8 : 0)}%` }}
+        />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-mono text-xs text-muted">{rack.code ?? "—"}</span>
+        <span className="mt-0.5 block truncate text-sm font-semibold">{rack.name}</span>
+        <span className="mt-1 block truncate text-xs text-muted">{rack.location_path ?? "—"}</span>
+        <span className="mt-2 block text-xs text-muted">{te("rackFormFactor", rack.form_factor)}</span>
+        <span className="mt-2 block text-sm tabular-nums">
+          {used}/{rack.u_height} U
+        </span>
+        <span className="block text-xs text-muted">
+          {t("racks.free")} {t("racks.units", { n: rack.largest_free_front })}
+        </span>
+        <span className={`mt-1 block font-mono text-xs tabular-nums ${powerHot ? "text-[rgb(var(--danger))]" : "text-muted"}`}>
+          {rack.power_w}
+          {rack.max_power_w != null ? ` / ${rack.max_power_w}` : ""} Вт
+        </span>
+      </span>
+    </button>
+  );
+}
+
+export function RacksPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { data, isLoading } = useRacks();
   const [creating, setCreating] = useState(false);
-
-  const columns: Array<Column<RackSummary>> = [
-    {
-      key: "name",
-      header: t("racks.name"),
-      render: (row) => (
-        <span className="font-medium">
-          {row.name}
-          {row.code && <span className="ml-2 font-mono text-xs text-muted">{row.code}</span>}
-        </span>
-      ),
-    },
-    {
-      key: "location",
-      header: t("diagrams.location"),
-      render: (row) => <span className="text-muted">{row.location_path ?? "—"}</span>,
-    },
-    {
-      key: "u",
-      header: "U",
-      width: "120px",
-      render: (row) => (
-        <span className="tabular-nums">
-          {row.used_front}/{row.u_height}
-        </span>
-      ),
-    },
-    {
-      key: "free",
-      header: t("racks.largest"),
-      render: (row) => <span className="tabular-nums">{t("racks.units", { n: row.largest_free_front })}</span>,
-    },
-    {
-      key: "power",
-      header: t("racks.power"),
-      render: (row) => (
-        <span className="tabular-nums text-muted">
-          {row.power_w}
-          {row.max_power_w != null ? ` / ${row.max_power_w} Вт` : " Вт"}
-        </span>
-      ),
-    },
-    {
-      key: "type",
-      header: t("diagrams.type"),
-      width: "110px",
-      render: (row) => te("rackFormFactor", row.form_factor),
-    },
-  ];
+  const racks = data ?? [];
 
   return (
     <>
@@ -153,15 +140,21 @@ export function RacksPage() {
           </Button>
         }
       />
-      <DataTable
-        columns={columns}
-        rows={data ?? []}
-        rowKey={(row) => row.id}
-        loading={isLoading}
-        emptyTitle={t("racks.empty")}
-        emptyHint={t("racks.emptyHint")}
-        onRowClick={(row) => navigate(`/racks/${row.id}`)}
-      />
+      {isLoading ? (
+        <div className="flex justify-center py-16">
+          <Spinner />
+        </div>
+      ) : racks.length === 0 ? (
+        <div className="card">
+          <EmptyState title={t("racks.empty")} hint={t("racks.emptyHint")} />
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {racks.map((rack) => (
+            <RackCard key={rack.id} rack={rack} onOpen={() => navigate(`/racks/${rack.id}`)} />
+          ))}
+        </div>
+      )}
       <CreateRackDialog open={creating} onClose={() => setCreating(false)} />
     </>
   );
