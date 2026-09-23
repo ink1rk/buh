@@ -73,6 +73,8 @@ TABLES_TO_CLEAR = (
     "port_template",
     "device_model",
     "manufacturer",
+    "virtual_machine",
+    "compute_host",
     "ci_tag",
     "ci_relation",
     "document_version",

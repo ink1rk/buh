@@ -73,6 +73,7 @@ from itms.models.projects import (
 )
 from itms.models.system import AppSetting, ImportJob, OutboxEvent
 from itms.models.transition import ChangeItem, PlannedChange, StateSnapshot
+from itms.models.virtualization import ComputeHost, VirtualMachine
 
 __all__ = [
     "AppSetting",
@@ -85,6 +86,7 @@ __all__ = [
     "Ci",
     "CiRelation",
     "CiTag",
+    "ComputeHost",
     "Connection",
     "CustomFieldDef",
     "CustomFieldValue",
@@ -142,6 +144,7 @@ __all__ = [
     "TimeEntry",
     "UserAccount",
     "UserSession",
+    "VirtualMachine",
     "Vlan",
     "Vrf",
 ]

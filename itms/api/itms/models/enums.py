@@ -37,18 +37,23 @@ TERMINAL_CI_STATUSES = frozenset({CiStatus.RETIRED})
 
 #: Допустимые переходы статусов CI.
 CI_STATUS_TRANSITIONS: dict[CiStatus, frozenset[CiStatus]] = {
-    CiStatus.PLANNED: frozenset({CiStatus.ORDERED, CiStatus.IN_STOCK, CiStatus.ACTIVE,
-                                 CiStatus.RESERVED, CiStatus.RETIRED}),
+    CiStatus.PLANNED: frozenset(
+        {CiStatus.ORDERED, CiStatus.IN_STOCK, CiStatus.ACTIVE, CiStatus.RESERVED, CiStatus.RETIRED}
+    ),
     CiStatus.ORDERED: frozenset({CiStatus.IN_STOCK, CiStatus.ACTIVE, CiStatus.RETIRED}),
-    CiStatus.IN_STOCK: frozenset({CiStatus.ACTIVE, CiStatus.RESERVED,
-                                  CiStatus.DECOMMISSIONING, CiStatus.RETIRED}),
+    CiStatus.IN_STOCK: frozenset(
+        {CiStatus.ACTIVE, CiStatus.RESERVED, CiStatus.DECOMMISSIONING, CiStatus.RETIRED}
+    ),
     CiStatus.RESERVED: frozenset({CiStatus.ACTIVE, CiStatus.IN_STOCK, CiStatus.RETIRED}),
-    CiStatus.ACTIVE: frozenset({CiStatus.DEGRADED, CiStatus.MAINTENANCE,
-                                CiStatus.DECOMMISSIONING, CiStatus.RETIRED}),
-    CiStatus.DEGRADED: frozenset({CiStatus.ACTIVE, CiStatus.MAINTENANCE,
-                                  CiStatus.DECOMMISSIONING, CiStatus.RETIRED}),
-    CiStatus.MAINTENANCE: frozenset({CiStatus.ACTIVE, CiStatus.DEGRADED,
-                                     CiStatus.DECOMMISSIONING, CiStatus.RETIRED}),
+    CiStatus.ACTIVE: frozenset(
+        {CiStatus.DEGRADED, CiStatus.MAINTENANCE, CiStatus.DECOMMISSIONING, CiStatus.RETIRED}
+    ),
+    CiStatus.DEGRADED: frozenset(
+        {CiStatus.ACTIVE, CiStatus.MAINTENANCE, CiStatus.DECOMMISSIONING, CiStatus.RETIRED}
+    ),
+    CiStatus.MAINTENANCE: frozenset(
+        {CiStatus.ACTIVE, CiStatus.DEGRADED, CiStatus.DECOMMISSIONING, CiStatus.RETIRED}
+    ),
     CiStatus.DECOMMISSIONING: frozenset({CiStatus.RETIRED, CiStatus.IN_STOCK}),
     CiStatus.RETIRED: frozenset(),
 }
@@ -112,8 +117,9 @@ class RelationType(StrEnum):
 
 
 #: Типы связей, для которых запрещены циклы.
-ACYCLIC_RELATIONS = frozenset({RelationType.DEPENDS_ON, RelationType.PART_OF,
-                               RelationType.MEMBER_OF})
+ACYCLIC_RELATIONS = frozenset(
+    {RelationType.DEPENDS_ON, RelationType.PART_OF, RelationType.MEMBER_OF}
+)
 
 
 class DeviceRole(StrEnum):
@@ -225,9 +231,7 @@ class ConnectionStatus(StrEnum):
 
 
 #: Статусы, которые занимают порт: второй такой кабель на интерфейс завести нельзя.
-OCCUPYING_CONNECTION_STATUSES = frozenset(
-    {ConnectionStatus.ACTIVE, ConnectionStatus.RESERVED}
-)
+OCCUPYING_CONNECTION_STATUSES = frozenset({ConnectionStatus.ACTIVE, ConnectionStatus.RESERVED})
 
 
 class PanelSide(StrEnum):
@@ -475,3 +479,25 @@ class FailoverVerdict(StrEnum):
 
 #: Откуда взялся замер. Это не тип PostgreSQL: в таблице стоит CHECK.
 MEASUREMENT_SOURCES = frozenset({"MANUAL", "PDU", "UPS", "METER", "IMPORT", "MONITORING"})
+
+
+class HypervisorPlatform(StrEnum):
+    """Платформа, на которой крутятся виртуальные машины."""
+
+    PROXMOX = "PROXMOX"
+    VMWARE = "VMWARE"
+    HYPERV = "HYPERV"
+    KVM = "KVM"
+    OTHER = "OTHER"
+
+
+class VmPowerState(StrEnum):
+    """Состояние гостя. Выключенная и приостановленная машина не занимает CPU и память."""
+
+    RUNNING = "RUNNING"
+    STOPPED = "STOPPED"
+    SUSPENDED = "SUSPENDED"
+
+
+#: Кто может быть хостом виртуализации: физический узел или кластер.
+HOST_CI_TYPES = frozenset({CiType.DEVICE, CiType.CLUSTER})

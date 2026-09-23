@@ -10,6 +10,7 @@ const LINKS: Array<{ to: string; labelKey: TranslationKey; match: string[] }> = 
   { to: "/diagrams", labelKey: "nav.diagrams", match: ["/diagrams"] },
   { to: "/datacenter", labelKey: "nav.datacenter", match: ["/datacenter", "/racks", "/floorplans", "/locations"] },
   { to: "/power", labelKey: "nav.power", match: ["/power"] },
+  { to: "/virtualization", labelKey: "nav.virtualization", match: ["/virtualization"] },
 ];
 
 export function InfraFrame() {

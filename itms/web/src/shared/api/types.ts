@@ -1050,3 +1050,55 @@ export interface ImportJob {
   created_at: string;
   applied_at: string | null;
 }
+
+export interface VirtHost {
+  id: string;
+  name: string;
+  code: string | null;
+  ci_type: string;
+  status: string;
+  platform: string;
+  cpu_cores: number;
+  memory_mb: number;
+  storage_gb: number;
+  vm_count: number;
+  vm_running: number;
+  vcpu_running: number;
+  memory_running_mb: number;
+  vcpu_allocated: number;
+  memory_allocated_mb: number;
+  disk_allocated_gb: number;
+}
+
+export interface VirtVm {
+  id: string;
+  name: string;
+  code: string | null;
+  status: string;
+  host_id: string | null;
+  host_name: string | null;
+  host_code: string | null;
+  vcpu: number;
+  memory_mb: number;
+  disk_gb: number;
+  guest_os: string | null;
+  power_state: string;
+}
+
+export interface VirtOverview {
+  hosts: VirtHost[];
+  vms: VirtVm[];
+  totals: {
+    hosts: number;
+    vms: number;
+    running: number;
+    vcpu_running: number;
+    memory_running_mb: number;
+    vcpu_allocated: number;
+    memory_allocated_mb: number;
+    disk_allocated_gb: number;
+    cpu_cores: number;
+    memory_mb: number;
+    storage_gb: number;
+  };
+}

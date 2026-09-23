@@ -58,6 +58,7 @@ import type {
   TransitionView,
   VlanRow,
   Vrf,
+  VirtOverview,
   WarrantyRow,
   WorkloadRow,
 } from "./types";
@@ -115,6 +116,7 @@ export const keys = {
   views: ["projects", "views"] as const,
   taskWork: (projectId: string, taskId: string) => ["projects", projectId, "work", taskId] as const,
   power: ["power"] as const,
+  virtualization: ["virtualization"] as const,
   transition: (id: string) => ["projects", id, "transition"] as const,
 };
 
@@ -383,6 +385,13 @@ export function usePower() {
   return useQuery({
     queryKey: keys.power,
     queryFn: () => api.get<PowerOverview>("/power"),
+  });
+}
+
+export function useVirtualization() {
+  return useQuery({
+    queryKey: keys.virtualization,
+    queryFn: () => api.get<VirtOverview>("/virtualization"),
   });
 }
 
@@ -715,6 +724,14 @@ export const mutations = {
   removeDiagramNode: (nodeId: string) => api.delete<{ ok: boolean }>(`/diagrams/nodes/${nodeId}`),
   syncDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/sync`),
   autolayoutDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/autolayout`),
+
+  createHost: (body: Record<string, unknown>) =>
+    api.post<VirtOverview>("/virtualization/hosts", body),
+  updateHost: (id: string, body: Record<string, unknown>, provenance?: Provenance) =>
+    api.patch<VirtOverview>(`/virtualization/hosts/${id}`, body, provenance),
+  createVm: (body: Record<string, unknown>) => api.post<VirtOverview>("/virtualization/vms", body),
+  updateVm: (id: string, body: Record<string, unknown>, provenance?: Provenance) =>
+    api.patch<VirtOverview>(`/virtualization/vms/${id}`, body, provenance),
 
   createPowerNode: (body: Record<string, unknown>) =>
     api.post<{ id: string }>("/power/nodes", body),

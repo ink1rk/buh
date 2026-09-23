@@ -28,6 +28,7 @@ import { RackEditorPage } from "@/features/racks/RackEditorPage";
 import { RacksPage } from "@/features/racks/RacksPage";
 import { NetworkPage } from "@/features/network/NetworkPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { VirtualizationPage } from "@/features/virtualization/VirtualizationPage";
 import { WorkPage } from "@/features/work/WorkPage";
 
 import { AppShell } from "./layout/AppShell";
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
           { path: "/floorplans", element: <FloorplansPage /> },
           { path: "/locations", element: <LocationsPage /> },
           { path: "/power", element: <PowerPage /> },
+          { path: "/virtualization", element: <VirtualizationPage /> },
         ],
       },
       { path: "/catalog", element: <CatalogPage /> },
