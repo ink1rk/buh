@@ -81,21 +81,85 @@ function CurrentTarget({ projectId }: { projectId: string }) {
       ],
     },
   ];
+  const stages = [
+    {
+      title: t("power.current"),
+      figure: formatKw(live.limit_w),
+      rows: columns[0].rows.slice(1),
+      rule: "bg-[rgb(var(--ok))]",
+      figureClass: "text-app",
+    },
+    {
+      title: t("power.deficit"),
+      figure: formatKw(live.deficit_w),
+      rows: columns[1].rows,
+      rule: (live.deficit_w ?? 0) > 0 ? "bg-[rgb(var(--danger))]" : "bg-[rgb(var(--border))]",
+      figureClass: (live.deficit_w ?? 0) > 0 ? "text-[rgb(var(--danger))]" : "text-app",
+    },
+    {
+      title: t("projects.recommended"),
+      figure: formatKw(live.recommended_w),
+      rows: columns[2].rows.slice(0, 2),
+      rule: "bg-[rgb(var(--accent))]",
+      figureClass: "text-[rgb(var(--accent))]",
+    },
+  ];
+  const scaleMax = Math.max(live.recommended_w ?? 0, live.limit_w ?? 0, live.estimated_w ?? 0, 1);
+  const ticks = [
+    { key: "estimated", watts: live.estimated_w, color: "bg-[rgb(var(--ok))]" },
+    { key: "limit", watts: live.limit_w, color: "bg-[rgb(var(--text))]" },
+    { key: "recommended", watts: live.recommended_w, color: "bg-[rgb(var(--accent))]" },
+  ].filter((tick): tick is { key: string; watts: number; color: string } => tick.watts != null && tick.watts > 0);
   return (
-    <section className="card mb-4 grid gap-3 p-4 md:grid-cols-3">
-      {columns.map((column) => (
-        <div key={column.title}>
-          <h2 className="text-[11px] tracking-wide text-muted uppercase">{column.title}</h2>
-          <ul className="mt-2 flex flex-col gap-1">
-            {column.rows.map(([label, value]) => (
-              <li key={label} className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="text-muted">{label}</span>
-                <span className="font-mono text-xs tabular-nums">{value}</span>
-              </li>
-            ))}
-          </ul>
+    <section className="card mb-4 overflow-hidden">
+      <div className="grid items-stretch md:grid-cols-[1fr_auto_1fr_auto_1fr]">
+        {stages.map((stage, index) => (
+          <div key={stage.title} className="contents">
+            {index > 0 && (
+              <div className="hidden items-center px-1 text-muted md:flex" aria-hidden>
+                <svg width="22" height="22" viewBox="0 0 22 22">
+                  <path d="M7 4.5 L15 11 L7 17.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </div>
+            )}
+            <div className="px-5 pt-0 pb-4">
+              <div className={`mb-4 h-1 ${stage.rule}`} />
+              <p className="text-[11px] tracking-[0.14em] text-muted uppercase">{stage.title}</p>
+              <p className={`mt-2 text-4xl font-semibold tracking-tight tabular-nums ${stage.figureClass}`}>{stage.figure}</p>
+              <ul className="mt-3 flex flex-col gap-1">
+                {stage.rows.map(([label, value]) => (
+                  <li key={label} className="flex justify-between gap-3 text-xs text-muted">
+                    <span>{label}</span>
+                    <span className="font-mono tabular-nums text-app">{value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="relative mx-6 mb-5 h-12">
+        <div className="absolute top-2 right-0 left-0 h-1.5 rounded-full bg-[rgb(var(--bg))]">
+          <div
+            className="h-full rounded-full bg-[rgb(var(--ok))]"
+            style={{ width: `${Math.min(100, ((live.estimated_w ?? 0) / scaleMax) * 100)}%` }}
+          />
         </div>
-      ))}
+        {ticks.map((tick) => {
+          const pct = (tick.watts / scaleMax) * 100;
+          const shift = pct > 92 ? "-translate-x-full" : pct < 8 ? "" : "-translate-x-1/2";
+          return (
+            <div key={tick.key} className="absolute top-1" style={{ left: `${pct}%` }}>
+              <div className={shift}>
+                <div className={`h-3.5 w-0.5 ${tick.color}`} />
+                <p className="mt-1 font-mono text-[10px] tabular-nums text-muted">
+                  {(tick.watts / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 1 })}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -151,14 +215,17 @@ export function ProjectPage() {
         {project.due_date ? ` · ${project.due_date}` : ""}
         {` · ${project.open_task_count}/${project.task_count}`}
       </p>
-      <div className="mb-4 flex items-center gap-3">
-        <div className="h-1.5 flex-1 overflow-hidden rounded bg-[rgb(var(--surface-muted))]">
-          <div
-            className="h-full bg-[rgb(var(--accent))]"
-            style={{ width: `${Math.min(100, project.progress_pct)}%` }}
-          />
+      <div className="card mb-4 flex items-center gap-5 px-5 py-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] tracking-[0.14em] text-muted uppercase">{t("projects.progress")}</p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
+            <div
+              className="h-full rounded-full bg-[rgb(var(--accent))]"
+              style={{ width: `${Math.min(100, project.progress_pct)}%` }}
+            />
+          </div>
         </div>
-        <span className="text-xs text-muted tabular-nums">{project.progress_pct}%</span>
+        <p className="text-4xl leading-none font-semibold tracking-tight tabular-nums">{project.progress_pct}%</p>
       </div>
       <CurrentTarget projectId={projectId} />
       <Tabs

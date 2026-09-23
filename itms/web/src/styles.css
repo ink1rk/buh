@@ -35,11 +35,11 @@
 }
 
 .dark {
-  --bg: 6 9 14;
-  --surface: 18 24 36;
-  --surface-muted: 28 36 52;
-  --sidebar: 10 14 22;
-  --border: 46 58 80;
+  --bg: 7 11 20;
+  --surface: 18 28 48;
+  --surface-muted: 28 42 68;
+  --sidebar: 9 14 26;
+  --border: 46 66 98;
   --text: 232 236 244;
   --text-muted: 148 160 180;
   --accent: 72 128 255;
@@ -110,7 +110,7 @@
 @utility card {
   background: rgb(var(--surface));
   border: 1px solid rgb(var(--border));
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   box-shadow: var(--shadow-card);
 }
 

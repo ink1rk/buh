@@ -89,33 +89,44 @@ function CreateRackDialog({ open, onClose }: { open: boolean; onClose: () => voi
 function RackCard({ rack, onOpen }: { rack: RackSummary; onOpen: () => void }) {
   const { t, te } = useI18n();
   const used = Math.min(rack.used_front, rack.u_height);
-  const fill = rack.u_height > 0 ? (used / rack.u_height) * 100 : 0;
+  const slots = Math.min(Math.max(rack.u_height, 1), 42);
+  const filled = rack.u_height > 0 ? Math.round((used / rack.u_height) * slots) : 0;
   const powerHot = rack.max_power_w != null && rack.power_w > rack.max_power_w;
+  const showWeight = rack.weight_kg > 0 || rack.max_weight_kg != null;
   return (
-    <button type="button" onClick={onOpen} className="card flex gap-3 p-3 text-left transition-colors hover:bg-[rgb(var(--surface-muted))]">
-      <span
-        className="relative h-36 w-12 shrink-0 overflow-hidden rounded-md border border-app bg-[rgb(var(--bg))]"
-        aria-hidden
-      >
-        <span
-          className="absolute inset-x-1 bottom-1 rounded-sm bg-[rgb(var(--accent))]"
-          style={{ height: `${Math.max(fill, used > 0 ? 8 : 0)}%` }}
-        />
+    <button type="button" onClick={onOpen} className="card flex gap-4 p-4 text-left transition-transform hover:-translate-y-px">
+      <span className="relative flex h-56 w-16 shrink-0 rounded-lg bg-[rgb(var(--bg))] px-2 py-1.5" aria-hidden>
+        <span className="absolute inset-y-2 left-1 w-0.5 rounded-full bg-[rgb(var(--border))]" />
+        <span className="absolute inset-y-2 right-1 w-0.5 rounded-full bg-[rgb(var(--border))]" />
+        <span className="flex min-h-0 flex-1 flex-col-reverse gap-px">
+          {Array.from({ length: slots }, (_, index) => (
+            <span
+              key={index}
+              className={`relative min-h-0 flex-1 rounded-[1px] ${index < filled ? "bg-[rgb(var(--accent))]" : "bg-[rgb(var(--surface-muted))]"}`}
+            >
+              {index < filled && <span className="absolute top-1/2 right-0.5 h-1 w-1 -translate-y-1/2 rounded-full bg-[rgb(var(--ok))]" />}
+            </span>
+          ))}
+        </span>
       </span>
       <span className="min-w-0 flex-1">
         <span className="block font-mono text-xs text-muted">{rack.code ?? "—"}</span>
         <span className="mt-0.5 block truncate text-sm font-semibold">{rack.name}</span>
         <span className="mt-1 block truncate text-xs text-muted">{rack.location_path ?? "—"}</span>
         <span className="mt-2 block text-xs text-muted">{te("rackFormFactor", rack.form_factor)}</span>
-        <span className="mt-2 block text-sm tabular-nums">
-          {used}/{rack.u_height} U
+        <span className="mt-3 block text-4xl leading-none font-semibold tracking-tight tabular-nums">
+          {used}
+          <span className="text-base font-medium text-muted">/{rack.u_height} U</span>
         </span>
-        <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
-          <span className="block h-full rounded-full bg-[rgb(var(--accent))]" style={{ width: `${fill}%` }} />
-        </span>
-        <span className="mt-1 block text-xs text-muted">
+        <span className="mt-2 block text-xs text-muted">
           {t("racks.free")} {t("racks.units", { n: rack.largest_free_front })}
         </span>
+        {showWeight && (
+          <span className="mt-1 block font-mono text-xs text-muted tabular-nums">
+            {t("racks.weight")} {rack.weight_kg}
+            {rack.max_weight_kg != null ? ` / ${rack.max_weight_kg}` : ""} кг
+          </span>
+        )}
         <span className={`mt-1 block font-mono text-xs tabular-nums ${powerHot ? "text-[rgb(var(--danger))]" : "text-muted"}`}>
           {rack.power_w}
           {rack.max_power_w != null ? ` / ${rack.max_power_w}` : ""} Вт
