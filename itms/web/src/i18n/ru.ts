@@ -148,6 +148,7 @@ export const ru = {
     title: "Объекты",
     subtitle: "Единый реестр конфигурационных единиц",
     create: "Новый объект",
+    exportCsv: "Экспорт CSV",
     code: "Код",
     name: "Наименование",
     type: "Тип",

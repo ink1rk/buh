@@ -1,9 +1,9 @@
-import { Plus, X } from "lucide-react";
+import { Download, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
-import { useCiList, useLocations, useMeta, type CiListParams } from "@/shared/api/queries";
+import { useCiList, useLocations, useMeta, useSession, type CiListParams } from "@/shared/api/queries";
 import type { Ci } from "@/shared/api/types";
 import { useDebounced } from "@/shared/hooks";
 import { formatRelative } from "@/shared/lib/format";
@@ -19,6 +19,8 @@ const PAGE_SIZE = 50;
 
 export function CiListPage() {
   const { t, te, locale } = useI18n();
+  const { data: session } = useSession();
+  const canExport = session?.permissions.includes("export:run") ?? false;
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
@@ -135,9 +137,29 @@ export function CiListPage() {
         title={t("ci.title")}
         subtitle={t("ci.subtitle")}
         actions={
-          <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
-            {t("ci.create")}
-          </Button>
+          <>
+            {canExport && (
+              <Button
+                data-testid="ci-export"
+                icon={<Download size={14} />}
+                onClick={() => {
+                  const search = new URLSearchParams();
+                  if (debouncedQ) search.set("q", debouncedQ);
+                  if (ciType) search.set("ci_type", ciType);
+                  if (status) search.set("status", status);
+                  if (criticality) search.set("criticality", criticality);
+                  if (locationId) search.set("location_id", locationId);
+                  if (archived) search.set("archived", "true");
+                  window.location.assign(`/api/v1/exports/ci.csv?${search.toString()}`);
+                }}
+              >
+                {t("ci.exportCsv")}
+              </Button>
+            )}
+            <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
+              {t("ci.create")}
+            </Button>
+          </>
         }
       />
 

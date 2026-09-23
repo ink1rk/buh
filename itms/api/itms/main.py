@@ -18,6 +18,7 @@ from itms.api.routers import (
     diagrams,
     directory,
     documents,
+    exports,
     files,
     floorplans,
     ipam,
@@ -114,6 +115,7 @@ app.include_router(ipam.router, prefix=prefix)
 app.include_router(directory.router, prefix=prefix)
 app.include_router(users.router, prefix=prefix)
 app.include_router(documents.router, prefix=prefix)
+app.include_router(exports.router, prefix=prefix)
 app.include_router(files.router, prefix=prefix)
 app.include_router(floorplans.router, prefix=prefix)
 app.include_router(ops.search_router, prefix=prefix)
