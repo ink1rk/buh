@@ -1,4 +1,4 @@
-import { Library, Plus, Trash2, X } from "lucide-react";
+import { Boxes, Library, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useI18n } from "@/i18n";
@@ -105,6 +105,23 @@ export function CatalogPage() {
     [debouncedQ, manufacturerId, role, offset],
   );
   const { data, isFetching } = useDeviceModels(params);
+
+  const installBlueprints = useApiMutation(
+    () => mutations.installBlueprints(),
+    [["ci"], ["catalog"]],
+    {
+      onSuccess: (result) => {
+        toast.success(
+          t("catalog.blueprintsInstalled", {
+            created: result.nodes_created,
+            links: result.links_created,
+            skipped: result.nodes_skipped,
+          }),
+        );
+      },
+      onError: (err) => toast.error(describeError(err, t)),
+    },
+  );
 
   const installLibrary = useApiMutation(
     () => mutations.installCatalogLibrary(),
@@ -219,6 +236,14 @@ export function CatalogPage() {
         subtitle={t("catalog.subtitle")}
         actions={
           <>
+            <Button
+              data-testid="catalog-install-blueprints"
+              icon={<Boxes size={14} />}
+              disabled={installBlueprints.isPending}
+              onClick={() => installBlueprints.mutate()}
+            >
+              {t("catalog.installBlueprints")}
+            </Button>
             <Button
               data-testid="catalog-install-library"
               icon={<Library size={14} />}

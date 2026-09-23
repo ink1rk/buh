@@ -665,6 +665,13 @@ export const mutations = {
   validateImport: (id: string) => api.post<ImportJob>(`/imports/${id}/validate`),
   applyImport: (id: string) => api.post<ImportJob>(`/imports/${id}/apply`),
 
+  installBlueprints: () =>
+    api.post<{
+      nodes_created: number;
+      nodes_skipped: number;
+      links_created: number;
+      links_skipped: number;
+    }>("/catalog/blueprints"),
   installCatalogLibrary: () =>
     api.post<{
       manufacturers_created: number;

@@ -482,6 +482,8 @@ export const ru = {
     templateHint: "Маска вида Gi1/0/{n} развернётся в порты при заведении устройства",
     deleteModel: "Удалить модель",
     deleteModelConfirm: "Удалить модель из каталога?",
+    installBlueprints: "Поставить шаблоны платформ",
+    blueprintsInstalled: "Добавлено объектов: {created}. Связей: {links}. Уже были: {skipped}",
     installLibrary: "Поставить библиотеку",
     libraryInstalled: "В каталог добавлено моделей: {created}. Уже были: {skipped}",
     libraryHint: "Типовые паспорта производителей. Повтор не создаёт дубликаты",

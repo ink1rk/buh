@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query
 from itms.api.deps import SessionDep, requires
 from itms.api.schemas.common import Ok, Page
 from itms.api.schemas.network import (
+    BlueprintInstallRead,
     DeviceModelRead,
     DeviceModelUpdate,
     DeviceModelWrite,
@@ -17,9 +18,18 @@ from itms.api.schemas.network import (
     PortTemplateWrite,
 )
 from itms.domain.permissions import Permission
-from itms.services import catalog_service
+from itms.services import blueprint_service, catalog_service
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
+
+
+@router.post(
+    "/blueprints",
+    response_model=BlueprintInstallRead,
+    dependencies=[requires(Permission.CATALOG_WRITE)],
+)
+async def install_blueprints(session: SessionDep) -> BlueprintInstallRead:
+    return BlueprintInstallRead.model_validate(await blueprint_service.install_blueprints(session))
 
 
 @router.post(

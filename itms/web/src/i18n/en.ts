@@ -66,6 +66,8 @@ export const en: DeepPartial<Dictionary> = {
     mention: "Mention",
   },
   catalog: {
+    installBlueprints: "Install platform templates",
+    blueprintsInstalled: "Objects added: {created}. Links: {links}. Already present: {skipped}",
     installLibrary: "Install library",
     libraryInstalled: "Models added: {created}. Already present: {skipped}",
     libraryHint: "Typical vendor datasheets. A second install does not duplicate them",

@@ -53,6 +53,13 @@ class LibraryInstallRead(BaseModel):
     models_skipped: int
 
 
+class BlueprintInstallRead(BaseModel):
+    nodes_created: int
+    nodes_skipped: int
+    links_created: int
+    links_skipped: int
+
+
 class PortTemplateWrite(BaseModel):
     name_pattern: str = Field(min_length=1, max_length=64)
     count: int = Field(default=1, ge=1, le=512)
