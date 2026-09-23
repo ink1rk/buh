@@ -1,11 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
-import { useDashboard, useDiagrams, useInbox, usePower, useProjects, useSession } from "@/shared/api/queries";
+import { useDashboard, useDiagram, useDiagrams, useInbox, usePower, useProjects, useSession } from "@/shared/api/queries";
 import type { InboxItem, PowerNodeRow, PowerOverview, ProjectSummary } from "@/shared/api/types";
 import { formatRelative } from "@/shared/lib/format";
 import { Badge } from "@/shared/ui/Badge";
 import { EmptyState, Panel, Spinner } from "@/shared/ui/Layout";
+
+import { InfraMap } from "./InfraMap";
 
 const AUTH_ACTIONS = new Set(["LOGIN", "LOGOUT", "LOGIN_FAILED"]);
 const WORK_BUCKETS = ["overdue", "today", "upcoming", "undated", "later"] as const;
@@ -153,6 +155,11 @@ export function DashboardPage() {
   const projects = useProjects();
   const power = usePower();
   const diagrams = useDiagrams();
+  const mapSummary =
+    (diagrams.data ?? []).find((item) => item.diagram_type === "NETWORK") ??
+    (diagrams.data ?? []).find((item) => item.diagram_type === "LOGICAL") ??
+    diagrams.data?.[0];
+  const map = useDiagram(mapSummary?.id);
 
   if (isPending || !data) {
     return (
@@ -178,7 +185,6 @@ export function DashboardPage() {
   const primary = [...inputs].sort(
     (left, right) => right.inlet_w - left.inlet_w || (left.code ?? "").localeCompare(right.code ?? ""),
   )[0];
-  const powerDiagram = (diagrams.data ?? []).find((item) => item.diagram_type === "POWER") ?? diagrams.data?.[0];
   const chain = primaryPath(power.data?.nodes ?? [], power.data?.links ?? [], power.data?.primary_input_id);
   const quality = data.data_quality;
   const coverage = quality.provenance.coverage_pct as number;
@@ -294,98 +300,137 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-3 xl:grid-cols-3">
-        <Panel title={t("dashboard.healthTitle")}>
-          <div className="flex items-end justify-between">
-            <p className="text-3xl font-semibold tabular-nums tracking-tight">{data.counters.ci_total}</p>
-            <p className="text-xs text-muted">{t("dashboard.ciTotal")}</p>
-          </div>
-          <ul className="mt-3 flex flex-col gap-2">
-            {criticality.map((row) => (
-              <li key={row.key}>
-                <div className="mb-1 flex justify-between text-xs">
-                  <span>{te("criticality", row.key)}</span>
-                  <span className="tabular-nums text-muted">{row.count}</span>
-                </div>
-                <div className="h-1 overflow-hidden rounded-full bg-[rgb(var(--surface-muted))]">
-                  <div
-                    className={`h-full rounded-full ${critBar(row.key)}`}
-                    style={{ width: `${data.counters.ci_total ? (row.count / data.counters.ci_total) * 100 : 0}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
-          {primary && (
-            <p className={`mt-3 text-xs ${primary.headroom_w != null && primary.headroom_w < 0 ? "text-[rgb(var(--danger))]" : "text-muted"}`}>
-              {t("dashboard.powerHeadroom")} · <span className="font-mono">{primary.code ?? primary.name}</span>
-              {" · "}
-              <span className="tabular-nums">{primary.headroom_w ?? "—"}</span> Вт
+        <Panel title={t("dashboard.healthTitle")} actions={<Link to="/infrastructure" className="text-xs text-accent">{t("dashboard.showAll")}</Link>}>
+          <div className="flex items-end justify-between gap-3">
+            <p>
+              <span className="text-3xl font-semibold tabular-nums tracking-tight">{data.counters.ci_total}</span>
+              <span className="mt-1 block text-xs text-muted">{t("dashboard.ciTotal")}</span>
             </p>
-          )}
+            <ul className="text-xs">
+              {criticality.map((row) => (
+                <li key={row.key} className="flex items-center justify-end gap-2">
+                  <span className={`h-1.5 w-1.5 rounded-full ${critBar(row.key)}`} />
+                  <span className="text-muted">{te("criticality", row.key)}</span>
+                  <span className="w-6 text-right tabular-nums">{row.count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
+            {criticality.map((row) => (
+              <div
+                key={row.key}
+                className={critBar(row.key)}
+                style={{ width: `${data.counters.ci_total ? (row.count / data.counters.ci_total) * 100 : 0}%` }}
+              />
+            ))}
+          </div>
         </Panel>
 
         <Panel
-          title={t("dashboard.mapTitle")}
-          actions={
-            powerDiagram ? (
-              <Link to={`/diagrams/${powerDiagram.id}`} className="text-xs text-accent">
-                {t("dashboard.openMap")}
-              </Link>
-            ) : (
-              <Link to="/power" className="text-xs text-accent">
-                {t("dashboard.openPower")}
-              </Link>
-            )
-          }
+          title={t("nav.power")}
+          actions={<Link to="/power" className="text-xs text-accent">{t("dashboard.openPower")}</Link>}
         >
-          {chain.length === 0 ? (
-            <EmptyState title={t("dashboard.noPower")} action={<Link to="/power" className="text-sm text-accent">{t("dashboard.openPower")}</Link>} />
+          {primary ? (
+            <>
+              <p className="font-mono text-xs text-muted">{primary.code ?? primary.name}</p>
+              <p className="mt-1 text-sm tabular-nums">
+                <span className="text-lg font-semibold">{primary.inlet_w}</span>
+                <span className="text-muted"> / {primary.limit_w ?? "—"} Вт</span>
+              </p>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
+                <div
+                  className={`h-full rounded-full ${primary.headroom_w != null && primary.headroom_w < 0 ? "bg-[rgb(var(--danger))]" : "bg-[rgb(var(--ok))]"}`}
+                  style={{
+                    width: `${primary.limit_w ? Math.min(100, (primary.inlet_w / primary.limit_w) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+              <p className={`mt-2 text-xs ${primary.headroom_w != null && primary.headroom_w < 0 ? "text-[rgb(var(--danger))]" : "text-muted"}`}>
+                {t("dashboard.powerHeadroom")} {primary.headroom_w ?? "—"} Вт
+                {primary.failover ? ` · ${te("failover", primary.failover)}` : ""}
+              </p>
+              {chain.length > 1 && (
+                <p className="mt-2 truncate font-mono text-[11px] text-muted">
+                  {chain.map((node) => node.code ?? node.name).join(" → ")}
+                </p>
+              )}
+            </>
           ) : (
-            <ol>
-              {chain.map((node, index) => (
-                <li key={node.id}>
-                  {index > 0 && <div className="ml-[11px] h-2.5 w-px bg-[rgb(var(--border))]" />}
-                  <Link
-                    to={`/ci/${node.id}`}
-                    className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-[rgb(var(--surface-muted))]"
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                        node.headroom_w != null && node.headroom_w < 0
-                          ? "bg-[rgb(var(--danger))]"
-                          : node.warnings.length > 0
-                            ? "bg-[rgb(var(--warn))]"
-                            : "bg-[rgb(var(--ok))]"
-                      }`}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-mono text-xs">{node.code ?? node.name}</span>
-                      <span className="block truncate text-[11px] text-muted">
-                        {te("powerNodeType", node.node_type)}
-                        {node.name !== (node.code ?? node.name) ? ` · ${node.name}` : ""}
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ol>
+            <EmptyState title={t("dashboard.noPower")} action={<Link to="/power" className="text-sm text-accent">{t("dashboard.openPower")}</Link>} />
           )}
         </Panel>
 
-        <Panel title={t("dashboard.activity")} bodyClassName="p-0">
+        <Panel title={t("dashboard.dataQuality")} actions={<Link to="/ci?missing=owner" className="text-xs text-accent">{t("dashboard.showAll")}</Link>}>
+          <div className="flex items-end justify-between">
+            <p className="text-xs text-muted">{t("dashboard.provenanceCoverage")}</p>
+            <p className="text-lg font-semibold tabular-nums">{Math.round(coverage)}%</p>
+          </div>
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
+            <div className="h-full rounded-full bg-[rgb(var(--accent))]" style={{ width: `${Math.min(coverage, 100)}%` }} />
+          </div>
+          <ul className="mt-3 flex flex-col gap-1">
+            {[
+              [t("dashboard.withoutOwner"), quality.ci_without_owner, "/ci?missing=owner"],
+              [t("dashboard.withoutLocation"), quality.ci_without_location, "/ci?missing=location"],
+              [t("dashboard.documentsReview"), data.counters.documents_review_due, "/documents"],
+              [t("dashboard.ciCritical"), data.counters.ci_critical, "/ci?criticality=CRITICAL"],
+            ].map(([label, value, href]) => (
+              <li key={String(label)}>
+                <Link to={String(href)} className="flex items-center justify-between rounded-md px-1 py-1 hover:bg-[rgb(var(--surface-muted))]">
+                  <span className="text-sm">{label}</span>
+                  <span className={`text-sm font-semibold tabular-nums ${Number(value) > 0 ? "text-[rgb(var(--warn))]" : "text-muted"}`}>{value}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      </div>
+
+      <div className="grid gap-3 xl:grid-cols-[1.3fr_0.7fr]">
+        <Panel
+          title={t("dashboard.mapTitle")}
+          actions={
+            mapSummary ? (
+              <Link to={`/diagrams/${mapSummary.id}`} className="text-xs text-accent">
+                {t("dashboard.openMap")}
+              </Link>
+            ) : (
+              <Link to="/diagrams" className="text-xs text-accent">{t("dashboard.openMap")}</Link>
+            )
+          }
+        >
+          {map.data && map.data.nodes.length > 0 ? (
+            <InfraMap diagram={map.data} onOpen={(ciId) => navigate(`/ci/${ciId}`)} />
+          ) : (
+            <EmptyState title={t("dashboard.noPower")} action={<Link to="/diagrams" className="text-sm text-accent">{t("dashboard.openMap")}</Link>} />
+          )}
+        </Panel>
+
+        <Panel title={t("dashboard.activity")} bodyClassName="p-0" actions={<Link to="/audit" className="text-xs text-accent">{t("dashboard.showAll")}</Link>}>
           {feed.length === 0 ? (
             <EmptyState title={t("app.empty")} />
           ) : (
             <ul>
               {feed.map((item) => {
-                const href = item.entity_type === "CI" && item.entity_id ? `/ci/${item.entity_id}` : null;
+                const href =
+                  item.entity_type === "CI" && item.entity_id
+                    ? `/ci/${item.entity_id}`
+                    : item.entity_type === "PROJECT" && item.entity_id
+                      ? `/projects/${item.entity_id}`
+                      : item.project_id
+                        ? `/projects/${item.project_id}`
+                        : null;
+                const change = item.changes?.[0];
                 const body = (
                   <>
-                    <span className="block truncate text-sm">{item.entity_label ?? te("entityType", item.entity_type)}</span>
+                    <span className="block truncate text-sm font-medium">{item.entity_label ?? te("entityType", item.entity_type)}</span>
                     <span className="mt-0.5 block text-xs text-muted">
                       {te("auditAction", item.action)}
-                      {item.actor_label ? ` · ${item.actor_label}` : ""}
-                      {" · "}
+                      {change ? ` · ${change.field}: ${change.old_value ?? "—"} → ${change.new_value ?? "—"}` : ""}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-muted">
+                      {item.actor_label ? `${item.actor_label} · ` : ""}
                       {formatRelative(item.occurred_at, locale)}
                     </span>
                   </>
@@ -393,9 +438,7 @@ export function DashboardPage() {
                 return (
                   <li key={item.id} className="border-b border-app last:border-0">
                     {href ? (
-                      <Link to={href} className="block px-4 py-2.5 hover:bg-[rgb(var(--surface-muted))]">
-                        {body}
-                      </Link>
+                      <Link to={href} className="block px-4 py-2.5 hover:bg-[rgb(var(--surface-muted))]">{body}</Link>
                     ) : (
                       <div className="px-4 py-2.5">{body}</div>
                     )}
@@ -404,55 +447,6 @@ export function DashboardPage() {
               })}
             </ul>
           )}
-        </Panel>
-      </div>
-
-      <div className="grid gap-3 xl:grid-cols-[1fr_18rem]">
-        <Panel title={t("dashboard.dataQuality")}>
-          <div className="mb-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-xs text-muted">{t("dashboard.provenanceCoverage")}</span>
-              <span className="text-sm font-semibold tabular-nums">{Math.round(coverage)}%</span>
-            </div>
-            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[rgb(var(--surface-muted))]">
-              <div className="h-full rounded-full bg-[rgb(var(--accent))]" style={{ width: `${Math.min(coverage, 100)}%` }} />
-            </div>
-          </div>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {[
-              [t("dashboard.withoutOwner"), quality.ci_without_owner, "/ci?missing=owner"],
-              [t("dashboard.withoutLocation"), quality.ci_without_location, "/ci?missing=location"],
-              [t("dashboard.documentsReview"), data.counters.documents_review_due, "/documents"],
-              [t("dashboard.ciCritical"), data.counters.ci_critical, "/ci?criticality=CRITICAL"],
-            ].map(([label, value, href]) => (
-              <li key={String(label)}>
-                <Link
-                  to={String(href)}
-                  className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-[rgb(var(--surface-muted))]"
-                >
-                  <span className="text-sm">{label}</span>
-                  <span className="text-sm font-semibold tabular-nums">{value}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-        <Panel title={t("dashboard.quick")}>
-          <ul className="flex flex-col gap-1">
-            {[
-              ["/work", t("dashboard.openTasks")],
-              ["/projects", t("nav.projects")],
-              ["/ci", t("dashboard.openObjects")],
-              ["/diagrams", t("nav.diagrams")],
-              ["/power", t("nav.power")],
-            ].map(([to, label]) => (
-              <li key={to}>
-                <Link to={to} className="block rounded-md px-2 py-1.5 text-sm hover:bg-[rgb(var(--surface-muted))]">
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
         </Panel>
       </div>
     </div>

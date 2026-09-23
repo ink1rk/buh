@@ -10,6 +10,7 @@ import {
   useCiList,
   useEmployees,
   useProject,
+  useTransition,
 } from "@/shared/api/queries";
 import type { ProjectView, ScheduleItem } from "@/shared/api/types";
 import { CalendarPanel } from "@/features/projects/CalendarPanel";
@@ -42,6 +43,62 @@ const TASK_NEXT: Record<string, string[]> = {
 };
 
 const BOARD = ["NEW", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE"] as const;
+
+function formatKw(watts: number | null): string {
+  if (watts == null) return "—";
+  return `${(watts / 1000).toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} кВт`;
+}
+
+function CurrentTarget({ projectId }: { projectId: string }) {
+  const { t } = useI18n();
+  const { data } = useTransition(projectId);
+  const live = data?.live;
+  if (!live || live.limit_w == null) return null;
+  const draft = data.plans.find((item) => item.status !== "APPLIED" && item.status !== "CANCELLED");
+  const columns = [
+    {
+      title: t("power.current"),
+      rows: [
+        [t("power.limit"), formatKw(live.limit_w)],
+        [t("power.estimated"), formatKw(live.estimated_w)],
+        [t("power.headroom"), formatKw(live.headroom_w)],
+      ],
+    },
+    {
+      title: t("power.added"),
+      rows: [
+        [t("power.added"), formatKw(live.added_w)],
+        [t("power.deficit"), formatKw(live.deficit_w)],
+        [t("projects.transition"), String(draft?.items.length ?? 0)],
+      ],
+    },
+    {
+      title: t("power.target"),
+      rows: [
+        [t("power.target"), formatKw(live.target_w)],
+        [t("power.required"), formatKw(live.required_w)],
+        [t("projects.recommended"), formatKw(live.recommended_w)],
+      ],
+    },
+  ];
+  return (
+    <section className="card mb-4 grid gap-3 p-4 md:grid-cols-3">
+      {columns.map((column) => (
+        <div key={column.title}>
+          <h2 className="text-[11px] tracking-wide text-muted uppercase">{column.title}</h2>
+          <ul className="mt-2 flex flex-col gap-1">
+            {column.rows.map(([label, value]) => (
+              <li key={label} className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="text-muted">{label}</span>
+                <span className="font-mono text-xs tabular-nums">{value}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
+  );
+}
 
 function healthTone(status: string): Tone {
   if (status === "DELAYED") return "danger";
@@ -103,6 +160,7 @@ export function ProjectPage() {
         </div>
         <span className="text-xs text-muted tabular-nums">{project.progress_pct}%</span>
       </div>
+      <CurrentTarget projectId={projectId} />
       <Tabs
         className="mb-4"
         active={tab}

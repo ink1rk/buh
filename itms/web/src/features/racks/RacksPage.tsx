@@ -110,13 +110,24 @@ function RackCard({ rack, onOpen }: { rack: RackSummary; onOpen: () => void }) {
         <span className="mt-2 block text-sm tabular-nums">
           {used}/{rack.u_height} U
         </span>
-        <span className="block text-xs text-muted">
+        <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
+          <span className="block h-full rounded-full bg-[rgb(var(--accent))]" style={{ width: `${fill}%` }} />
+        </span>
+        <span className="mt-1 block text-xs text-muted">
           {t("racks.free")} {t("racks.units", { n: rack.largest_free_front })}
         </span>
         <span className={`mt-1 block font-mono text-xs tabular-nums ${powerHot ? "text-[rgb(var(--danger))]" : "text-muted"}`}>
           {rack.power_w}
           {rack.max_power_w != null ? ` / ${rack.max_power_w}` : ""} Вт
         </span>
+        {rack.max_power_w != null && rack.max_power_w > 0 && (
+          <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
+            <span
+              className={`block h-full rounded-full ${powerHot ? "bg-[rgb(var(--danger))]" : "bg-[rgb(var(--warn))]"}`}
+              style={{ width: `${Math.min(100, (rack.power_w / rack.max_power_w) * 100)}%` }}
+            />
+          </span>
+        )}
       </span>
     </button>
   );

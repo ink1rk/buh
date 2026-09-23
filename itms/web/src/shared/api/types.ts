@@ -241,6 +241,8 @@ export interface Dashboard {
     entity_label: string | null;
     action: string;
     reason: string | null;
+    project_id?: string | null;
+    changes?: Array<{ field: string; old_value: string | null; new_value: string | null }>;
   }>;
 }
 

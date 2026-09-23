@@ -117,9 +117,21 @@ export function CiOps({ ci, related }: { ci: Ci; related: RelatedMap | undefined
             </Link>
           </div>
           <p className="mt-2 text-sm">{te("powerNodeType", node.node_type)}</p>
-          <p className="mt-1 font-mono text-xs tabular-nums text-muted">
-            {node.inlet_w} Вт
-            {node.headroom_w != null ? ` · ${t("dashboard.powerHeadroom").toLowerCase()} ${node.headroom_w} Вт` : ""}
+          <p className="mt-1 text-sm tabular-nums">
+            <span className="font-semibold">{node.inlet_w}</span>
+            <span className="text-muted"> / {node.limit_w ?? "—"} Вт</span>
+          </p>
+          {node.limit_w != null && node.limit_w > 0 && (
+            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
+              <div
+                className={`h-full rounded-full ${node.headroom_w != null && node.headroom_w < 0 ? "bg-[rgb(var(--danger))]" : "bg-[rgb(var(--ok))]"}`}
+                style={{ width: `${Math.min(100, (node.inlet_w / node.limit_w) * 100)}%` }}
+              />
+            </div>
+          )}
+          <p className="mt-1 font-mono text-[11px] text-muted">
+            {node.headroom_w != null ? `${t("dashboard.powerHeadroom")} ${node.headroom_w} Вт` : ""}
+            {node.failover ? ` · ${te("failover", node.failover)}` : ""}
           </p>
           <ul className="mt-3 flex flex-col gap-1 text-sm">
             {upstream.map((link) => (

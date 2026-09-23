@@ -13,6 +13,16 @@ from itms.models.enums import CiStatus, Criticality, DocumentStatus, EmployeeSta
 from itms.services import audit_service
 
 
+def _brief(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = value if isinstance(value, str) else str(value)
+    text = " ".join(text.split())
+    if len(text) > 64:
+        return text[:61] + "…"
+    return text
+
+
 async def dashboard(session: AsyncSession) -> dict[str, Any]:
     """Сводка для владельца системы.
 
@@ -156,6 +166,15 @@ async def dashboard(session: AsyncSession) -> dict[str, Any]:
                 "entity_label": log.entity_label,
                 "action": log.action,
                 "reason": log.reason,
+                "project_id": log.project_id,
+                "changes": [
+                    {
+                        "field": change.field,
+                        "old_value": _brief(change.old_value),
+                        "new_value": _brief(change.new_value),
+                    }
+                    for change in log.changes[:2]
+                ],
             }
             for log in activity
         ],
