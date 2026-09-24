@@ -280,6 +280,7 @@ export interface AuditParams {
   entity_type?: string;
   action?: string[];
   field?: string;
+  project_id?: string;
   date_from?: string;
   date_to?: string;
   limit: number;

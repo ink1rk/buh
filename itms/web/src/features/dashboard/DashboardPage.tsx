@@ -1,3 +1,4 @@
+import { AlertTriangle, Clock, History, MapPin, ShieldAlert, UserRound, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -173,44 +174,41 @@ function ChainSketch({ nodes, onOpen }: { nodes: PowerNodeRow[]; onOpen: (id: st
 function AttentionCard({
   value,
   label,
+  hint,
   tone,
+  icon: Icon,
   ratio,
+  testId,
   onClick,
 }: {
   value: number;
   label: string;
+  hint: string;
   tone: "danger" | "warn" | "accent" | "ok";
+  icon: LucideIcon;
   ratio?: number;
+  testId: string;
   onClick: () => void;
 }) {
   const hot = value > 0;
-  const wash =
+  const number =
     tone === "danger"
-      ? hot
-        ? "border-[rgb(var(--danger)/0.5)] bg-[rgb(var(--danger)/0.2)]"
-        : "border-[rgb(var(--danger)/0.4)] bg-[rgb(var(--danger)/0.14)]"
-      : tone === "warn"
-        ? hot
-          ? "border-[rgb(var(--warn)/0.5)] bg-[rgb(var(--warn)/0.22)]"
-          : "border-[rgb(var(--warn)/0.4)] bg-[rgb(var(--warn)/0.16)]"
-        : tone === "ok"
-          ? hot
-            ? "border-[rgb(var(--ok)/0.5)] bg-[rgb(var(--ok)/0.2)]"
-            : "border-[rgb(var(--ok)/0.4)] bg-[rgb(var(--ok)/0.14)]"
-          : hot
-            ? "border-[rgb(var(--accent)/0.5)] bg-[rgb(var(--accent)/0.2)]"
-            : "border-[rgb(var(--accent)/0.4)] bg-[rgb(var(--accent)/0.14)]";
-  const number = !hot
-    ? "text-app"
-    : tone === "danger"
       ? "text-[rgb(var(--danger))]"
       : tone === "warn"
         ? "text-[rgb(var(--warn))]"
         : tone === "ok"
           ? "text-[rgb(var(--ok))]"
           : "text-[rgb(var(--accent))]";
-  const arc = ratio == null ? 0 : Math.max(0, Math.min(1, ratio));
-  const turn = 2 * Math.PI * 26;
+  const quiet = "text-muted";
+  const iconWash =
+    tone === "danger"
+      ? "bg-[rgb(var(--danger)/0.16)] text-[rgb(var(--danger))]"
+      : tone === "warn"
+        ? "bg-[rgb(var(--warn)/0.18)] text-[rgb(var(--warn))]"
+        : tone === "ok"
+          ? "bg-[rgb(var(--ok)/0.16)] text-[rgb(var(--ok))]"
+          : "bg-[rgb(var(--accent)/0.16)] text-[rgb(var(--accent))]";
+  const glow = !hot ? "" : tone === "danger" ? "glow-danger" : tone === "warn" ? "glow-warn" : tone === "ok" ? "glow-ok" : "glow-accent";
   const stripe =
     tone === "danger"
       ? "bg-[rgb(var(--danger))]"
@@ -219,30 +217,49 @@ function AttentionCard({
         : tone === "ok"
           ? "bg-[rgb(var(--ok))]"
           : "bg-[rgb(var(--accent))]";
+  const showArc = hot && ratio != null && ratio > 0;
+  const arc = showArc ? Math.min(ratio ?? 0, 1) : 0;
+  const turn = 2 * Math.PI * 16;
+  const stroke =
+    tone === "danger"
+      ? "rgb(var(--danger))"
+      : tone === "warn"
+        ? "rgb(var(--warn))"
+        : tone === "ok"
+          ? "rgb(var(--ok))"
+          : "rgb(var(--accent))";
   return (
     <button
       type="button"
+      data-testid={testId}
       onClick={onClick}
-      className={`card relative min-h-[6.75rem] overflow-hidden px-4 py-4 text-left transition-transform hover:-translate-y-px ${wash}`}
+      className="card relative flex min-h-[7.25rem] gap-3 px-4 py-3.5 text-left transition-transform hover:-translate-y-px"
     >
-      <span className={`absolute inset-y-4 left-0 w-1 rounded-r-full ${stripe}`} />
-      {ratio != null && (
-        <svg viewBox="0 0 72 72" className={`pointer-events-none absolute -right-2 -bottom-3 h-20 w-20 ${number}`} aria-hidden>
-          <circle cx="36" cy="36" r="26" fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="6" />
+      <span className={`absolute inset-y-4 left-0 w-1 rounded-r-full ${hot ? stripe : "bg-[rgb(var(--border))]"}`} />
+      <span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl ${hot ? iconWash : "bg-[rgb(var(--surface-muted))] text-muted"} ${glow}`}>
+        <Icon size={18} strokeWidth={1.75} />
+      </span>
+      <span className="min-w-0 flex-1 pr-10">
+        <p className={`text-4xl leading-none font-semibold tracking-tight tabular-nums ${hot ? number : quiet}`}>{value}</p>
+        <p className="mt-2 text-[13px] leading-snug font-medium">{label}</p>
+        <p className="mt-0.5 text-[11px] leading-snug text-muted">{hint}</p>
+      </span>
+      {showArc && (
+        <svg viewBox="0 0 44 44" className={`pointer-events-none absolute right-3 bottom-3 h-11 w-11 ${glow}`} aria-hidden>
+          <circle cx="22" cy="22" r="16" fill="none" stroke={stroke} strokeOpacity="0.25" strokeWidth="4" />
           <circle
-            cx="36"
-            cy="36"
-            r="26"
+            cx="22"
+            cy="22"
+            r="16"
             fill="none"
-            stroke="currentColor"
-            strokeWidth="6"
+            stroke={stroke}
+            strokeWidth="4"
+            strokeLinecap="round"
             strokeDasharray={`${arc * turn} ${turn}`}
-            transform="rotate(-90 36 36)"
+            transform="rotate(-90 22 22)"
           />
         </svg>
       )}
-      <p className={`relative text-4xl leading-none font-semibold tracking-tight tabular-nums ${number}`}>{value}</p>
-      <p className="relative mt-3 max-w-[11rem] text-[13px] leading-snug font-medium">{label}</p>
     </button>
   );
 }
@@ -376,32 +393,72 @@ export function DashboardPage() {
 
       <section>
         <h2 className="mb-2 px-1 text-[13px] font-medium text-muted">{t("dashboard.attention")}</h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <AttentionCard
+            testId="tile-critical"
             value={data.counters.ci_critical}
             label={t("dashboard.ciCritical")}
+            hint={
+              data.counters.ci_critical > 0
+                ? t("dashboard.hintCritical", { n: data.counters.ci_total })
+                : t("dashboard.hintCriticalQuiet")
+            }
             tone="danger"
+            icon={ShieldAlert}
             ratio={data.counters.ci_total > 0 ? data.counters.ci_critical / data.counters.ci_total : undefined}
             onClick={() => navigate("/ci?criticality=CRITICAL")}
           />
           <AttentionCard
+            testId="tile-overdue"
             value={overdue.length}
             label={t("dashboard.overdueTasks")}
+            hint={overdue.length > 0 ? t("dashboard.hintOverdue", { n: tasks.length }) : t("dashboard.hintOverdueQuiet")}
             tone="warn"
+            icon={Clock}
             ratio={tasks.length > 0 ? overdue.length / tasks.length : undefined}
             onClick={() => navigate("/work")}
           />
           <AttentionCard
+            testId="tile-owner"
+            value={quality.ci_without_owner}
+            label={t("dashboard.withoutOwner")}
+            hint={quality.ci_without_owner > 0 ? t("dashboard.hintOwner") : t("dashboard.hintOwnerQuiet")}
+            tone="warn"
+            icon={UserRound}
+            ratio={data.counters.ci_total > 0 ? quality.ci_without_owner / data.counters.ci_total : undefined}
+            onClick={() => navigate("/ci?missing=owner")}
+          />
+          <AttentionCard
+            testId="tile-location"
+            value={quality.ci_without_location}
+            label={t("dashboard.withoutLocation")}
+            hint={quality.ci_without_location > 0 ? t("dashboard.hintLocation") : t("dashboard.hintLocationQuiet")}
+            tone="accent"
+            icon={MapPin}
+            ratio={data.counters.ci_total > 0 ? quality.ci_without_location / data.counters.ci_total : undefined}
+            onClick={() => navigate("/ci?missing=location")}
+          />
+          <AttentionCard
+            testId="tile-attention"
             value={data.counters.ci_attention}
             label={t("dashboard.ciAttention")}
+            hint={
+              data.counters.ci_attention > 0
+                ? t("dashboard.hintAttention", { n: data.counters.ci_total })
+                : t("dashboard.hintAttentionQuiet")
+            }
             tone="accent"
+            icon={AlertTriangle}
             ratio={data.counters.ci_total > 0 ? data.counters.ci_attention / data.counters.ci_total : undefined}
             onClick={() => navigate("/ci?status=DEGRADED")}
           />
           <AttentionCard
+            testId="tile-changes"
             value={changesToday}
             label={t("dashboard.changesToday")}
+            hint={changesToday > 0 ? t("dashboard.hintChanges") : t("dashboard.hintChangesQuiet")}
             tone="ok"
+            icon={History}
             onClick={() => navigate("/audit")}
           />
         </div>
