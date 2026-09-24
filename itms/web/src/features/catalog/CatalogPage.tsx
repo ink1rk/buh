@@ -1,4 +1,4 @@
-import { Plus, Trash2, X } from "lucide-react";
+import { Boxes, Library, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useI18n } from "@/i18n";
@@ -106,6 +106,39 @@ export function CatalogPage() {
   );
   const { data, isFetching } = useDeviceModels(params);
 
+  const installBlueprints = useApiMutation(
+    () => mutations.installBlueprints(),
+    [["ci"], ["catalog"]],
+    {
+      onSuccess: (result) => {
+        toast.success(
+          t("catalog.blueprintsInstalled", {
+            created: result.nodes_created,
+            links: result.links_created,
+            skipped: result.nodes_skipped,
+          }),
+        );
+      },
+      onError: (err) => toast.error(describeError(err, t)),
+    },
+  );
+
+  const installLibrary = useApiMutation(
+    () => mutations.installCatalogLibrary(),
+    [["catalog"]],
+    {
+      onSuccess: (result) => {
+        toast.success(
+          t("catalog.libraryInstalled", {
+            created: result.models_created,
+            skipped: result.models_skipped,
+          }),
+        );
+      },
+      onError: (err) => toast.error(describeError(err, t)),
+    },
+  );
+
   const remove = useApiMutation(
     (id: string) => mutations.deleteModel(id),
     [["catalog", "models"]],
@@ -203,6 +236,22 @@ export function CatalogPage() {
         subtitle={t("catalog.subtitle")}
         actions={
           <>
+            <Button
+              data-testid="catalog-install-blueprints"
+              icon={<Boxes size={14} />}
+              disabled={installBlueprints.isPending}
+              onClick={() => installBlueprints.mutate()}
+            >
+              {t("catalog.installBlueprints")}
+            </Button>
+            <Button
+              data-testid="catalog-install-library"
+              icon={<Library size={14} />}
+              disabled={installLibrary.isPending}
+              onClick={() => installLibrary.mutate()}
+            >
+              {t("catalog.installLibrary")}
+            </Button>
             <Button icon={<Plus size={14} />} onClick={() => setManufacturerOpen(true)}>
               {t("catalog.addManufacturer")}
             </Button>

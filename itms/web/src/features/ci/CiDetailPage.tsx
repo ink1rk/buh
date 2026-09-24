@@ -23,6 +23,7 @@ import { toast } from "@/shared/ui/toast";
 import { ConfirmDialog } from "../provenance/ReasonField";
 import { CiHistoryTab } from "./CiHistoryTab";
 import { CiNetworkTab } from "./CiNetworkTab";
+import { CiOps } from "./CiOps";
 import { CiOverviewTab } from "./CiOverviewTab";
 import { CiRelationsTab } from "./CiRelationsTab";
 
@@ -128,10 +129,27 @@ export function CiDetailPage() {
               </Badge>
               {ci.archived_at && <Badge tone="warn">{t("ci.archived")}</Badge>}
             </div>
-            <p className="mt-0.5 text-xs text-muted">
+            <p className="mt-1 text-sm text-muted">
               {te("ciType", ci.ci_type)}
-              {ci.location && ` · ${ci.location.path}`}
+              {ci.vendor ? ` · ${ci.vendor}` : ""}
+              {ci.model ? ` ${ci.model}` : ""}
             </p>
+            <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+              <div>
+                <dt className="text-[11px] tracking-wide text-muted uppercase">{t("ci.location")}</dt>
+                <dd>{ci.location?.path ?? "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] tracking-wide text-muted uppercase">{t("ci.environment")}</dt>
+                <dd>{te("environment", ci.environment)}</dd>
+              </div>
+              {ci.serial_number && (
+                <div>
+                  <dt className="text-[11px] tracking-wide text-muted uppercase">{t("ci.serial")}</dt>
+                  <dd className="font-mono text-xs">{ci.serial_number}</dd>
+                </div>
+              )}
+            </dl>
           </div>
 
           <div className="flex items-center gap-2">
@@ -157,6 +175,8 @@ export function CiDetailPage() {
             </Button>
           </div>
         </header>
+
+        <CiOps ci={ci} related={related} />
 
         <Tabs
           active={tab}

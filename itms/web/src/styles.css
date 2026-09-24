@@ -1,41 +1,55 @@
 @import "tailwindcss";
+@import "@fontsource/manrope/400.css";
+@import "@fontsource/manrope/500.css";
+@import "@fontsource/manrope/600.css";
+@import "@fontsource/manrope/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 
 @theme {
-  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  --font-sans: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --text-xs: 0.75rem;
   --text-sm: 0.8125rem;
   --text-base: 0.875rem;
 }
 
-/* Плотный рабочий интерфейс: базовый размер меньше типового веб-приложения,
-   потому что на экране одновременно должно помещаться много данных. */
+/* Тёплая бумага и глубокий графит. Акцент — один спокойный зелёно-синий,
+   чтобы статусы (зелёный, янтарный, красный) не спорили с кнопками. */
 :root {
-  --bg: 250 250 250;
+  --bg: 226 230 237;
   --surface: 255 255 255;
-  --surface-muted: 244 245 247;
-  --border: 226 228 232;
-  --text: 24 26 32;
-  --text-muted: 104 110 122;
-  --accent: 37 99 235;
-  --accent-soft: 219 234 254;
-  --ok: 22 133 78;
-  --warn: 181 116 12;
-  --danger: 197 48 48;
+  --surface-muted: 241 244 248;
+  --sidebar: 236 239 244;
+  --border: 210 216 226;
+  --text: 22 27 36;
+  --text-muted: 96 106 122;
+  --accent: 37 90 214;
+  --accent-ink: 255 255 255;
+  --accent-soft: 226 234 252;
+  --ok: 15 122 72;
+  --warn: 156 96 8;
+  --danger: 176 48 42;
+  --shadow-card: 0 1px 2px rgb(20 28 45 / 0.05), 0 12px 28px rgb(20 28 45 / 0.06);
+  --shadow-pop: 0 24px 64px rgb(28 27 24 / 0.18), 0 2px 8px rgb(28 27 24 / 0.08);
 }
 
 .dark {
-  --bg: 14 16 20;
-  --surface: 22 25 31;
-  --surface-muted: 29 33 41;
-  --border: 44 49 60;
-  --text: 232 235 240;
-  --text-muted: 148 156 171;
-  --accent: 96 149 255;
-  --accent-soft: 30 48 82;
-  --ok: 61 184 122;
-  --warn: 224 168 66;
-  --danger: 240 107 107;
+  --bg: 7 11 20;
+  --surface: 18 28 48;
+  --surface-muted: 28 42 68;
+  --sidebar: 9 14 26;
+  --border: 46 66 98;
+  --text: 232 236 244;
+  --text-muted: 148 160 180;
+  --accent: 72 128 255;
+  --accent-ink: 255 255 255;
+  --accent-soft: 24 40 74;
+  --ok: 74 186 132;
+  --warn: 214 164 72;
+  --danger: 224 96 96;
+  --shadow-card: 0 10px 28px rgb(0 0 0 / 0.32);
+  --shadow-pop: 0 24px 64px rgb(0 0 0 / 0.5);
 }
 
 @layer base {
@@ -47,16 +61,30 @@
 
   body {
     margin: 0;
-    background: rgb(var(--bg));
+    background-color: rgb(var(--bg));
+    background-image:
+      radial-gradient(900px 520px at 12% -8%, rgb(72 128 255 / 0.16), transparent 58%),
+      radial-gradient(640px 420px at 100% 8%, rgb(74 186 132 / 0.07), transparent 52%),
+      url("/atmosphere.svg");
+    background-size: auto, auto, cover;
+    background-attachment: fixed;
+    background-position: center;
     color: rgb(var(--text));
     font-family: var(--font-sans);
     font-size: var(--text-base);
+    letter-spacing: -0.011em;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgb(var(--accent-soft));
+    color: rgb(var(--text));
   }
 
   *:focus-visible {
     outline: 2px solid rgb(var(--accent));
-    outline-offset: 1px;
+    outline-offset: 2px;
   }
 
   ::-webkit-scrollbar {
@@ -66,13 +94,38 @@
 
   ::-webkit-scrollbar-thumb {
     background: rgb(var(--border));
-    border-radius: 6px;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @utility surface {
-  background: rgb(var(--surface));
+  background: rgb(var(--surface) / 0.92);
   border: 1px solid rgb(var(--border));
+  backdrop-filter: blur(16px);
+}
+
+@utility card {
+  background: rgb(var(--surface) / 0.78);
+  border: 1px solid rgb(255 255 255 / 0.62);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(18px);
+}
+
+.dark .card {
+  background: rgb(var(--surface) / 0.46);
+  border-color: rgb(255 255 255 / 0.14);
 }
 
 @utility surface-muted {
@@ -103,21 +156,51 @@
   color: rgb(var(--accent));
 }
 
-/* Сетка данных: строка не должна «прыгать» при наведении, поэтому меняется только фон. */
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+
+@utility shadow-pop {
+  box-shadow: var(--shadow-pop);
+}
+
 @layer components {
+  .glass-bar {
+    background: rgb(var(--surface) / 0.55);
+    border-color: rgb(255 255 255 / 0.14);
+    backdrop-filter: blur(18px);
+  }
+
+  .glow-ok {
+    filter: drop-shadow(0 0 10px rgb(var(--ok) / 0.7));
+  }
+
+  .glow-warn {
+    filter: drop-shadow(0 0 10px rgb(var(--warn) / 0.72));
+  }
+
+  .glow-danger {
+    filter: drop-shadow(0 0 10px rgb(var(--danger) / 0.72));
+  }
+
+  .glow-accent {
+    filter: drop-shadow(0 0 10px rgb(var(--accent) / 0.65));
+  }
+
   .row-hover:hover {
     background: rgb(var(--surface-muted));
   }
 
   .field-control {
     width: 100%;
-    background: rgb(var(--surface));
+    background: rgb(var(--bg));
     border: 1px solid rgb(var(--border));
-    border-radius: 0.375rem;
-    padding: 0.375rem 0.5rem;
+    border-radius: 0.625rem;
+    padding: 0.45rem 0.7rem;
     color: rgb(var(--text));
     font-size: var(--text-base);
     line-height: 1.35rem;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .field-control::placeholder {
@@ -130,12 +213,11 @@
   }
 
   .field-control:focus {
-    outline: 2px solid rgb(var(--accent));
-    outline-offset: -1px;
+    outline: none;
     border-color: rgb(var(--accent));
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.18);
   }
 
-  /* Tailwind сбрасывает svg до max-width: 100%, из-за этого линии схемы пропадают. */
   .react-flow__edges,
   .react-flow__edgelabel-renderer,
   .react-flow__attribution {
@@ -160,7 +242,7 @@
 @keyframes itms-fade-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -169,5 +251,5 @@
 }
 
 @utility animate-in {
-  animation: itms-fade-in 0.12s ease-out;
+  animation: itms-fade-in 0.18s ease-out;
 }

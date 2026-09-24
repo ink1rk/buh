@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
 import { describeError } from "@/shared/api/errors";
@@ -7,11 +7,16 @@ import {
   keys,
   mutations,
   useApiMutation,
+  useAudit,
   useCiList,
   useEmployees,
   useProject,
+  useTransition,
 } from "@/shared/api/queries";
 import type { ProjectView, ScheduleItem } from "@/shared/api/types";
+import { formatRelative } from "@/shared/lib/format";
+import { CalendarPanel } from "@/features/projects/CalendarPanel";
+import { TaskPanel, waitingOn } from "@/features/projects/TaskPanel";
 import { TransitionPanel } from "@/features/projects/TransitionPanel";
 import { Badge, type Tone } from "@/shared/ui/Badge";
 import { Button } from "@/shared/ui/Button";
@@ -41,6 +46,126 @@ const TASK_NEXT: Record<string, string[]> = {
 
 const BOARD = ["NEW", "IN_PROGRESS", "BLOCKED", "REVIEW", "DONE"] as const;
 
+function formatKw(watts: number | null): string {
+  if (watts == null) return "—";
+  return `${(watts / 1000).toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} кВт`;
+}
+
+function CurrentTarget({ projectId }: { projectId: string }) {
+  const { t } = useI18n();
+  const { data } = useTransition(projectId);
+  const live = data?.live;
+  if (!live || live.limit_w == null) return null;
+  const draft = data.plans.find((item) => item.status !== "APPLIED" && item.status !== "CANCELLED");
+  const columns = [
+    {
+      title: t("power.current"),
+      rows: [
+        [t("power.limit"), formatKw(live.limit_w)],
+        [t("power.estimated"), formatKw(live.estimated_w)],
+        [t("power.headroom"), formatKw(live.headroom_w)],
+      ],
+    },
+    {
+      title: t("power.added"),
+      rows: [
+        [t("power.added"), formatKw(live.added_w)],
+        [t("power.deficit"), formatKw(live.deficit_w)],
+        [t("projects.transition"), String(draft?.items.length ?? 0)],
+      ],
+    },
+    {
+      title: t("power.target"),
+      rows: [
+        [t("power.target"), formatKw(live.target_w)],
+        [t("power.required"), formatKw(live.required_w)],
+        [t("projects.recommended"), formatKw(live.recommended_w)],
+      ],
+    },
+  ];
+  const stages = [
+    {
+      title: t("power.current"),
+      figure: formatKw(live.limit_w),
+      rows: columns[0].rows.slice(1),
+      rule: "bg-[rgb(var(--ok))]",
+      figureClass: "text-app",
+    },
+    {
+      title: t("power.deficit"),
+      figure: formatKw(live.deficit_w),
+      rows: columns[1].rows,
+      rule: (live.deficit_w ?? 0) > 0 ? "bg-[rgb(var(--danger))]" : "bg-[rgb(var(--border))]",
+      figureClass: (live.deficit_w ?? 0) > 0 ? "text-[rgb(var(--danger))]" : "text-app",
+    },
+    {
+      title: t("projects.recommended"),
+      figure: formatKw(live.recommended_w),
+      rows: columns[2].rows.slice(0, 2),
+      rule: "bg-[rgb(var(--accent))]",
+      figureClass: "text-[rgb(var(--accent))]",
+    },
+  ];
+  const scaleMax = Math.max(live.recommended_w ?? 0, live.limit_w ?? 0, live.estimated_w ?? 0, 1);
+  const ticks = [
+    { key: "estimated", watts: live.estimated_w, color: "bg-[rgb(var(--ok))]" },
+    { key: "limit", watts: live.limit_w, color: "bg-[rgb(var(--text))]" },
+    { key: "recommended", watts: live.recommended_w, color: "bg-[rgb(var(--accent))]" },
+  ].filter((tick): tick is { key: string; watts: number; color: string } => tick.watts != null && tick.watts > 0);
+  return (
+    <section className="card mb-4 overflow-hidden">
+      <div className="grid items-stretch md:grid-cols-[1fr_auto_1fr_auto_1fr]">
+        {stages.map((stage, index) => (
+          <div key={stage.title} className="contents">
+            {index > 0 && (
+              <div className="hidden items-center px-1 text-muted md:flex" aria-hidden>
+                <svg width="22" height="22" viewBox="0 0 22 22">
+                  <path d="M7 4.5 L15 11 L7 17.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </div>
+            )}
+            <div className="px-5 pt-0 pb-4">
+              <div className={`mb-4 h-1 ${stage.rule}`} />
+              <p className="text-[11px] tracking-[0.14em] text-muted uppercase">{stage.title}</p>
+              <p className={`mt-2 text-4xl font-semibold tracking-tight tabular-nums ${stage.figureClass}`}>{stage.figure}</p>
+              <ul className="mt-3 flex flex-col gap-1">
+                {stage.rows.map(([label, value]) => (
+                  <li key={label} className="flex justify-between gap-3 text-xs text-muted">
+                    <span>{label}</span>
+                    <span className="font-mono tabular-nums text-app">{value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="relative mx-6 mb-5 h-12">
+        <div className="absolute top-2 right-0 left-0 h-1.5 rounded-full bg-[rgb(var(--bg))]">
+          <div
+            className="h-full rounded-full bg-[rgb(var(--ok))]"
+            style={{ width: `${Math.min(100, ((live.estimated_w ?? 0) / scaleMax) * 100)}%` }}
+          />
+        </div>
+        {ticks.map((tick) => {
+          const pct = (tick.watts / scaleMax) * 100;
+          const shift = pct > 92 ? "-translate-x-full" : pct < 8 ? "" : "-translate-x-1/2";
+          return (
+            <div key={tick.key} className="absolute top-1" style={{ left: `${pct}%` }}>
+              <div className={shift}>
+                <div className={`h-3.5 w-0.5 ${tick.color}`} />
+                <p className="mt-1 font-mono text-[10px] tabular-nums text-muted">
+                  {(tick.watts / 1000).toLocaleString("ru-RU", { maximumFractionDigits: 1 })}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function healthTone(status: string): Tone {
   if (status === "DELAYED") return "danger";
   if (status === "AT_RISK") return "warn";
@@ -59,7 +184,14 @@ export function ProjectPage() {
   const { projectId } = useParams();
   const { t, te } = useI18n();
   const { data, isLoading } = useProject(projectId);
+  const [params] = useSearchParams();
+  const taskFromUrl = params.get("task");
   const [tab, setTab] = useState("overview");
+  const [openTask, setOpenTask] = useState<string | null>(taskFromUrl);
+  useEffect(() => {
+    if (taskFromUrl) setOpenTask(taskFromUrl);
+  }, [taskFromUrl]);
+  const moveDue = useProjectWrite(projectId ?? "");
 
   if (isLoading || !data || !projectId) {
     return <p className="text-sm text-muted">{t("app.loading")}</p>;
@@ -77,15 +209,16 @@ export function ProjectPage() {
           </span>
         }
       />
-      <div className="mb-4 flex items-center gap-3">
-        <div className="h-1.5 flex-1 overflow-hidden rounded bg-[rgb(var(--surface-muted))]">
-          <div
-            className="h-full bg-[rgb(var(--accent))]"
-            style={{ width: `${Math.min(100, project.progress_pct)}%` }}
-          />
-        </div>
-        <span className="tabular-nums text-xs text-muted">{project.progress_pct}%</span>
-      </div>
+      <p className="-mt-2 mb-3 text-sm text-muted">
+        {te("projectStatus", project.status)}
+        {" · "}
+        {te("priority", project.priority)}
+        {project.owner_name ? ` · ${project.owner_name}` : ""}
+        {project.due_date ? ` · ${project.due_date}` : ""}
+        {` · ${project.open_task_count}/${project.task_count}`}
+      </p>
+      <ProjectBrief projectId={projectId} view={data} />
+      <CurrentTarget projectId={projectId} />
       <Tabs
         className="mb-4"
         active={tab}
@@ -95,16 +228,34 @@ export function ProjectPage() {
           { id: "tasks", label: t("projects.tasks"), badge: data.tasks.length },
           { id: "board", label: t("projects.board") },
           { id: "schedule", label: t("projects.schedule") },
+          { id: "calendar", label: t("projects.calendar") },
           { id: "infra", label: t("projects.infrastructure"), badge: data.cis.length },
           { id: "transition", label: t("projects.transition") },
         ]}
       />
       {tab === "overview" && <Overview projectId={projectId} view={data} />}
-      {tab === "tasks" && <Tasks projectId={projectId} view={data} />}
-      {tab === "board" && <Board projectId={projectId} view={data} />}
+      {tab === "tasks" && <Tasks projectId={projectId} view={data} onOpen={setOpenTask} />}
+      {tab === "board" && <Board projectId={projectId} view={data} onOpen={setOpenTask} />}
       {tab === "schedule" && <Schedule view={data} />}
+      {tab === "calendar" && (
+        <CalendarPanel
+          view={data}
+          onOpen={setOpenTask}
+          onMove={(taskId, due) =>
+            moveDue.mutate(() => mutations.updateTask(projectId, taskId, { due_date: due }))
+          }
+        />
+      )}
       {tab === "infra" && <Infrastructure projectId={projectId} view={data} />}
       {tab === "transition" && <TransitionPanel projectId={projectId} />}
+      {openTask && (
+        <TaskPanel
+          projectId={projectId}
+          taskId={openTask}
+          view={data}
+          onClose={() => setOpenTask(null)}
+        />
+      )}
     </div>
   );
 }
@@ -118,6 +269,133 @@ function useProjectWrite(projectId: string) {
       onSuccess: () => toast.success(t("app.saved")),
       onError: (err) => toast.error(describeError(err, t)),
     },
+  );
+}
+
+function phaseSpan(phase: { start_date: string | null; end_date: string | null }): string {
+  if (!phase.start_date && !phase.end_date) return "—";
+  return `${phase.start_date ?? "—"} — ${phase.end_date ?? "—"}`;
+}
+
+function phaseTone(status: string): Tone {
+  if (status === "DONE" || status === "COMPLETED") return "ok";
+  if (status === "CANCELLED") return "danger";
+  if (status === "ACTIVE" || status === "IN_PROGRESS") return "accent";
+  return "neutral";
+}
+
+function ProjectBrief({ projectId, view }: { projectId: string; view: ProjectView }) {
+  const { t, te, locale } = useI18n();
+  const project = view.project;
+  const audit = useAudit({ project_id: projectId, limit: 5, offset: 0 });
+  const progress = Math.min(100, Math.max(0, project.progress_pct));
+  const glow =
+    progress <= 0 ? "" : view.health.status === "DELAYED" ? "glow-danger" : view.health.status === "AT_RISK" ? "glow-warn" : "glow-ok";
+  const stroke =
+    view.health.status === "DELAYED" ? "rgb(var(--danger))" : view.health.status === "AT_RISK" ? "rgb(var(--warn))" : "rgb(var(--ok))";
+  const ring = 2 * Math.PI * 28;
+  const feed = audit.data?.items ?? [];
+  return (
+    <section className="card mb-4 p-4" data-testid="project-card">
+      <div className="flex items-center gap-4">
+        <svg viewBox="0 0 80 80" className={`h-16 w-16 shrink-0 ${glow}`} aria-hidden>
+          <circle cx="40" cy="40" r="28" fill="none" stroke="rgb(var(--bg))" strokeWidth="6" />
+          {progress > 0 && (
+            <circle
+              cx="40"
+              cy="40"
+              r="28"
+              fill="none"
+              stroke={stroke}
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={`${(progress / 100) * ring} ${ring}`}
+              transform="rotate(-90 40 40)"
+            />
+          )}
+          <text x="40" y="45" textAnchor="middle" fill="rgb(var(--text))" fontSize="16" fontWeight="650">
+            {project.progress_pct}
+          </text>
+        </svg>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] tracking-[0.14em] text-muted uppercase">{t("projects.progress")}</p>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[rgb(var(--bg))]">
+            <div className="h-full rounded-full bg-[rgb(var(--accent))]" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div>
+          <h2 className="text-sm font-semibold">{t("projects.phases")}</h2>
+          {view.phases.length === 0 ? (
+            <p className="mt-2 text-xs text-muted">{t("projects.noPhases")}</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-2">
+              {view.phases.map((phase) => (
+                <li key={phase.id} className="text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>
+                      {phase.order_index}. {phase.name}
+                    </span>
+                    <Badge tone={phaseTone(phase.status)}>{te("phaseStatus", phase.status)}</Badge>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-muted">{phaseSpan(phase)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold">{t("projects.risks")}</h2>
+          {view.health.findings.length === 0 ? (
+            <p className="mt-2 text-xs text-muted">{t("projects.noFindings")}</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-2">
+              {view.health.findings.map((finding) => (
+                <li key={finding.rule} className="text-sm">
+                  <Badge tone={healthTone(finding.level)}>{te("health", finding.level)}</Badge>
+                  <p className="mt-1 text-[13px]">{finding.message}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold">{t("projects.relatedObjects")}</h2>
+          {view.cis.length === 0 ? (
+            <p className="mt-2 text-xs text-muted">{t("projects.noRelated")}</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1">
+              {view.cis.slice(0, 6).map((item) => (
+                <li key={item.ci_id}>
+                  <Link to={`/ci/${item.ci_id}`} className="text-sm text-accent">
+                    <span className="font-mono text-xs text-muted">{item.code ?? "—"}</span> {item.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold">{t("projects.recentChanges")}</h2>
+          {feed.length === 0 ? (
+            <p className="mt-2 text-xs text-muted">{t("app.empty")}</p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-2">
+              {feed.map((item) => (
+                <li key={item.id} className="text-[13px]">
+                  <span className="block">{item.entity_label ?? te("auditAction", item.action)}</span>
+                  <span className="text-[11px] text-muted">
+                    {te("auditAction", item.action)}
+                    {item.actor_label ? ` · ${item.actor_label}` : ""} · {formatRelative(item.occurred_at, locale)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -230,11 +508,23 @@ function Overview({ projectId, view }: { projectId: string; view: ProjectView })
         <Panel title={t("projects.phases")}>
           <ul className="mb-3 flex flex-col gap-1">
             {view.phases.map((phase) => (
-              <li key={phase.id} className="flex items-center justify-between gap-3 text-sm">
-                <span>
-                  {phase.order_index}. {phase.name}
-                </span>
-                <span className="tabular-nums text-muted">{phase.progress_pct}%</span>
+              <li key={phase.id} className="text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span>
+                    {phase.order_index}. {phase.name}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <Badge tone={phaseTone(phase.status)}>{te("phaseStatus", phase.status)}</Badge>
+                    <span className="tabular-nums text-muted">{phase.progress_pct}%</span>
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted">{phaseSpan(phase)}</p>
+                <div className="mt-1 h-1 overflow-hidden rounded-full bg-[rgb(var(--surface-muted))]">
+                  <div
+                    className="h-full rounded-full bg-[rgb(var(--accent))]"
+                    style={{ width: `${Math.min(phase.progress_pct, 100)}%` }}
+                  />
+                </div>
               </li>
             ))}
           </ul>
@@ -339,7 +629,67 @@ function Overview({ projectId, view }: { projectId: string; view: ProjectView })
   );
 }
 
-function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
+function RecurrenceForm({ projectId }: { projectId: string }) {
+  const { t } = useI18n();
+  const [title, setTitle] = useState("");
+  const [cadence, setCadence] = useState("weekly");
+  const write = useApiMutation(
+    (body: Record<string, unknown>) => mutations.addRecurrence(projectId, body),
+    [keys.projects, keys.project(projectId)],
+    {
+      onSuccess: () => {
+        setTitle("");
+        toast.success(t("app.saved"));
+      },
+      onError: (err) => toast.error(describeError(err, t)),
+    },
+  );
+  return (
+    <Panel title={t("projects.recurrence")}>
+      <div className="flex flex-wrap gap-2">
+        <Input
+          className="min-w-48 flex-1"
+          value={title}
+          placeholder={t("projects.addTask")}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+        <Select
+          value={cadence}
+          options={[
+            { value: "daily", label: t("projects.daily") },
+            { value: "weekly", label: t("projects.weekly") },
+            { value: "monthly", label: t("projects.monthly") },
+          ]}
+          onChange={(event) => setCadence(event.target.value)}
+        />
+        <Button
+          data-testid="add-recurrence"
+          variant="primary"
+          disabled={!title.trim() || write.isPending}
+          onClick={() =>
+            write.mutate({
+              title: title.trim(),
+              cadence,
+              weekday: cadence === "weekly" ? 0 : null,
+            })
+          }
+        >
+          {t("app.create")}
+        </Button>
+      </div>
+    </Panel>
+  );
+}
+
+function Tasks({
+  projectId,
+  view,
+  onOpen,
+}: {
+  projectId: string;
+  view: ProjectView;
+  onOpen: (taskId: string) => void;
+}) {
   const { t, te } = useI18n();
   const { data: employees } = useEmployees();
   const write = useProjectWrite(projectId);
@@ -409,9 +759,18 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
             </thead>
             <tbody>
               {view.tasks.map((task) => (
-                <tr key={task.id} className="border-t border-app">
+                <tr
+                  key={task.id}
+                  className="cursor-pointer border-t border-app"
+                  onClick={() => onOpen(task.id)}
+                >
                   <td className="py-1.5 pr-2 font-mono text-xs">{task.label}</td>
-                  <td className="py-1.5 pr-2">{task.title}</td>
+                  <td className="py-1.5 pr-2">
+                    {task.title}
+                    {waitingOn(task.id, view).length > 0 && (
+                      <span className="ml-2 text-xs text-[rgb(var(--danger))]">{t("projects.waiting")}</span>
+                    )}
+                  </td>
                   <td className="py-1.5 pr-2">
                     <div className="flex items-center gap-1">
                       <Select
@@ -419,6 +778,7 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
                         options={optionsOf(task.status, TASK_NEXT[task.status] ?? [], (value) =>
                           te("taskStatus", value),
                         )}
+                        onClick={(event) => event.stopPropagation()}
                         onChange={(event) => {
                           const next = event.currentTarget.value;
                           write.mutate(() =>
@@ -430,7 +790,8 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
                         <Button
                           size="sm"
                           data-testid={`advance-${task.label}`}
-                          onClick={() => {
+                          onClick={(event) => {
+                            event.stopPropagation();
                             const next = (TASK_NEXT[task.status] ?? [])[0];
                             if (!next) return;
                             write.mutate(() =>
@@ -451,6 +812,7 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
           </table>
         )}
       </Panel>
+      <RecurrenceForm projectId={projectId} />
       <Panel title={t("projects.dependency")}>
         <div className="flex flex-wrap gap-2">
           <Select
@@ -534,7 +896,15 @@ function Tasks({ projectId, view }: { projectId: string; view: ProjectView }) {
   );
 }
 
-function Board({ projectId, view }: { projectId: string; view: ProjectView }) {
+function Board({
+  projectId,
+  view,
+  onOpen,
+}: {
+  projectId: string;
+  view: ProjectView;
+  onOpen: (taskId: string) => void;
+}) {
   const { t, te } = useI18n();
   const write = useProjectWrite(projectId);
 
@@ -569,10 +939,14 @@ function Board({ projectId, view }: { projectId: string; view: ProjectView }) {
                   key={task.id}
                   draggable
                   onDragStart={(event) => event.dataTransfer.setData("text/plain", task.id)}
+                  onClick={() => onOpen(task.id)}
                   className="cursor-grab rounded-md border border-app bg-[rgb(var(--surface))] p-2 text-sm"
                 >
                   <p className="font-mono text-[0.65rem] text-muted">{task.label}</p>
                   <p>{task.title}</p>
+                  {waitingOn(task.id, view).length > 0 && (
+                    <p className="text-xs text-[rgb(var(--danger))]">{t("projects.waiting")}</p>
+                  )}
                 </article>
               ))}
           </div>

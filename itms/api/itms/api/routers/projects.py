@@ -4,10 +4,22 @@ import uuid
 
 from fastapi import APIRouter
 
-from itms.api.deps import SessionDep, requires
+from itms.api.deps import CurrentUser, SessionDep, requires
+from itms.api.schemas.planning import (
+    Analytics,
+    RecurrenceCreate,
+    RecurrenceRead,
+    SavedViewCreate,
+    SavedViewRead,
+    TemplateCreate,
+)
 from itms.api.schemas.projects import (
+    CheckCreate,
+    CheckUpdate,
     CiLink,
+    CommentCreate,
     DependencyCreate,
+    InboxItem,
     MemberWrite,
     MilestoneCreate,
     MilestoneUpdate,
@@ -21,11 +33,12 @@ from itms.api.schemas.projects import (
     TaskCiLink,
     TaskCreate,
     TaskUpdate,
+    TaskWork,
     TimeEntryCreate,
 )
 from itms.api.schemas.transition import SnapshotCreate, SnapshotRead, TransitionView
 from itms.domain.permissions import Permission
-from itms.services import project_service, transition_service
+from itms.services import planning_service, project_service, recurrence_service, transition_service
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -34,6 +47,55 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 async def list_projects(session: SessionDep) -> list[ProjectSummary]:
     rows = await project_service.list_projects(session)
     return [ProjectSummary.model_validate(row) for row in rows]
+
+
+@router.get("/inbox", response_model=list[InboxItem], dependencies=[requires(Permission.CI_READ)])
+async def inbox(session: SessionDep) -> list[InboxItem]:
+    rows = await project_service.inbox(session)
+    return [InboxItem.model_validate(row) for row in rows]
+
+
+@router.get("/templates", dependencies=[requires(Permission.CI_READ)])
+async def list_templates() -> list[dict[str, str]]:
+    return planning_service.template_catalog()
+
+
+@router.post(
+    "/from-template",
+    response_model=ProjectView,
+    status_code=201,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def create_from_template(payload: TemplateCreate, session: SessionDep) -> ProjectView:
+    view = await planning_service.create_from_template(session, payload.model_dump())
+    return ProjectView.model_validate(view)
+
+
+@router.get("/analytics", response_model=Analytics, dependencies=[requires(Permission.CI_READ)])
+async def project_analytics(session: SessionDep) -> Analytics:
+    return Analytics.model_validate(await planning_service.analytics(session))
+
+
+@router.get("/views", response_model=list[SavedViewRead])
+async def list_views(user: CurrentUser, session: SessionDep) -> list[SavedViewRead]:
+    rows = await planning_service.list_views(session, user.id)
+    return [SavedViewRead.model_validate(row) for row in rows]
+
+
+@router.post("/views", response_model=list[SavedViewRead], status_code=201)
+async def save_view(
+    payload: SavedViewCreate, user: CurrentUser, session: SessionDep
+) -> list[SavedViewRead]:
+    rows = await planning_service.save_view(session, user.id, payload.model_dump())
+    return [SavedViewRead.model_validate(row) for row in rows]
+
+
+@router.delete("/views/{view_id}", response_model=list[SavedViewRead])
+async def delete_view(
+    view_id: uuid.UUID, user: CurrentUser, session: SessionDep
+) -> list[SavedViewRead]:
+    rows = await planning_service.delete_view(session, user.id, view_id)
+    return [SavedViewRead.model_validate(row) for row in rows]
 
 
 @router.post(
@@ -155,6 +217,29 @@ async def delete_milestone(
     )
 
 
+@router.get(
+    "/{project_id}/recurrences",
+    response_model=list[RecurrenceRead],
+    dependencies=[requires(Permission.CI_READ)],
+)
+async def list_recurrences(project_id: uuid.UUID, session: SessionDep) -> list[RecurrenceRead]:
+    rows = await recurrence_service.list_recurrences(session, project_id)
+    return [RecurrenceRead.model_validate(row) for row in rows]
+
+
+@router.post(
+    "/{project_id}/recurrences",
+    response_model=list[RecurrenceRead],
+    status_code=201,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def add_recurrence(
+    project_id: uuid.UUID, payload: RecurrenceCreate, session: SessionDep
+) -> list[RecurrenceRead]:
+    rows = await recurrence_service.create_recurrence(session, project_id, payload.model_dump())
+    return [RecurrenceRead.model_validate(row) for row in rows]
+
+
 @router.post(
     "/{project_id}/tasks",
     response_model=ProjectView,
@@ -164,6 +249,57 @@ async def delete_milestone(
 async def add_task(project_id: uuid.UUID, payload: TaskCreate, session: SessionDep) -> ProjectView:
     view = await project_service.add_task(session, project_id, payload.model_dump())
     return ProjectView.model_validate(view)
+
+
+@router.get(
+    "/{project_id}/tasks/{task_id}/work",
+    response_model=TaskWork,
+    dependencies=[requires(Permission.CI_READ)],
+)
+async def task_work(project_id: uuid.UUID, task_id: uuid.UUID, session: SessionDep) -> TaskWork:
+    return TaskWork.model_validate(await project_service.task_work(session, project_id, task_id))
+
+
+@router.post(
+    "/{project_id}/tasks/{task_id}/comments",
+    response_model=TaskWork,
+    status_code=201,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def add_comment(
+    project_id: uuid.UUID, task_id: uuid.UUID, payload: CommentCreate, session: SessionDep
+) -> TaskWork:
+    view = await project_service.add_comment(session, project_id, task_id, payload.body)
+    return TaskWork.model_validate(view)
+
+
+@router.post(
+    "/{project_id}/tasks/{task_id}/checks",
+    response_model=TaskWork,
+    status_code=201,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def add_check(
+    project_id: uuid.UUID, task_id: uuid.UUID, payload: CheckCreate, session: SessionDep
+) -> TaskWork:
+    view = await project_service.add_check(session, project_id, task_id, payload.title)
+    return TaskWork.model_validate(view)
+
+
+@router.patch(
+    "/{project_id}/tasks/{task_id}/checks/{check_id}",
+    response_model=TaskWork,
+    dependencies=[requires(Permission.CI_WRITE)],
+)
+async def update_check(
+    project_id: uuid.UUID,
+    task_id: uuid.UUID,
+    check_id: uuid.UUID,
+    payload: CheckUpdate,
+    session: SessionDep,
+) -> TaskWork:
+    view = await project_service.update_check(session, project_id, task_id, check_id, payload.done)
+    return TaskWork.model_validate(view)
 
 
 @router.patch(

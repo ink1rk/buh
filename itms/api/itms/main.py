@@ -18,15 +18,19 @@ from itms.api.routers import (
     diagrams,
     directory,
     documents,
+    exports,
     files,
     floorplans,
     ipam,
     locations,
     network,
+    notifications,
     ops,
     power,
     projects,
     racks,
+    users,
+    virtualization,
 )
 from itms.core.config import settings
 from itms.core.context import set_context
@@ -103,11 +107,15 @@ app.include_router(devices.interfaces_router, prefix=prefix)
 app.include_router(network.router, prefix=prefix)
 app.include_router(diagrams.router, prefix=prefix)
 app.include_router(racks.router, prefix=prefix)
+app.include_router(virtualization.router, prefix=prefix)
 app.include_router(projects.router, prefix=prefix)
+app.include_router(notifications.router, prefix=prefix)
 app.include_router(power.router, prefix=prefix)
 app.include_router(ipam.router, prefix=prefix)
 app.include_router(directory.router, prefix=prefix)
+app.include_router(users.router, prefix=prefix)
 app.include_router(documents.router, prefix=prefix)
+app.include_router(exports.router, prefix=prefix)
 app.include_router(files.router, prefix=prefix)
 app.include_router(floorplans.router, prefix=prefix)
 app.include_router(ops.search_router, prefix=prefix)

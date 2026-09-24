@@ -151,6 +151,27 @@ class ResponsibilityWrite(BaseModel):
     color: str | None = None
 
 
+class UserRead(ORMModel):
+    id: uuid.UUID
+    email: str
+    display_name: str
+    role: UserRole
+    status: UserStatus
+    last_login_at: datetime | None
+
+
+class UserCreate(BaseModel):
+    email: Email
+    display_name: str = Field(min_length=1, max_length=255)
+    password: str = Field(min_length=1, max_length=256)
+    role: UserRole = UserRole.VIEWER
+
+
+class UserUpdate(BaseModel):
+    role: UserRole | None = None
+    status: UserStatus | None = None
+
+
 class WorkloadRow(BaseModel):
     id: uuid.UUID
     full_name: str

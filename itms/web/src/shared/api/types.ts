@@ -241,6 +241,8 @@ export interface Dashboard {
     entity_label: string | null;
     action: string;
     reason: string | null;
+    project_id?: string | null;
+    changes?: Array<{ field: string; old_value: string | null; new_value: string | null }>;
   }>;
 }
 
@@ -745,6 +747,59 @@ export interface ProjectMilestone {
   completed_at: string | null;
 }
 
+export interface NotificationItem {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  project_id: string | null;
+  task_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationList {
+  unread: number;
+  items: NotificationItem[];
+}
+
+export interface SavedView {
+  id: string;
+  name: string;
+  project_id: string | null;
+  status: string | null;
+  priority: string | null;
+  bucket: string | null;
+}
+
+export interface AnalyticsReport {
+  by_status: Record<string, number>;
+  by_priority: Record<string, number>;
+  open: number;
+  completed: number;
+  overdue: number;
+  workload: Array<{ name: string; open: number; estimate_min: number }>;
+}
+
+export interface InboxItem {
+  id: string;
+  project_id: string;
+  project_key: string;
+  project_name: string;
+  label: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+  assignee_name: string | null;
+  bucket: string;
+}
+
+export interface TaskWork {
+  comments: Array<{ id: string; body: string; author_label: string; created_at: string }>;
+  checks: Array<{ id: string; title: string; done: boolean }>;
+}
+
 export interface ProjectTask {
   id: string;
   number: number;
@@ -994,4 +1049,56 @@ export interface ImportJob {
   preview: Array<Record<string, string>>;
   created_at: string;
   applied_at: string | null;
+}
+
+export interface VirtHost {
+  id: string;
+  name: string;
+  code: string | null;
+  ci_type: string;
+  status: string;
+  platform: string;
+  cpu_cores: number;
+  memory_mb: number;
+  storage_gb: number;
+  vm_count: number;
+  vm_running: number;
+  vcpu_running: number;
+  memory_running_mb: number;
+  vcpu_allocated: number;
+  memory_allocated_mb: number;
+  disk_allocated_gb: number;
+}
+
+export interface VirtVm {
+  id: string;
+  name: string;
+  code: string | null;
+  status: string;
+  host_id: string | null;
+  host_name: string | null;
+  host_code: string | null;
+  vcpu: number;
+  memory_mb: number;
+  disk_gb: number;
+  guest_os: string | null;
+  power_state: string;
+}
+
+export interface VirtOverview {
+  hosts: VirtHost[];
+  vms: VirtVm[];
+  totals: {
+    hosts: number;
+    vms: number;
+    running: number;
+    vcpu_running: number;
+    memory_running_mb: number;
+    vcpu_allocated: number;
+    memory_allocated_mb: number;
+    disk_allocated_gb: number;
+    cpu_cores: number;
+    memory_mb: number;
+    storage_gb: number;
+  };
 }

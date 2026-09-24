@@ -305,3 +305,47 @@ class ProjectView(BaseModel):
     members: list[MemberRead]
     schedule: ScheduleView
     health: HealthRead
+
+
+class InboxItem(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    project_key: str
+    project_name: str
+    label: str
+    title: str
+    status: str
+    priority: str
+    due_date: date | None
+    assignee_name: str | None
+    bucket: str
+
+
+class CommentRead(BaseModel):
+    id: uuid.UUID
+    body: str
+    author_label: str
+    created_at: datetime
+
+
+class CheckRead(BaseModel):
+    id: uuid.UUID
+    title: str
+    done: bool
+
+
+class TaskWork(BaseModel):
+    comments: list[CommentRead]
+    checks: list[CheckRead]
+
+
+class CommentCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+
+class CheckCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=500)
+
+
+class CheckUpdate(BaseModel):
+    done: bool

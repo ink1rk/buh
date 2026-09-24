@@ -19,7 +19,7 @@ from itms.api.schemas.documents import DocumentRead
 from itms.api.schemas.ops import AuditLogRead
 from itms.domain.permissions import Permission
 from itms.models.cmdb import Ci
-from itms.models.enums import CiStatus, CiType
+from itms.models.enums import CiStatus, CiType, Criticality
 from itms.services import ci_service, document_service
 
 router = APIRouter(prefix="/ci", tags=["ci"])
@@ -41,6 +41,9 @@ async def list_ci(
     include_sublocations: bool = True,
     owner_employee_id: uuid.UUID | None = None,
     tag: Annotated[list[str] | None, Query()] = None,
+    criticality: Annotated[list[Criticality] | None, Query()] = None,
+    without_owner: bool = False,
+    without_location: bool = False,
     archived: bool = False,
     sort: str = "name",
     limit: int = Query(default=50, ge=1, le=500),
@@ -56,6 +59,9 @@ async def list_ci(
             include_sublocations=include_sublocations,
             owner_employee_id=owner_employee_id,
             tag=tag,
+            criticality=criticality,
+            without_owner=without_owner,
+            without_location=without_location,
             archived=archived,
             sort=sort,
             limit=limit,

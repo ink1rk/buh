@@ -44,39 +44,25 @@ export function DevicesPage() {
 
   const columns: Array<Column<DeviceRow>> = [
     {
-      key: "code",
-      header: t("ci.code"),
-      width: "8rem",
-      render: (row) => <span className="font-mono text-xs text-muted">{row.code ?? "—"}</span>,
-    },
-    {
       key: "name",
       header: t("ci.name"),
-      render: (row) => <span className="font-medium">{row.name}</span>,
+      render: (row) => (
+        <span className="block min-w-0">
+          <span className="flex items-baseline gap-2">
+            {row.code && <span className="font-mono text-xs text-muted">{row.code}</span>}
+            <span className="truncate font-medium">{row.name}</span>
+          </span>
+          <span className="mt-0.5 block truncate font-mono text-[11px] text-muted">
+            {[row.model_label, row.hostname, row.mgmt_ip].filter(Boolean).join(" · ") || "—"}
+          </span>
+        </span>
+      ),
     },
     {
       key: "device_role",
       header: t("devices.role"),
       width: "11rem",
       render: (row) => <span className="text-muted">{te("deviceRole", row.device_role)}</span>,
-    },
-    {
-      key: "model_label",
-      header: t("devices.model"),
-      width: "14rem",
-      render: (row) => <span className="truncate text-muted">{row.model_label ?? "—"}</span>,
-    },
-    {
-      key: "hostname",
-      header: t("devices.hostname"),
-      width: "12rem",
-      render: (row) => <span className="font-mono text-xs">{row.hostname ?? "—"}</span>,
-    },
-    {
-      key: "mgmt_ip",
-      header: t("devices.mgmtIp"),
-      width: "10rem",
-      render: (row) => <span className="font-mono text-xs">{row.mgmt_ip ?? "—"}</span>,
     },
     {
       key: "status",

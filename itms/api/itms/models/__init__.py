@@ -57,17 +57,23 @@ from itms.models.power import (
 )
 from itms.models.projects import (
     Milestone,
+    Notification,
     Phase,
     Project,
     ProjectCi,
     ProjectMember,
+    SavedView,
     Task,
+    TaskCheck,
     TaskCi,
+    TaskComment,
     TaskDependency,
+    TaskRecurrence,
     TimeEntry,
 )
 from itms.models.system import AppSetting, ImportJob, OutboxEvent
 from itms.models.transition import ChangeItem, PlannedChange, StateSnapshot
+from itms.models.virtualization import ComputeHost, VirtualMachine
 
 __all__ = [
     "AppSetting",
@@ -80,6 +86,7 @@ __all__ = [
     "Ci",
     "CiRelation",
     "CiTag",
+    "ComputeHost",
     "Connection",
     "CustomFieldDef",
     "CustomFieldValue",
@@ -105,6 +112,7 @@ __all__ = [
     "Location",
     "Manufacturer",
     "Milestone",
+    "Notification",
     "Organization",
     "OutboxEvent",
     "Phase",
@@ -123,15 +131,20 @@ __all__ = [
     "Rack",
     "RackMount",
     "ResponsibilityArea",
+    "SavedView",
     "SearchIndex",
     "StateSnapshot",
     "Tag",
     "Task",
+    "TaskCheck",
     "TaskCi",
+    "TaskComment",
     "TaskDependency",
+    "TaskRecurrence",
     "TimeEntry",
     "UserAccount",
     "UserSession",
+    "VirtualMachine",
     "Vlan",
     "Vrf",
 ]

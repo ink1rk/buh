@@ -19,10 +19,23 @@ interface ToastState {
   dismiss: (id: string) => void;
 }
 
+/** `randomUUID` есть только в безопасном контексте. Прод открыт по HTTP, не с localhost. */
+function toastId(): string {
+  const webCrypto = globalThis.crypto;
+  if (typeof webCrypto?.randomUUID === "function") return webCrypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  if (typeof webCrypto?.getRandomValues === "function") webCrypto.getRandomValues(bytes);
+  else for (let index = 0; index < bytes.length; index += 1) bytes[index] = Math.floor(Math.random() * 256);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 const useToastStore = create<ToastState>((set) => ({
   items: [],
   push: (toast) => {
-    const id = crypto.randomUUID();
+    const id = toastId();
     set((state) => ({ items: [...state.items, { ...toast, id }] }));
     setTimeout(() => set((state) => ({ items: state.items.filter((i) => i.id !== id) })), 6000);
   },
@@ -63,7 +76,7 @@ export function ToastViewport() {
           <div
             key={item.id}
             role="status"
-            className="surface animate-in pointer-events-auto flex items-start gap-2 rounded-lg px-3 py-2 shadow-lg"
+            className="surface shadow-pop animate-in pointer-events-auto flex items-start gap-2.5 rounded-xl px-3.5 py-3"
           >
             <Icon size={15} className={cn("mt-0.5 shrink-0", TONE_CLASS[item.tone])} />
             <div className="min-w-0 flex-1">

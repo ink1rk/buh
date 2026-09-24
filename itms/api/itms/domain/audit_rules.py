@@ -32,6 +32,7 @@ from itms.models.network import (
 )
 from itms.models.power import PowerLink, PowerNode
 from itms.models.projects import Project, Task
+from itms.models.virtualization import ComputeHost, VirtualMachine
 
 CI_CRITICAL_FIELDS = frozenset(
     {
@@ -151,6 +152,20 @@ def configure_audit() -> None:
         ),
     )
     register_audit(PowerLink, AuditConfig(entity_type="POWER_LINK", label_attr="status"))
+    register_audit(
+        ComputeHost,
+        AuditConfig(
+            entity_type="COMPUTE_HOST",
+            critical_fields=frozenset({"platform", "cpu_cores", "memory_mb", "storage_gb"}),
+        ),
+    )
+    register_audit(
+        VirtualMachine,
+        AuditConfig(
+            entity_type="VIRTUAL_MACHINE",
+            critical_fields=frozenset({"host_id", "vcpu", "memory_mb", "disk_gb", "power_state"}),
+        ),
+    )
     register_audit(Project, AuditConfig(entity_type="PROJECT", label_attr="key"))
     register_audit(Task, AuditConfig(entity_type="TASK", label_attr="title"))
     register_audit(

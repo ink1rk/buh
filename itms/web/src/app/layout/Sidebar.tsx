@@ -2,16 +2,15 @@ import {
   Boxes,
   FileText,
   FolderKanban,
-  GalleryVertical,
   History,
+  BarChart3,
   LayoutDashboard,
   Layers,
-  Map,
-  MapPin,
+  ListChecks,
   Network,
   PanelLeftClose,
   PanelLeftOpen,
-  Router,
+  Cpu,
   Server,
   Settings,
   Upload,
@@ -20,71 +19,201 @@ import {
   Zap,
 } from "lucide-react";
 import type { ComponentType } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
 import { useI18n, type TranslationKey } from "@/i18n";
 import { cn } from "@/shared/lib/cn";
 import { useUiStore } from "@/shared/store/ui";
 import { IconButton } from "@/shared/ui/Button";
+import { Mark } from "@/shared/ui/Mark";
 
 interface NavItem {
   to: string;
   labelKey: TranslationKey;
-  icon: ComponentType<{ size?: number }>;
+  icon: ComponentType<{ size?: number; strokeWidth?: number }>;
+  match: (pathname: string) => boolean;
 }
 
-const PRIMARY: NavItem[] = [
-  { to: "/dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
-  { to: "/ci", labelKey: "nav.objects", icon: Boxes },
-  { to: "/devices", labelKey: "nav.devices", icon: Server },
-  { to: "/network", labelKey: "nav.network", icon: Network },
-  { to: "/ipam", labelKey: "nav.ipam", icon: Router },
-  { to: "/diagrams", labelKey: "nav.diagrams", icon: Workflow },
-  { to: "/racks", labelKey: "nav.racks", icon: GalleryVertical },
-  { to: "/floorplans", labelKey: "nav.floorplans", icon: Map },
-  { to: "/projects", labelKey: "nav.projects", icon: FolderKanban },
-  { to: "/power", labelKey: "nav.power", icon: Zap },
-  { to: "/locations", labelKey: "nav.locations", icon: MapPin },
-  { to: "/documents", labelKey: "nav.documents", icon: FileText },
-  { to: "/directory", labelKey: "nav.directory", icon: Users },
+interface NavGroup {
+  labelKey: TranslationKey;
+  items: NavItem[];
+}
+
+function starts(pathname: string, prefixes: string[]): boolean {
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+const GROUPS: NavGroup[] = [
+  {
+    labelKey: "nav.groupOverview",
+    items: [
+      {
+        to: "/dashboard",
+        labelKey: "nav.dashboard",
+        icon: LayoutDashboard,
+        match: (pathname) => pathname === "/dashboard",
+      },
+      {
+        to: "/work",
+        labelKey: "nav.work",
+        icon: ListChecks,
+        match: (pathname) => pathname === "/work",
+      },
+    ],
+  },
+  {
+    labelKey: "nav.groupWork",
+    items: [
+      {
+        to: "/projects",
+        labelKey: "nav.projects",
+        icon: FolderKanban,
+        match: (pathname) => starts(pathname, ["/projects"]),
+      },
+      {
+        to: "/analytics",
+        labelKey: "nav.analytics",
+        icon: BarChart3,
+        match: (pathname) => pathname === "/analytics",
+      },
+    ],
+  },
+  {
+    labelKey: "nav.groupInfrastructure",
+    items: [
+      {
+        to: "/infrastructure",
+        labelKey: "nav.infrastructure",
+        icon: Boxes,
+        match: (pathname) => starts(pathname, ["/infrastructure", "/ci", "/devices", "/ipam"]),
+      },
+      {
+        to: "/diagrams",
+        labelKey: "nav.diagrams",
+        icon: Workflow,
+        match: (pathname) => starts(pathname, ["/diagrams"]),
+      },
+      {
+        to: "/network",
+        labelKey: "nav.network",
+        icon: Network,
+        match: (pathname) => pathname === "/network",
+      },
+      {
+        to: "/datacenter",
+        labelKey: "nav.datacenter",
+        icon: Server,
+        match: (pathname) => starts(pathname, ["/datacenter", "/racks", "/floorplans", "/locations"]),
+      },
+      {
+        to: "/power",
+        labelKey: "nav.power",
+        icon: Zap,
+        match: (pathname) => pathname === "/power",
+      },
+      {
+        to: "/virtualization",
+        labelKey: "nav.virtualization",
+        icon: Cpu,
+        match: (pathname) => starts(pathname, ["/virtualization"]),
+      },
+    ],
+  },
+  {
+    labelKey: "nav.groupKnowledge",
+    items: [
+      {
+        to: "/documents",
+        labelKey: "nav.documents",
+        icon: FileText,
+        match: (pathname) => starts(pathname, ["/documents"]),
+      },
+      {
+        to: "/directory",
+        labelKey: "nav.team",
+        icon: Users,
+        match: (pathname) => pathname === "/directory",
+      },
+    ],
+  },
 ];
 
-const SECONDARY: NavItem[] = [
-  { to: "/catalog", labelKey: "nav.catalog", icon: Layers },
-  { to: "/audit", labelKey: "nav.audit", icon: History },
-  { to: "/imports", labelKey: "nav.imports", icon: Upload },
-  { to: "/settings", labelKey: "nav.settings", icon: Settings },
-];
+const SYSTEM: NavGroup = {
+  labelKey: "nav.groupSystem",
+  items: [
+    {
+      to: "/audit",
+      labelKey: "nav.audit",
+      icon: History,
+      match: (pathname) => pathname === "/audit",
+    },
+    {
+      to: "/catalog",
+      labelKey: "nav.catalog",
+      icon: Layers,
+      match: (pathname) => pathname === "/catalog",
+    },
+    {
+      to: "/imports",
+      labelKey: "nav.imports",
+      icon: Upload,
+      match: (pathname) => pathname === "/imports",
+    },
+    {
+      to: "/settings",
+      labelKey: "nav.settings",
+      icon: Settings,
+      match: (pathname) => pathname === "/settings",
+    },
+  ],
+};
 
-function NavSection({ items, collapsed }: { items: NavItem[]; collapsed: boolean }) {
+function NavSection({
+  group,
+  collapsed,
+  divided,
+}: {
+  group: NavGroup;
+  collapsed: boolean;
+  divided?: boolean;
+}) {
   const { t } = useI18n();
+  const { pathname } = useLocation();
   return (
-    <ul className="flex flex-col gap-0.5">
-      {items.map((item) => {
-        const Icon = item.icon;
-        const label = t(item.labelKey);
-        return (
-          <li key={item.to}>
-            <NavLink
-              to={item.to}
-              title={collapsed ? label : undefined}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors",
+    <div className={cn("flex flex-col", divided && (collapsed ? "mt-2" : "mt-1"))}>
+      {collapsed ? (
+        divided && <div className="mx-auto mb-2 h-px w-4 bg-[rgb(var(--border))]" />
+      ) : (
+        <p className="px-2.5 pt-3 pb-1 text-[0.62rem] font-semibold tracking-[0.14em] text-muted uppercase">
+          {t(group.labelKey)}
+        </p>
+      )}
+      <ul className="flex flex-col gap-px">
+        {group.items.map((item) => {
+          const Icon = item.icon;
+          const label = t(item.labelKey);
+          const active = item.match(pathname);
+          return (
+            <li key={item.to}>
+              <NavLink
+                to={item.to}
+                title={label}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-[7px] text-[13px] transition-colors",
                   collapsed && "justify-center px-0",
-                  isActive
-                    ? "bg-[rgb(var(--accent-soft))] font-medium text-[rgb(var(--accent))]"
+                  active
+                    ? "bg-[rgb(var(--accent-soft))] font-semibold text-[rgb(var(--accent))]"
                     : "text-muted hover:bg-[rgb(var(--surface-muted))] hover:text-app",
-                )
-              }
-            >
-              <Icon size={16} />
-              {!collapsed && <span className="truncate">{label}</span>}
-            </NavLink>
-          </li>
-        );
-      })}
-    </ul>
+                )}
+              >
+                <Icon size={15} strokeWidth={1.75} />
+                {!collapsed && <span className="truncate">{label}</span>}
+              </NavLink>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -96,15 +225,16 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex shrink-0 flex-col gap-3 border-r border-app bg-surface py-3 transition-[width]",
-        collapsed ? "w-14 px-2" : "w-56 px-3",
+        "glass-bar flex shrink-0 flex-col border-r py-3",
+        collapsed ? "w-14 px-1.5" : "w-[15.25rem] px-2.5",
       )}
     >
-      <div className={cn("flex items-center", collapsed ? "justify-center" : "justify-between")}>
+      <div className={cn("flex items-center gap-2 px-1.5", collapsed && "flex-col px-0")}>
+        <Mark size={26} />
         {!collapsed && (
-          <div className="min-w-0">
-            <p className="text-sm font-semibold tracking-tight">{t("app.name")}</p>
-            <p className="truncate text-[0.7rem] text-muted">{t("app.tagline")}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm leading-tight font-semibold tracking-tight">{t("app.name")}</p>
+            <p className="truncate text-[0.65rem] leading-4 text-muted">{t("app.tagline")}</p>
           </div>
         )}
         <IconButton label={collapsed ? t("nav.expand") : t("nav.collapse")} onClick={toggleNav}>
@@ -112,9 +242,13 @@ export function Sidebar() {
         </IconButton>
       </div>
 
-      <nav className="flex flex-1 flex-col justify-between">
-        <NavSection items={PRIMARY} collapsed={collapsed} />
-        <NavSection items={SECONDARY} collapsed={collapsed} />
+      <nav className="mt-2 flex flex-1 flex-col justify-between overflow-y-auto">
+        <div>
+          {GROUPS.map((group, index) => (
+            <NavSection key={group.labelKey} group={group} collapsed={collapsed} divided={index > 0} />
+          ))}
+        </div>
+        <NavSection group={SYSTEM} collapsed={collapsed} divided />
       </nav>
     </aside>
   );

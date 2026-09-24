@@ -1,4 +1,4 @@
-import { Boxes, CornerDownLeft, FileText, MapPin, Search, Users } from "lucide-react";
+import { Boxes, CornerDownLeft, Cpu, FileText, FolderKanban, ListChecks, MapPin, Search, Users, Workflow, Zap } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -48,6 +48,17 @@ export function CommandPalette() {
   const { data, isFetching } = useSearch(debounced, open);
 
   const hits = useMemo(() => data?.hits ?? [], [data]);
+  const actions = useMemo(
+    () => [
+      { label: t("search.actionTask"), path: "/work", icon: ListChecks },
+      { label: t("search.actionProject"), path: "/projects", icon: FolderKanban },
+      { label: t("search.actionObject"), path: "/ci", icon: Boxes },
+      { label: t("search.actionDiagram"), path: "/diagrams", icon: Workflow },
+      { label: t("search.actionPower"), path: "/power", icon: Zap },
+      { label: t("search.actionVirtualization"), path: "/virtualization", icon: Cpu },
+    ],
+    [t],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -85,7 +96,7 @@ export function CommandPalette() {
   const showRecent = !debounced.trim() && recent.length > 0;
 
   return createPortal(
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/45 p-4 pt-[12vh]">
+    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-[rgb(8_9_11/0.55)] p-4 pt-[14vh] backdrop-blur-sm">
       <button
         type="button"
         aria-label={t("app.close")}
@@ -96,10 +107,10 @@ export function CommandPalette() {
         role="dialog"
         aria-modal="true"
         aria-label={t("nav.commandPalette")}
-        className="surface animate-in relative w-full max-w-2xl overflow-hidden rounded-lg shadow-2xl"
+        className="surface shadow-pop animate-in relative w-full max-w-2xl overflow-hidden rounded-2xl"
         onKeyDown={onKeyDown}
       >
-        <div className="flex items-center gap-2 border-b border-app px-3 py-2.5">
+        <div className="flex items-center gap-2.5 border-b border-app px-4 py-3.5">
           <Search size={15} className="text-muted" />
           <input
             ref={inputRef}
@@ -112,6 +123,32 @@ export function CommandPalette() {
         </div>
 
         <div className="max-h-[52vh] overflow-y-auto">
+          {!debounced.trim() && (
+            <ul className="py-1">
+              <li className="px-4 py-1 text-[0.7rem] font-medium tracking-wide text-muted uppercase">
+                {t("search.actions")}
+              </li>
+              {actions.map((action) => {
+                const Icon = action.icon;
+                return (
+                  <li key={action.path}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false);
+                        navigate(action.path);
+                      }}
+                      className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm hover:bg-[rgb(var(--surface-muted))]"
+                    >
+                      <Icon size={15} />
+                      <span>{action.label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
           {showRecent && (
             <ul className="py-1">
               <li className="px-3 py-1 text-[0.7rem] font-medium tracking-wide text-muted uppercase">
@@ -125,7 +162,7 @@ export function CommandPalette() {
                       setOpen(false);
                       navigate(item.path);
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-[rgb(var(--surface-muted))]"
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm hover:bg-[rgb(var(--surface-muted))]"
                   >
                     <span className="truncate">{item.title}</span>
                   </button>
@@ -149,8 +186,8 @@ export function CommandPalette() {
                       onMouseEnter={() => setCursor(index)}
                       onClick={() => go(hit)}
                       className={cn(
-                        "flex w-full items-center gap-2.5 px-3 py-1.5 text-left",
-                        index === cursor && "bg-[rgb(var(--surface-muted))]",
+                        "flex w-full items-center gap-2.5 px-4 py-2 text-left",
+                        index === cursor && "bg-[rgb(var(--accent-soft))]",
                       )}
                     >
                       <Icon size={15} />
@@ -170,9 +207,6 @@ export function CommandPalette() {
             </ul>
           )}
 
-          {!debounced.trim() && !showRecent && (
-            <p className="px-3 py-8 text-center text-sm text-muted">{t("search.hint")}</p>
-          )}
         </div>
 
         <footer className="flex items-center gap-3 border-t border-app px-3 py-1.5 text-[0.7rem] text-muted">

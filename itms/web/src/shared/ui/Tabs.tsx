@@ -20,7 +20,7 @@ export function Tabs({
   className?: string;
 }) {
   return (
-    <div className={cn("flex gap-0.5 border-b border-app", className)} role="tablist">
+    <div className={cn("flex gap-1 border-b border-app", className)} role="tablist">
       {items.map((item) => (
         <button
           key={item.id}
@@ -29,7 +29,7 @@ export function Tabs({
           aria-selected={active === item.id}
           onClick={() => onChange(item.id)}
           className={cn(
-            "-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-xs font-medium transition-colors",
+            "-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors",
             active === item.id
               ? "border-[rgb(var(--accent))] text-app"
               : "border-transparent text-muted hover:text-app",

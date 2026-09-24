@@ -24,8 +24,13 @@ import type {
   RackElevation,
   RackSummary,
   PowerOverview,
+  AnalyticsReport,
+  InboxItem,
+  NotificationList,
+  SavedView,
   ProjectSummary,
   ProjectView,
+  TaskWork,
   DocumentDetail,
   DocumentSummary,
   DocumentVersion,
@@ -53,6 +58,7 @@ import type {
   TransitionView,
   VlanRow,
   Vrf,
+  VirtOverview,
   WarrantyRow,
   WorkloadRow,
 } from "./types";
@@ -104,7 +110,13 @@ export const keys = {
   rack: (id: string) => ["racks", id] as const,
   projects: ["projects"] as const,
   project: (id: string) => ["projects", id] as const,
+  inbox: ["projects", "inbox"] as const,
+  notifications: ["notifications"] as const,
+  analytics: ["projects", "analytics"] as const,
+  views: ["projects", "views"] as const,
+  taskWork: (projectId: string, taskId: string) => ["projects", projectId, "work", taskId] as const,
   power: ["power"] as const,
+  virtualization: ["virtualization"] as const,
   transition: (id: string) => ["projects", id, "transition"] as const,
 };
 
@@ -140,6 +152,9 @@ export interface CiListParams {
   location_id?: string;
   owner_employee_id?: string;
   tag?: string[];
+  criticality?: string[];
+  without_owner?: boolean;
+  without_location?: boolean;
   archived?: boolean;
   sort?: string;
   limit: number;
@@ -265,6 +280,7 @@ export interface AuditParams {
   entity_type?: string;
   action?: string[];
   field?: string;
+  project_id?: string;
   date_from?: string;
   date_to?: string;
   limit: number;
@@ -370,6 +386,50 @@ export function usePower() {
   return useQuery({
     queryKey: keys.power,
     queryFn: () => api.get<PowerOverview>("/power"),
+  });
+}
+
+export function useVirtualization() {
+  return useQuery({
+    queryKey: keys.virtualization,
+    queryFn: () => api.get<VirtOverview>("/virtualization"),
+  });
+}
+
+export function useAnalytics() {
+  return useQuery({
+    queryKey: keys.analytics,
+    queryFn: () => api.get<AnalyticsReport>("/projects/analytics"),
+  });
+}
+
+export function useSavedViews() {
+  return useQuery({
+    queryKey: keys.views,
+    queryFn: () => api.get<SavedView[]>("/projects/views"),
+  });
+}
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: keys.notifications,
+    queryFn: () => api.get<NotificationList>("/notifications"),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useInbox() {
+  return useQuery({
+    queryKey: keys.inbox,
+    queryFn: () => api.get<InboxItem[]>("/projects/inbox"),
+  });
+}
+
+export function useTaskWork(projectId: string | undefined, taskId: string | undefined) {
+  return useQuery({
+    queryKey: keys.taskWork(projectId ?? "", taskId ?? ""),
+    queryFn: () => api.get<TaskWork>(`/projects/${projectId}/tasks/${taskId}/work`),
+    enabled: Boolean(projectId && taskId),
   });
 }
 
@@ -553,6 +613,8 @@ export const mutations = {
   login: (body: { email: string; password: string }) => api.post<SessionUser>("/auth/login", body),
   logout: () => api.post<{ ok: boolean }>("/auth/logout"),
   updateProfile: (body: Record<string, unknown>) => api.patch<SessionUser>("/auth/me", body),
+  readNotification: (id: string) => api.post<NotificationList>(`/notifications/${id}/read`),
+  readNotifications: () => api.post<NotificationList>("/notifications/read"),
   changePassword: (body: { current_password: string; new_password: string }) =>
     api.post<{ ok: boolean }>("/auth/password", body),
 
@@ -604,6 +666,42 @@ export const mutations = {
   validateImport: (id: string) => api.post<ImportJob>(`/imports/${id}/validate`),
   applyImport: (id: string) => api.post<ImportJob>(`/imports/${id}/apply`),
 
+  createUser: (body: Record<string, unknown>) =>
+    api.post<{
+      id: string;
+      email: string;
+      display_name: string;
+      role: string;
+      status: string;
+      last_login_at: string | null;
+    }>("/users", body),
+  updateUser: (
+    id: string,
+    body: Record<string, unknown>,
+    provenance?: Provenance,
+  ) =>
+    api.patch<{
+      id: string;
+      email: string;
+      display_name: string;
+      role: string;
+      status: string;
+      last_login_at: string | null;
+    }>(`/users/${id}`, body, provenance),
+  installBlueprints: () =>
+    api.post<{
+      nodes_created: number;
+      nodes_skipped: number;
+      links_created: number;
+      links_skipped: number;
+    }>("/catalog/blueprints"),
+  installCatalogLibrary: () =>
+    api.post<{
+      manufacturers_created: number;
+      manufacturers_skipped: number;
+      models_created: number;
+      models_skipped: number;
+    }>("/catalog/library"),
   createManufacturer: (body: Record<string, unknown>) =>
     api.post<Manufacturer>("/catalog/manufacturers", body),
   updateManufacturer: (id: string, body: Record<string, unknown>) =>
@@ -664,12 +762,25 @@ export const mutations = {
   syncDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/sync`),
   autolayoutDiagram: (id: string) => api.post<DiagramFull>(`/diagrams/${id}/autolayout`),
 
+  createHost: (body: Record<string, unknown>) =>
+    api.post<VirtOverview>("/virtualization/hosts", body),
+  updateHost: (id: string, body: Record<string, unknown>, provenance?: Provenance) =>
+    api.patch<VirtOverview>(`/virtualization/hosts/${id}`, body, provenance),
+  createVm: (body: Record<string, unknown>) => api.post<VirtOverview>("/virtualization/vms", body),
+  updateVm: (id: string, body: Record<string, unknown>, provenance?: Provenance) =>
+    api.patch<VirtOverview>(`/virtualization/vms/${id}`, body, provenance),
+
   createPowerNode: (body: Record<string, unknown>) =>
     api.post<{ id: string }>("/power/nodes", body),
   createPowerLink: (body: Record<string, unknown>) =>
     api.post<{ id: string }>("/power/links", body),
 
   createProject: (body: Record<string, unknown>) => api.post<ProjectView>("/projects", body),
+  createFromTemplate: (body: Record<string, unknown>) =>
+    api.post<ProjectView>("/projects/from-template", body),
+  addRecurrence: (id: string, body: Record<string, unknown>) =>
+    api.post<unknown>(`/projects/${id}/recurrences`, body),
+  saveView: (body: Record<string, unknown>) => api.post<SavedView[]>("/projects/views", body),
   updateProject: (id: string, body: Record<string, unknown>) =>
     api.patch<ProjectView>(`/projects/${id}`, body),
   addPhase: (id: string, body: Record<string, unknown>) =>
@@ -680,6 +791,12 @@ export const mutations = {
     api.post<ProjectView>(`/projects/${id}/tasks`, body),
   updateTask: (id: string, taskId: string, body: Record<string, unknown>) =>
     api.patch<ProjectView>(`/projects/${id}/tasks/${taskId}`, body),
+  addComment: (id: string, taskId: string, body: string) =>
+    api.post<TaskWork>(`/projects/${id}/tasks/${taskId}/comments`, { body }),
+  addCheck: (id: string, taskId: string, title: string) =>
+    api.post<TaskWork>(`/projects/${id}/tasks/${taskId}/checks`, { title }),
+  updateCheck: (id: string, taskId: string, checkId: string, done: boolean) =>
+    api.patch<TaskWork>(`/projects/${id}/tasks/${taskId}/checks/${checkId}`, { done }),
   addDependency: (id: string, body: Record<string, unknown>) =>
     api.post<ProjectView>(`/projects/${id}/dependencies`, body),
   linkProjectCi: (id: string, body: Record<string, unknown>) =>

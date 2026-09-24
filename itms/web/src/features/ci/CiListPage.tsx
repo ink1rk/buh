@@ -1,9 +1,9 @@
-import { Plus, X } from "lucide-react";
+import { Download, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
-import { useCiList, useLocations, useMeta, type CiListParams } from "@/shared/api/queries";
+import { useCiList, useLocations, useMeta, useSession, type CiListParams } from "@/shared/api/queries";
 import type { Ci } from "@/shared/api/types";
 import { useDebounced } from "@/shared/hooks";
 import { formatRelative } from "@/shared/lib/format";
@@ -19,6 +19,8 @@ const PAGE_SIZE = 50;
 
 export function CiListPage() {
   const { t, te, locale } = useI18n();
+  const { data: session } = useSession();
+  const canExport = session?.permissions.includes("export:run") ?? false;
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const [createOpen, setCreateOpen] = useState(false);
@@ -30,6 +32,8 @@ export function CiListPage() {
   const ciType = params.get("type") ?? "";
   const status = params.get("status") ?? "";
   const locationId = params.get("location") ?? "";
+  const criticality = params.get("criticality") ?? "";
+  const missing = params.get("missing") ?? "";
   const archived = params.get("archived") === "1";
   const sort = params.get("sort") ?? "name";
   const offset = Number(params.get("offset") ?? 0);
@@ -52,32 +56,31 @@ export function CiListPage() {
       ci_type: ciType ? [ciType] : undefined,
       status: status ? [status] : undefined,
       location_id: locationId || undefined,
+      criticality: criticality ? [criticality] : undefined,
+      without_owner: missing === "owner" ? true : undefined,
+      without_location: missing === "location" ? true : undefined,
       archived,
       sort,
       limit: PAGE_SIZE,
       offset,
     }),
-    [debouncedQ, ciType, status, locationId, archived, sort, offset],
+    [debouncedQ, ciType, status, locationId, criticality, missing, archived, sort, offset],
   );
 
   const { data, isFetching } = useCiList(query);
 
   const columns: Array<Column<Ci>> = [
     {
-      key: "code",
-      header: t("ci.code"),
-      width: "9rem",
-      sortable: true,
-      render: (row) => <span className="font-mono text-xs text-muted">{row.code ?? "—"}</span>,
-    },
-    {
       key: "name",
       header: t("ci.name"),
       sortable: true,
       render: (row) => (
-        <span className="flex items-center gap-2">
-          <span className="font-medium">{row.name}</span>
-          {row.archived_at && <Badge>{t("ci.archived")}</Badge>}
+        <span className="block min-w-0">
+          <span className="flex items-center gap-2">
+            {row.code && <span className="font-mono text-xs text-muted">{row.code}</span>}
+            {row.archived_at && <Badge>{t("ci.archived")}</Badge>}
+          </span>
+          <span className="block truncate font-medium">{row.name}</span>
         </span>
       ),
     },
@@ -126,7 +129,7 @@ export function CiListPage() {
     },
   ];
 
-  const hasFilters = Boolean(q || ciType || status || locationId || archived);
+  const hasFilters = Boolean(q || ciType || status || locationId || criticality || missing || archived);
 
   return (
     <>
@@ -134,9 +137,29 @@ export function CiListPage() {
         title={t("ci.title")}
         subtitle={t("ci.subtitle")}
         actions={
-          <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
-            {t("ci.create")}
-          </Button>
+          <>
+            {canExport && (
+              <Button
+                data-testid="ci-export"
+                icon={<Download size={14} />}
+                onClick={() => {
+                  const search = new URLSearchParams();
+                  if (debouncedQ) search.set("q", debouncedQ);
+                  if (ciType) search.set("ci_type", ciType);
+                  if (status) search.set("status", status);
+                  if (criticality) search.set("criticality", criticality);
+                  if (locationId) search.set("location_id", locationId);
+                  if (archived) search.set("archived", "true");
+                  window.location.assign(`/api/v1/exports/ci.csv?${search.toString()}`);
+                }}
+              >
+                {t("ci.exportCsv")}
+              </Button>
+            )}
+            <Button variant="primary" icon={<Plus size={14} />} onClick={() => setCreateOpen(true)}>
+              {t("ci.create")}
+            </Button>
+          </>
         }
       />
 
@@ -166,6 +189,16 @@ export function CiListPage() {
             options={(meta?.ci_statuses ?? []).map((value) => ({
               value,
               label: te("ciStatus", value),
+            }))}
+          />
+          <Select
+            value={criticality}
+            placeholder={`${t("ci.criticality")}: ${t("app.all")}`}
+            onChange={(event) => patch({ criticality: event.target.value })}
+            className="w-44"
+            options={(meta?.criticalities ?? []).map((value) => ({
+              value,
+              label: te("criticality", value),
             }))}
           />
           <Select
