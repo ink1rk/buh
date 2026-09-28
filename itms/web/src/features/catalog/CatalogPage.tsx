@@ -25,6 +25,23 @@ import { ModelDialog } from "./ModelDialog";
 
 const PAGE_SIZE = 50;
 
+function platformText(row: DeviceModel): string {
+  if (row.component_class === "CPU") return row.cpu_socket ?? "CPU";
+  if (row.component_class === "MEMORY") return row.ram_type ?? "RAM";
+  if (row.component_class === "DISK") return row.drive_form ?? "DISK";
+  if (row.component_class === "BOARD") {
+    const sockets = row.cpu_sockets ? `${row.cpu_sockets}× ${row.cpu_socket ?? ""}`.trim() : "";
+    const slots = row.ram_slots ? `${row.ram_slots}× ${row.ram_type ?? "RAM"}` : "";
+    return [sockets, slots].filter(Boolean).join(", ");
+  }
+  const bits = [
+    row.cpu_sockets ? `${row.cpu_sockets}× ${row.cpu_socket ?? "CPU"}` : "",
+    row.ram_slots ? `${row.ram_slots}× ${row.ram_type ?? "RAM"}` : "",
+    row.drive_bays ? `${row.drive_bays}× ${row.drive_form ?? "диск"}` : "",
+  ].filter(Boolean);
+  return bits.join(", ");
+}
+
 function ManufacturerDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useI18n();
   const [name, setName] = useState("");
@@ -88,6 +105,7 @@ export function CatalogPage() {
   const [q, setQ] = useState("");
   const [manufacturerId, setManufacturerId] = useState("");
   const [role, setRole] = useState("");
+  const [componentClass, setComponentClass] = useState("");
   const [offset, setOffset] = useState(0);
   const [manufacturerOpen, setManufacturerOpen] = useState(false);
   const [editing, setEditing] = useState<{ id: string | null } | null>(null);
@@ -99,10 +117,11 @@ export function CatalogPage() {
       q: debouncedQ || undefined,
       manufacturer_id: manufacturerId || undefined,
       role: role || undefined,
+      component_class: componentClass || undefined,
       limit: PAGE_SIZE,
       offset,
     }),
-    [debouncedQ, manufacturerId, role, offset],
+    [debouncedQ, manufacturerId, role, componentClass, offset],
   );
   const { data, isFetching } = useDeviceModels(params);
 
@@ -184,7 +203,14 @@ export function CatalogPage() {
       header: t("catalog.uHeight"),
       width: "6rem",
       align: "right",
-      render: (row) => <span className="tabular-nums">{row.u_height}U</span>,
+      render: (row) => (
+        <span className="tabular-nums">{row.u_height > 0 ? `${row.u_height}U` : "—"}</span>
+      ),
+    },
+    {
+      key: "platform",
+      header: t("catalog.platform"),
+      render: (row) => <span className="text-muted">{platformText(row)}</span>,
     },
     {
       key: "ports",
@@ -227,7 +253,7 @@ export function CatalogPage() {
     },
   ];
 
-  const hasFilters = Boolean(q || manufacturerId || role);
+  const hasFilters = Boolean(q || manufacturerId || role || componentClass);
 
   return (
     <>
@@ -317,6 +343,18 @@ export function CatalogPage() {
                 label: te("deviceRole", value),
               }))}
             />
+            <Select
+              value={componentClass}
+              placeholder={`${t("catalog.componentClass")}: ${t("app.all")}`}
+              className="w-48"
+              onChange={(event) => {
+                setComponentClass(event.target.value);
+                setOffset(0);
+              }}
+              options={["CHASSIS", "BOARD", "CPU", "MEMORY", "DISK", "NIC", "HBA", "PSU"].map(
+                (value) => ({ value, label: te("componentClass", value) }),
+              )}
+            />
             {hasFilters && (
               <Button
                 variant="ghost"
@@ -325,6 +363,7 @@ export function CatalogPage() {
                 onClick={() => {
                   setQ("");
                   setRole("");
+                  setComponentClass("");
                   setManufacturerId("");
                   setOffset(0);
                 }}

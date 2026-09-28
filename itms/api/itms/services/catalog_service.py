@@ -32,6 +32,13 @@ MODEL_FIELDS = (
     "utilization_factor",
     "airflow",
     "notes",
+    "component_class",
+    "cpu_sockets",
+    "cpu_socket",
+    "ram_slots",
+    "ram_type",
+    "drive_bays",
+    "drive_form",
 )
 TEMPLATE_FIELDS = (
     "name_pattern",
@@ -94,6 +101,7 @@ async def list_models(
     q: str | None = None,
     manufacturer_id: uuid.UUID | None = None,
     role: str | None = None,
+    component_class: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> tuple[list[DeviceModel], int]:
@@ -102,6 +110,8 @@ async def list_models(
         stmt = stmt.where(DeviceModel.manufacturer_id == manufacturer_id)
     if role:
         stmt = stmt.where(DeviceModel.default_role == role)
+    if component_class:
+        stmt = stmt.where(DeviceModel.component_class == component_class)
     if q:
         pattern = f"%{q.lower()}%"
         stmt = stmt.where(
@@ -241,15 +251,23 @@ async def install_library(session: AsyncSession) -> dict[str, int]:
         manufacturer = manufacturers[key]
         exists = (
             await session.execute(
-                select(DeviceModel.id)
-                .where(
+                select(DeviceModel).where(
                     DeviceModel.manufacturer_id == manufacturer.id,
                     DeviceModel.model == spec.model,
                 )
-                .limit(1)
             )
         ).scalar_one_or_none()
         if exists:
+            # Уже поставленная модель не дублируется, но пустая платформа дописывается.
+            if exists.cpu_sockets is None and spec.cpu_sockets:
+                exists.cpu_sockets = spec.cpu_sockets
+                exists.cpu_socket = spec.cpu_socket
+                exists.ram_slots = spec.ram_slots
+                exists.ram_type = spec.ram_type
+                exists.notes = spec.notes
+            if exists.drive_bays is None and spec.drive_bays:
+                exists.drive_bays = spec.drive_bays
+                exists.drive_form = spec.drive_form
             skipped_models += 1
             continue
         await create_model(
@@ -265,6 +283,13 @@ async def install_library(session: AsyncSession) -> dict[str, int]:
                 "power_nameplate_w": spec.power_nameplate_w,
                 "power_max_w": spec.power_max_w,
                 "notes": spec.notes,
+                "component_class": spec.component_class,
+                "cpu_sockets": spec.cpu_sockets,
+                "cpu_socket": spec.cpu_socket,
+                "ram_slots": spec.ram_slots,
+                "ram_type": spec.ram_type,
+                "drive_bays": spec.drive_bays,
+                "drive_form": spec.drive_form,
                 "port_templates": [
                     {
                         "name_pattern": port.name_pattern,

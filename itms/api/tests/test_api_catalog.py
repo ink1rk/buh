@@ -20,7 +20,24 @@ async def test_catalog_library_is_idempotent(client: AsyncClient, api: str) -> N
     model = listed.json()["items"][0]
     assert model["power_nameplate_w"] == 800
     assert model["u_height"] == 2
+    assert model["cpu_socket"] == "LGA4189"
+    assert model["ram_slots"] == 32
     assert sum(item["count"] for item in model["port_templates"]) == 5
+
+    platform = await client.get(
+        f"{api}/catalog/models", params={"q": "DL380 Gen11", "limit": 10}
+    )
+    dl380 = platform.json()["items"][0]
+    assert dl380["cpu_sockets"] == 2
+    assert dl380["cpu_socket"] == "LGA4677"
+    assert dl380["u_height"] == 2
+
+    storage = await client.get(f"{api}/catalog/models", params={"q": "3PAR 8200", "limit": 10})
+    assert storage.json()["items"][0]["u_height"] == 2
+    assert storage.json()["items"][0]["drive_bays"] == 24
+
+    keys = {(item.manufacturer.lower(), item.model) for item in LIBRARY}
+    assert len(keys) == len(LIBRARY)
 
     ups = await client.get(f"{api}/catalog/models", params={"q": "Smart-UPS", "limit": 10})
     assert ups.json()["items"][0]["power_nameplate_w"] is None

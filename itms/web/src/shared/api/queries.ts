@@ -15,6 +15,7 @@ import type {
   Dashboard,
   Device,
   DeviceModel,
+  DeviceParts,
   DeviceRow,
   DiagramFull,
   DiagramNode,
@@ -91,6 +92,7 @@ export const keys = {
   device: (id: string) => ["devices", id] as const,
   deviceInterfaces: (id: string) => ["devices", id, "interfaces"] as const,
   devicePorts: (id: string) => ["devices", id, "ports"] as const,
+  deviceParts: (id: string) => ["devices", id, "parts"] as const,
   warranty: (days: number) => ["devices", "warranty", days] as const,
   connections: (params: unknown) => ["network", "connections", params] as const,
   trace: (id: string) => ["network", "trace", id] as const,
@@ -322,6 +324,7 @@ export interface ModelListParams {
   q?: string;
   manufacturer_id?: string;
   role?: string;
+  component_class?: string;
   limit: number;
   offset: number;
 }
@@ -477,6 +480,14 @@ export function useDevice(id: string | undefined) {
     queryFn: () => api.get<Device>(`/devices/${id}`),
     enabled: Boolean(id),
     retry: false,
+  });
+}
+
+export function useDeviceParts(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.deviceParts(id ?? ""),
+    queryFn: () => api.get<DeviceParts>(`/devices/${id}/parts`),
+    enabled: Boolean(id),
   });
 }
 
@@ -716,6 +727,10 @@ export const mutations = {
 
   saveDevice: (ciId: string, body: Record<string, unknown>, provenance?: Provenance) =>
     api.put<Device>(`/devices/${ciId}`, body, provenance),
+  setDevicePart: (ciId: string, body: { component_model_id: string; quantity: number }) =>
+    api.put<DeviceParts>(`/devices/${ciId}/parts`, body),
+  deleteDevicePart: (ciId: string, partId: string) =>
+    api.delete<{ ok: boolean }>(`/devices/${ciId}/parts/${partId}`),
   createInterface: (ciId: string, body: Record<string, unknown>, provenance?: Provenance) =>
     api.post<InterfaceRow[]>(`/devices/${ciId}/interfaces`, body, provenance),
   createInterfacesFromModel: (ciId: string) =>

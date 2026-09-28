@@ -313,7 +313,31 @@ export interface DeviceModel {
   utilization_factor: number | null;
   airflow: string | null;
   notes: string | null;
+  component_class: string;
+  cpu_sockets: number | null;
+  cpu_socket: string | null;
+  ram_slots: number | null;
+  ram_type: string | null;
+  drive_bays: number | null;
+  drive_form: string | null;
   port_templates: PortTemplate[];
+}
+
+export interface DevicePart {
+  id: string;
+  quantity: number;
+  component_model_id: string;
+  component: DeviceModel;
+}
+
+export interface DeviceParts {
+  cpu_sockets: number | null;
+  cpu_socket: string | null;
+  ram_slots: number | null;
+  ram_type: string | null;
+  drive_bays: number | null;
+  drive_form: string | null;
+  items: DevicePart[];
 }
 
 export interface Device {

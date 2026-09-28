@@ -122,6 +122,33 @@ ACYCLIC_RELATIONS = frozenset(
 )
 
 
+class ComponentClass(StrEnum):
+    """Что описывает модель: шасси целиком или комплектующее, которое в него ставится."""
+
+    CHASSIS = "CHASSIS"
+    BOARD = "BOARD"
+    CPU = "CPU"
+    MEMORY = "MEMORY"
+    DISK = "DISK"
+    NIC = "NIC"
+    HBA = "HBA"
+    PSU = "PSU"
+
+
+#: Комплектующие, которые ставятся внутрь устройства, а не занимают юниты сами по себе.
+INSTALLABLE_COMPONENTS = frozenset(
+    {
+        ComponentClass.BOARD,
+        ComponentClass.CPU,
+        ComponentClass.MEMORY,
+        ComponentClass.DISK,
+        ComponentClass.NIC,
+        ComponentClass.HBA,
+        ComponentClass.PSU,
+    }
+)
+
+
 class DeviceRole(StrEnum):
     """Роль устройства. Одна таблица device на все роли: набор полей совпадает на 95%."""
 
