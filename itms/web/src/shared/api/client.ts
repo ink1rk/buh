@@ -102,7 +102,18 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   if (response.status === 204) return undefined as T;
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: { error?: ApiErrorPayload } | null = null;
+  if (text) {
+    try {
+      data = JSON.parse(text) as { error?: ApiErrorPayload };
+    } catch {
+      throw new ApiError(response.status || 502, {
+        code: "bad_gateway",
+        message: "Сервис временно недоступен. Обновите страницу через полминуты.",
+        details: {},
+      });
+    }
+  }
 
   if (!response.ok) {
     const payload: ApiErrorPayload = data?.error ?? {

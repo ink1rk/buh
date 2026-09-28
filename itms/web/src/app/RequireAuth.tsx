@@ -18,5 +18,8 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (isError || !data) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
+  if (data.must_change_password) {
+    return <Navigate to="/password" replace />;
+  }
   return <>{children}</>;
 }

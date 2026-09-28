@@ -45,6 +45,7 @@ async def create_user(
         status=UserStatus.ACTIVE,
         locale="ru",
         theme="system",
+        must_change_password=True,
     )
     session.add(user)
     await session.flush()

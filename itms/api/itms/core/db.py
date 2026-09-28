@@ -50,9 +50,12 @@ async def session_scope() -> AsyncIterator[AsyncSession]:
     async with factory() as session:
         try:
             yield session
-            await session.commit()
+            # Коммит мог уже случиться до отправки ответа, чтобы клиент не обогнал запись.
+            if session.in_transaction():
+                await session.commit()
         except Exception:
-            await session.rollback()
+            if session.in_transaction():
+                await session.rollback()
             raise
 
 

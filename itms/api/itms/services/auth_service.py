@@ -57,6 +57,7 @@ async def bootstrap_owner(session: AsyncSession) -> tuple[UserAccount, str | Non
         role=UserRole.OWNER,
         status=UserStatus.ACTIVE,
         locale=settings.default_locale,
+        must_change_password=True,
     )
     session.add(owner)
     await session.flush()
@@ -181,16 +182,42 @@ async def change_password(
 ) -> None:
     if not user.password_hash or not verify_password(current, user.password_hash):
         raise Unauthorized("Текущий пароль указан неверно", code_hint="invalid_credentials")
+    if current == new:
+        raise Invalid(
+            "Новый пароль должен отличаться от текущего",
+            code_hint="password_unchanged",
+        )
     problems = password_problems(new)
     if problems:
         raise Invalid("Пароль не соответствует требованиям", problems=problems)
     user.password_hash = hash_password(new)
+    user.must_change_password = False
     await session.execute(
         UserSession.__table__.update()
         .where(UserSession.user_id == user.id, UserSession.revoked_at.is_(None))
         .values(revoked_at=datetime.now(UTC))
     )
     await session.flush()
+
+
+async def set_owner_password(session: AsyncSession, password: str) -> UserAccount:
+    """Ставит владельцу временный пароль. Следующий вход попросит заменить его."""
+    problems = password_problems(password)
+    if problems:
+        raise Invalid("Пароль не соответствует требованиям", problems=problems)
+    owner = (
+        await session.execute(select(UserAccount).where(UserAccount.role == UserRole.OWNER))
+    ).scalar_one()
+    owner.password_hash = hash_password(password)
+    owner.failed_login_count = 0
+    owner.must_change_password = True
+    await session.execute(
+        UserSession.__table__.update()
+        .where(UserSession.user_id == owner.id, UserSession.revoked_at.is_(None))
+        .values(revoked_at=datetime.now(UTC))
+    )
+    await session.flush()
+    return owner
 
 
 async def revoke_all_sessions(session: AsyncSession, user_id: uuid.UUID) -> None:

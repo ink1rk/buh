@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 import { AuditPage } from "@/features/audit/AuditPage";
+import { FirstPasswordPage } from "@/features/auth/FirstPasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { CatalogPage } from "@/features/catalog/CatalogPage";
 import { CiDetailPage } from "@/features/ci/CiDetailPage";
@@ -36,6 +37,7 @@ import { RequireAuth } from "./RequireAuth";
 
 export const router = createBrowserRouter([
   { path: "/login", element: <LoginPage /> },
+  { path: "/password", element: <FirstPasswordPage /> },
   {
     element: (
       <RequireAuth>

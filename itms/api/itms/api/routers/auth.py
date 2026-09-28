@@ -56,6 +56,7 @@ def _session_user(user) -> SessionUser:
         status=user.status,
         locale=user.locale,
         theme=user.theme,
+        must_change_password=user.must_change_password,
         permissions=sorted(p.value for p in ROLE_PERMISSIONS.get(user.role, frozenset())),
     )
 

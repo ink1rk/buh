@@ -3,8 +3,11 @@ from __future__ import annotations
 import io
 
 from httpx import AsyncClient
+from sqlalchemy import select
 
 from itms.core.config import settings
+from itms.core.db import session_scope
+from itms.models.directory import UserAccount
 
 
 async def test_authentication_required(anon_client: AsyncClient, api: str) -> None:
@@ -19,6 +22,45 @@ async def test_csrf_required_for_writes(client: AsyncClient, api: str) -> None:
     )
     assert response.status_code == 403
     assert response.json()["error"]["details"]["code_hint"] == "csrf_invalid"
+
+
+async def test_first_login_must_change_password(anon_client: AsyncClient, api: str, owner) -> None:
+    async with session_scope() as db:
+        user = (await db.execute(select(UserAccount).where(UserAccount.id == owner))).scalar_one()
+        user.must_change_password = True
+
+    login = await anon_client.post(
+        f"{api}/auth/login",
+        json={
+            "email": settings.bootstrap_owner_email,
+            "password": settings.bootstrap_owner_password,
+        },
+    )
+    assert login.status_code == 200, login.text
+    assert login.json()["must_change_password"] is True
+
+    blocked = await anon_client.get(f"{api}/ci")
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["details"]["code_hint"] == "password_change_required"
+
+    csrf = anon_client.cookies.get(settings.csrf_cookie)
+    changed = await anon_client.post(
+        f"{api}/auth/password",
+        json={
+            "current_password": settings.bootstrap_owner_password,
+            "new_password": "Owner-password-2",
+        },
+        headers={settings.csrf_header: csrf or ""},
+    )
+    assert changed.status_code == 200, changed.text
+
+    relogin = await anon_client.post(
+        f"{api}/auth/login",
+        json={"email": settings.bootstrap_owner_email, "password": "Owner-password-2"},
+    )
+    assert relogin.status_code == 200, relogin.text
+    assert relogin.json()["must_change_password"] is False
+    assert (await anon_client.get(f"{api}/ci")).status_code == 200
 
 
 async def test_login_rejects_wrong_password(anon_client: AsyncClient, api: str, owner) -> None:

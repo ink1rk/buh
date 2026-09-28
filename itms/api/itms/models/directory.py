@@ -170,6 +170,9 @@ class UserAccount(Base, TimestampMixin):
     failed_login_count: Mapped[int] = mapped_column(
         nullable=False, default=0, server_default=text("0")
     )
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
 
     employee: Mapped[Employee | None] = relationship(lazy="joined", foreign_keys=[employee_id])
 

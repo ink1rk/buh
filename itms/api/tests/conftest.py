@@ -149,6 +149,7 @@ async def session() -> AsyncIterator[AsyncSession]:
 async def owner() -> AsyncIterator[uuid.UUID]:
     async with session_scope() as db_session:
         user, _ = await auth_service.bootstrap_owner(db_session)
+        user.must_change_password = False
         await directory_service.upsert_organization(db_session, {"name": "Тестовая организация"})
         user_id = user.id
     yield user_id

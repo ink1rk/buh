@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
 import { describeError } from "@/shared/api/errors";
@@ -13,8 +13,12 @@ import { Mark } from "@/shared/ui/Mark";
 export function LoginPage() {
   const { t, locale, setLocale } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const session = useSession();
+  const passwordSaved = Boolean(
+    (location.state as { passwordChanged?: boolean } | null)?.passwordChanged,
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +27,7 @@ export function LoginPage() {
     onSuccess: (user) => {
       queryClient.setQueryData(keys.session, user);
       setLocale(user.locale === "en" ? "en" : "ru");
-      navigate("/dashboard", { replace: true });
+      navigate(user.must_change_password ? "/password" : "/dashboard", { replace: true });
     },
     onError: (err) => setError(describeError(err, t)),
   });
@@ -35,6 +39,7 @@ export function LoginPage() {
       </div>
     );
   }
+  if (session.data?.must_change_password) return <Navigate to="/password" replace />;
   if (session.data) return <Navigate to="/dashboard" replace />;
 
   const submit = (event: FormEvent) => {
@@ -83,7 +88,9 @@ export function LoginPage() {
           <form onSubmit={submit} className="flex flex-col gap-4">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">{t("auth.title")}</h1>
-              <p className="mt-1 text-sm text-muted">{t("auth.subtitle")}</p>
+              <p className="mt-1 text-sm text-muted">
+                {passwordSaved ? t("auth.passwordSaved") : t("auth.subtitle")}
+              </p>
             </div>
 
             <Field label={t("auth.email")} required>

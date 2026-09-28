@@ -33,7 +33,7 @@ services:
       retries: 10
 
   minio:
-    image: quay.io/minio/minio:latest
+    image: pgsty/silo:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -42,26 +42,32 @@ services:
     volumes:
       - minio-data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 20s
     ports:
       - "${MINIO_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
 
   # Разовая инициализация: бакет для файлов с включённым версионированием документов.
+  # Ключ передаётся через MC_HOST, а не аргументом: случайный секрет может начинаться с «-»,
+  # и тогда mc принимает его за флаг и бакет не создаётся.
   minio-init:
-    image: quay.io/minio/mc:latest
+    image: pgsty/silo:latest
     depends_on:
       minio:
         condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set itms http://minio:9000 ${S3_ACCESS_KEY:-itms} ${S3_SECRET_KEY:-itms-secret-key} &&
-      mc mb --ignore-existing itms/${S3_BUCKET:-itms} &&
-      mc version enable itms/${S3_BUCKET:-itms} &&
-      echo 'Хранилище готово'"
+    environment:
+      MC_HOST_itms: http://${S3_ACCESS_KEY:-itms}:${S3_SECRET_KEY:-itms-secret-key}@minio:9000
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mc mb --ignore-existing "itms/${S3_BUCKET:-itms}" &&
+        mc version enable "itms/${S3_BUCKET:-itms}" &&
+        echo 'Хранилище готово'
     restart: "no"
 
   api:
@@ -74,6 +80,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     environment: &api-env
       ITMS_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-itms}:${POSTGRES_PASSWORD:-itms}@postgres:5432/${POSTGRES_DB:-itms}
       ITMS_REDIS_URL: redis://redis:6379/0
@@ -91,6 +99,18 @@ services:
       /bin/sh -c "alembic upgrade head &&
       python -m itms.cli bootstrap &&
       uvicorn itms.main:app --host 0.0.0.0 --port 8000 --proxy-headers"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
     ports:
       - "${API_PORT:-8000}:8000"
 
@@ -114,7 +134,8 @@ services:
         VITE_API_BASE: ${VITE_API_BASE:-/api/v1}
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_started
     ports:
       - "${WEB_PORT:-8080}:80"
 

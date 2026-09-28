@@ -13,6 +13,7 @@ export interface SessionUser {
   status: string;
   locale: string;
   theme: string;
+  must_change_password: boolean;
   permissions: string[];
 }
 
