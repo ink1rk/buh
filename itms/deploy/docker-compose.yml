@@ -92,6 +92,12 @@ services:
       /bin/sh -c "alembic upgrade head &&
       python -m itms.cli bootstrap &&
       uvicorn itms.main:app --host 0.0.0.0 --port 8000 --proxy-headers"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "--ipv4", "http://127.0.0.1:8000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     ports:
       - "${API_PORT:-8000}:8000"
 
