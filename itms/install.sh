@@ -29,11 +29,24 @@ except OSError:
 PY
 }
 
+disable_cdrom_repo() {
+  # После установки с ISO источник file:/cdrom остаётся, а диска уже нет.
+  # apt-get update из-за него завершается с ошибкой и обрывает скрипт.
+  local file
+  shopt -s nullglob
+  for file in /etc/apt/sources.list /etc/apt/sources.list.d/*; do
+    [[ -f "${file}" ]] || continue
+    sed -i '/cdrom/s/^deb /# deb /; /cdrom/s/^deb-src /# deb-src /' "${file}"
+  done
+  shopt -u nullglob
+}
+
 install_docker() {
   if docker compose version >/dev/null 2>&1; then
     return
   fi
   need_dns || die "Виртуалка не резолвит archive.ubuntu.com. Сначала настройте DNS, затем запустите скрипт снова."
+  disable_cdrom_repo
   apt-get update
   apt-get install -y ca-certificates curl git
   install -m 0755 -d /etc/apt/keyrings
