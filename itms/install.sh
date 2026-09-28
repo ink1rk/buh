@@ -87,7 +87,11 @@ for line in text.splitlines():
         continue
     key, value = line.split("=", 1)
     if key in {"POSTGRES_PASSWORD", "S3_SECRET_KEY", "OWNER_PASSWORD"} and value in placeholders:
-        value = secrets.token_urlsafe(18)
+        # Только буквы и цифры: секрет не должен начинаться с «-» и ломать mc или URL.
+        # В пароле владельца нужны и буква, и цифра, иначе вход его не примет.
+        value = secrets.token_hex(18)
+        if value.isalpha() or value.isdigit():
+            value = "a1" + value[2:]
         generated[key] = value
         line = f"{key}={value}"
     if key == "PUBLIC_URL" and ("localhost" in value or "127.0.0.1" in value):
@@ -260,6 +264,7 @@ case "${1:-up}" in
       echo "Стек не поднялся. Журнал API:" >&2
       docker compose ps >&2 || true
       docker compose logs --tail 80 api >&2 || true
+      docker compose logs --tail 40 minio-init >&2 || true
       exit 1
     fi
     wait_api
