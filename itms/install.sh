@@ -122,15 +122,21 @@ use_current_storage_images() {
 }
 
 wait_api() {
-  local i
-  for i in $(seq 1 60); do
-    if docker compose exec -T api curl -fsS http://127.0.0.1:8000/health >/dev/null 2>&1; then
+  local i state
+  for i in $(seq 1 40); do
+    if docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)" >/dev/null 2>&1; then
       return 0
     fi
-    sleep 5
+    state="$(docker inspect -f '{{.State.Status}}' itms-api-1 2>/dev/null || true)"
+    if [[ "${state}" == "restarting" || "${state}" == "exited" ]]; then
+      echo "API не запустился (${state}). Журнал:" >&2
+      docker compose logs --tail 80 api >&2 || true
+      return 1
+    fi
+    sleep 3
   done
   echo "API ещё не ответил. Журнал:" >&2
-  docker compose logs --tail 40 api >&2 || true
+  docker compose logs --tail 80 api >&2 || true
   return 1
 }
 

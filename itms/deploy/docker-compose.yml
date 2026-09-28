@@ -134,7 +134,7 @@ services:
       - -c
       - |
         i=0
-        while [ "$$i" -lt 90 ]; do
+        while [ "$$i" -lt 40 ]; do
           wget -q -O /dev/null http://api:8000/health && break
           i=$$((i+1))
           sleep 2
