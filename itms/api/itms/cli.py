@@ -60,6 +60,7 @@ from itms.services import (
 
 USAGE = """Команды:
   bootstrap        создать владельца системы и организацию
+  set-password     заменить пароль владельца временным (вход попросит задать свой)
   seed-demo        добавить небольшой демонстрационный набор данных
   cleanup-sessions удалить истёкшие сессии
 """
@@ -82,6 +83,31 @@ async def bootstrap() -> None:
         print(f"Сгенерированный пароль (сохраните его): {generated_password}")
     else:
         print("Пароль задан переменной окружения ITMS_BOOTSTRAP_OWNER_PASSWORD")
+    print("При первом входе система попросит заменить этот пароль.")
+
+
+async def set_password() -> None:
+    import os
+
+    from itms.core.errors import Invalid
+
+    password = os.environ.get("ITMS_NEW_PASSWORD", "").strip()
+    if not password:
+        print("Задайте пароль в переменной ITMS_NEW_PASSWORD", file=sys.stderr)
+        raise SystemExit(1)
+    configure_audit()
+    try:
+        async with session_scope() as session:
+            with use_context(
+                RequestContext(actor_kind=ActorKind.SYSTEM, actor_label="Установка", source="cli")
+            ):
+                owner = await auth_service.set_owner_password(session, password)
+    except Invalid as exc:
+        print(exc.message, file=sys.stderr)
+        raise SystemExit(1) from exc
+    print(f"Вход: {owner.email}")
+    print(f"Временный пароль: {password}")
+    print("При следующем входе система попросит задать свой пароль.")
 
 
 async def seed_demo() -> None:
@@ -1029,6 +1055,7 @@ async def cleanup_sessions() -> None:
 
 COMMANDS = {
     "bootstrap": bootstrap,
+    "set-password": set_password,
     "seed-demo": seed_demo,
     "cleanup-sessions": cleanup_sessions,
 }

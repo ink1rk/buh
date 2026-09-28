@@ -33,7 +33,7 @@ services:
       retries: 10
 
   minio:
-    image: quay.io/minio/minio:latest
+    image: pgsty/silo:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -52,7 +52,7 @@ services:
 
   # Разовая инициализация: бакет для файлов с включённым версионированием документов.
   minio-init:
-    image: quay.io/minio/mc:latest
+    image: pgsty/silo:latest
     depends_on:
       minio:
         condition: service_healthy

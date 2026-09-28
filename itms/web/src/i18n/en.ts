@@ -86,6 +86,11 @@ export const en: DeepPartial<Dictionary> = {
     email: "Email",
     password: "Password",
     submit: "Sign in",
+    firstTitle: "Choose your password",
+    firstText: "This is the first sign-in. Replace the temporary installation password with your own.",
+    confirmPassword: "Repeat the new password",
+    passwordMismatch: "Passwords do not match",
+    passwordSaved: "Password saved. Sign in with the new one.",
   },
 };
 

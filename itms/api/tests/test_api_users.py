@@ -100,6 +100,19 @@ async def test_engineer_cannot_grant_owner(
         json={"email": "eng@itms.local", "password": "Engineer-pass-1"},
     )
     assert login.status_code == 200, login.text
+    assert login.json()["must_change_password"] is True
+    csrf = anon_client.cookies.get("itms_csrf")
+    changed = await anon_client.post(
+        f"{api}/auth/password",
+        json={"current_password": "Engineer-pass-1", "new_password": "Engineer-pass-2"},
+        headers={"X-CSRF-Token": csrf or ""},
+    )
+    assert changed.status_code == 200, changed.text
+    login = await anon_client.post(
+        f"{api}/auth/login",
+        json={"email": "eng@itms.local", "password": "Engineer-pass-2"},
+    )
+    assert login.status_code == 200, login.text
     csrf = anon_client.cookies.get("itms_csrf")
     denied = await anon_client.post(
         f"{api}/users",

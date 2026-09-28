@@ -94,7 +94,9 @@ def configure_audit() -> None:
             entity_type="USER",
             label_attr="display_name",
             critical_fields=frozenset({"role", "status"}),
-            ignore_fields=frozenset({"password_hash", "failed_login_count", "last_login_at"}),
+            ignore_fields=frozenset(
+                {"password_hash", "failed_login_count", "last_login_at", "must_change_password"}
+            ),
         ),
     )
     register_audit(

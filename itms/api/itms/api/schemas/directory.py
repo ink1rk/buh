@@ -41,6 +41,7 @@ class SessionUser(ORMModel):
     status: UserStatus
     locale: str
     theme: str
+    must_change_password: bool = False
     permissions: list[str] = Field(default_factory=list)
 
 

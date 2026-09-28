@@ -68,6 +68,12 @@ async def current_user(request: Request, session: SessionDep) -> UserAccount:
         raise Unauthorized("Требуется вход в систему", code_hint="not_authenticated")
     user, user_session = await auth_service.resolve_session(session, token)
 
+    if user.must_change_password and not _password_change_allowed(request):
+        raise Forbidden(
+            "Смените пароль, чтобы продолжить работу",
+            code_hint="password_change_required",
+        )
+
     if request.method not in SAFE_METHODS:
         header_token = request.headers.get(settings.csrf_header, "")
         if not header_token or not constant_time_equals(header_token, user_session.csrf_token):
@@ -87,6 +93,17 @@ async def current_user(request: Request, session: SessionDep) -> UserAccount:
 
 
 CurrentUser = Annotated[UserAccount, Depends(current_user)]
+
+
+def _password_change_allowed(request: Request) -> bool:
+    """Пока пароль временный, открыты только профиль, смена пароля и выход."""
+    path = request.url.path.rstrip("/")
+    prefix = settings.api_prefix.rstrip("/")
+    return path in {
+        f"{prefix}/auth/me",
+        f"{prefix}/auth/password",
+        f"{prefix}/auth/logout",
+    }
 
 
 def requires(permission: Permission):
