@@ -218,7 +218,12 @@ case "${1:-up}" in
     ;;
   up|"")
     install_mode="$(prepare_env)"
-    docker compose up -d --build
+    if ! docker compose up -d --build; then
+      echo "Стек не поднялся. Журнал API:" >&2
+      docker compose ps >&2 || true
+      docker compose logs --tail 80 api >&2 || true
+      exit 1
+    fi
     wait_api
     echo
     if [[ "${install_mode}" == "fresh" && -f "${NOTE}" ]]; then
