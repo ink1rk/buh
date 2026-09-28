@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 from itms.api.deps import base_context
@@ -48,6 +49,31 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await dispose_engine()
 
 
+class CommitBeforeResponse:
+    """Коммитит сессию запроса до того, как клиент получит статус ответа.
+
+    В актуальном FastAPI код после yield в зависимости выполняется уже после
+    отправки ответа. Без этого вход сразу после смены пароля не видит новый хеш.
+    """
+
+    def __init__(self, app) -> None:
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        async def send_and_commit(message):
+            if message["type"] == "http.response.start" and message.get("status", 500) < 400:
+                for session in list(scope.get("itms_sessions") or []):
+                    if isinstance(session, AsyncSession) and session.in_transaction():
+                        await session.commit()
+            await send(message)
+
+        await self.app(scope, receive, send_and_commit)
+
+
 app = FastAPI(
     title="ITMS API",
     version="0.1.0",
@@ -56,6 +82,10 @@ app = FastAPI(
     docs_url=f"{settings.api_prefix}/docs",
     lifespan=lifespan,
 )
+
+# Первый add_middleware оказывается ближе всех к приложению и коммитит
+# в той же задаче, где открыта сессия.
+app.add_middleware(CommitBeforeResponse)
 
 app.add_middleware(
     CORSMiddleware,
