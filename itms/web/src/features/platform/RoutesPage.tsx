@@ -24,7 +24,7 @@ export function RoutesPage() {
   const { t, te } = useI18n();
   const { data } = usePlatform();
   const [open, setOpen] = useState(false);
-  const remove = useApiMutation((id: string) => mutations.deleteRoute(id), [keys.platform], {
+  const remove = useApiMutation((id: string) => mutations.deleteServiceRoute(id), [keys.platform], {
     onSuccess: () => toast.success(t("app.saved")),
     onError: (err) => toast.error(describeError(err, t)),
   });
@@ -99,7 +99,7 @@ function RouteDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
           : kind === "VM"
             ? (virt?.vms ?? []).map((item) => ({ value: item.id, label: item.name }))
             : [];
-  const save = useApiMutation((body: Record<string, unknown>) => mutations.createRoute(body), [keys.platform], {
+  const save = useApiMutation((body: Record<string, unknown>) => mutations.createServiceRoute(body), [keys.platform], {
     onSuccess: () => {
       toast.success(t("app.created"));
       setName("");

@@ -908,6 +908,7 @@ export const mutations = {
   deleteMcp: (id: string) => api.delete<{ ok: boolean }>(`/platform/mcp/${id}`),
   createAgent: (body: Record<string, unknown>) => api.post<PlatformAgent>("/platform/agents", body),
   deleteAgent: (id: string) => api.delete<{ ok: boolean }>(`/platform/agents/${id}`),
-  createRoute: (body: Record<string, unknown>) => api.post<PlatformRoute>("/platform/routes", body),
-  deleteRoute: (id: string) => api.delete<{ ok: boolean }>(`/platform/routes/${id}`),
+  createServiceRoute: (body: Record<string, unknown>) =>
+    api.post<PlatformRoute>("/platform/routes", body),
+  deleteServiceRoute: (id: string) => api.delete<{ ok: boolean }>(`/platform/routes/${id}`),
 };

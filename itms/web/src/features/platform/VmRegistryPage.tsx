@@ -179,7 +179,7 @@ function VmDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
             onChange={(event) => setPower(event.target.value)}
             options={["RUNNING", "STOPPED", "SUSPENDED"].map((value) => ({
               value,
-              label: te("vmPower", value),
+              label: te("vmPowerState", value),
             }))}
           />
         </Field>
