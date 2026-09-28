@@ -21,6 +21,11 @@ import type {
   Department,
   DocumentTemplate,
   FinanceEntry,
+  PlatformAgent,
+  PlatformCluster,
+  PlatformMcp,
+  PlatformOverview,
+  PlatformRoute,
   DiagramFull,
   DiagramNode,
   DiagramSummary,
@@ -85,6 +90,7 @@ export const keys = {
   finance: (kind: string) => ["finance", kind] as const,
   projectBoard: ["projects", "board"] as const,
   documentTemplates: ["documents", "templates"] as const,
+  platform: ["platform"] as const,
   responsibilities: ["responsibilities"] as const,
   workload: ["workload"] as const,
   documents: (params: unknown) => ["documents", "list", params] as const,
@@ -258,6 +264,13 @@ export function useProjectBoard() {
   return useQuery({
     queryKey: keys.projectBoard,
     queryFn: () => api.get<BoardCard[]>("/projects/board"),
+  });
+}
+
+export function usePlatform() {
+  return useQuery({
+    queryKey: keys.platform,
+    queryFn: () => api.get<PlatformOverview>("/platform"),
   });
 }
 
@@ -887,4 +900,14 @@ export const mutations = {
   deleteFinance: (id: string) => api.delete<{ ok: boolean }>(`/finance/${id}`),
   installDocumentTemplates: () =>
     api.post<{ created: number; skipped: number }>("/documents/templates/install"),
+
+  createCluster: (body: Record<string, unknown>) =>
+    api.post<PlatformCluster>("/platform/clusters", body),
+  deleteCluster: (id: string) => api.delete<{ ok: boolean }>(`/platform/clusters/${id}`),
+  createMcp: (body: Record<string, unknown>) => api.post<PlatformMcp>("/platform/mcp", body),
+  deleteMcp: (id: string) => api.delete<{ ok: boolean }>(`/platform/mcp/${id}`),
+  createAgent: (body: Record<string, unknown>) => api.post<PlatformAgent>("/platform/agents", body),
+  deleteAgent: (id: string) => api.delete<{ ok: boolean }>(`/platform/agents/${id}`),
+  createRoute: (body: Record<string, unknown>) => api.post<PlatformRoute>("/platform/routes", body),
+  deleteRoute: (id: string) => api.delete<{ ok: boolean }>(`/platform/routes/${id}`),
 };

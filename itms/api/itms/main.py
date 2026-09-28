@@ -28,6 +28,7 @@ from itms.api.routers import (
     network,
     notifications,
     ops,
+    platform,
     power,
     projects,
     racks,
@@ -154,3 +155,4 @@ app.include_router(ops.search_router, prefix=prefix)
 app.include_router(ops.audit_router, prefix=prefix)
 app.include_router(ops.import_router, prefix=prefix)
 app.include_router(ops.dashboard_router, prefix=prefix)
+app.include_router(platform.router, prefix=prefix)

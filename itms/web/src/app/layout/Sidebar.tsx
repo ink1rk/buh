@@ -4,6 +4,7 @@ import {
   FolderKanban,
   History,
   Kanban,
+  Container,
   BarChart3,
   Library,
   Wallet,
@@ -78,6 +79,12 @@ const GROUPS: NavGroup[] = [
         labelKey: "nav.kanban",
         icon: Kanban,
         match: (pathname) => pathname === "/office/kanban",
+      },
+      {
+        to: "/office/platform",
+        labelKey: "nav.platform",
+        icon: Container,
+        match: (pathname) => starts(pathname, ["/office/platform"]),
       },
       {
         to: "/office/finance",

@@ -22,6 +22,14 @@ import { ImportPage } from "@/features/imports/ImportPage";
 import { IpamPage } from "@/features/ipam/IpamPage";
 import { LocationsPage } from "@/features/locations/LocationsPage";
 import { PowerPage } from "@/features/power/PowerPage";
+import { AgentsPage } from "@/features/platform/AgentsPage";
+import { K8sPage } from "@/features/platform/K8sPage";
+import { McpPage } from "@/features/platform/McpPage";
+import { PlatformFrame } from "@/features/platform/PlatformFrame";
+import { PlatformOverview } from "@/features/platform/PlatformOverview";
+import { RoutesPage } from "@/features/platform/RoutesPage";
+import { VlanRegistryPage } from "@/features/platform/VlanRegistryPage";
+import { VmRegistryPage } from "@/features/platform/VmRegistryPage";
 import { FinancePage } from "@/features/office/FinancePage";
 import { KanbanPage } from "@/features/office/KanbanPage";
 import { TemplatesPage } from "@/features/office/TemplatesPage";
@@ -57,6 +65,19 @@ export const router = createBrowserRouter([
       { path: "/floorplans/:planId", element: <FloorplanPage /> },
       { path: "/projects", element: <ProjectsPage /> },
       { path: "/office/kanban", element: <KanbanPage /> },
+      {
+        path: "/office/platform",
+        element: <PlatformFrame />,
+        children: [
+          { index: true, element: <PlatformOverview /> },
+          { path: "k8s", element: <K8sPage /> },
+          { path: "mcp", element: <McpPage /> },
+          { path: "agents", element: <AgentsPage /> },
+          { path: "routes", element: <RoutesPage /> },
+          { path: "vlans", element: <VlanRegistryPage /> },
+          { path: "vms", element: <VmRegistryPage /> },
+        ],
+      },
       { path: "/office/finance", element: <FinancePage /> },
       { path: "/office/templates", element: <TemplatesPage /> },
       { path: "/analytics", element: <AnalyticsPage /> },

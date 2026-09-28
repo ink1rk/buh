@@ -15,7 +15,7 @@ import { toast } from "@/shared/ui/toast";
 
 import { ReasonField } from "../provenance/ReasonField";
 
-const ROW = 22;
+const ROW = 26;
 
 type Face = "FRONT" | "REAR";
 
@@ -213,7 +213,7 @@ export function RackEditorPage() {
           </Button>
         </div>
       )}
-      <div className="grid items-start gap-4 xl:grid-cols-[16rem_auto_15rem] xl:justify-center">
+      <div className="grid items-start gap-4 xl:grid-cols-[17rem_minmax(0,1fr)_16rem]">
         <Panel title={t("racks.warehouse")} bodyClassName="flex max-h-[70vh] flex-col gap-1 overflow-y-auto">
           {data.warehouse.length === 0 && <p className="text-xs text-muted">{t("app.empty")}</p>}
           {data.warehouse.map((item) => (
@@ -226,8 +226,8 @@ export function RackEditorPage() {
           ))}
         </Panel>
 
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex items-stretch gap-2">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 items-stretch gap-2">
             <ZeroRail
               title={t("racks.zeroLeft")}
               mounts={zero.filter((mount) => mount.zero_u_side === "LEFT")}
@@ -236,7 +236,7 @@ export function RackEditorPage() {
             />
             <div
               data-testid="rack-chassis"
-              className="w-[22rem] shrink-0 rounded-md px-3 py-3 shadow-[0_18px_44px_rgb(0_0_0/0.32)]"
+              className="min-w-0 flex-1 rounded-md px-3 py-3 shadow-[0_18px_44px_rgb(0_0_0/0.32)]"
               style={{
                 background:
                   "linear-gradient(90deg,#2a3038 0%,#4a5260 5.5%,#161a20 7%,#101318 93%,#4a5260 94.5%,#2a3038 100%)",
@@ -278,7 +278,7 @@ export function RackEditorPage() {
                         });
                       }}
                     >
-                      <span className="absolute top-0 left-0 w-7 text-center font-mono text-[10px] leading-[22px] text-zinc-400">
+                      <span className="absolute top-0 left-0 w-8 text-center font-mono text-[10px] leading-[26px] text-zinc-400">
                         {unit}
                       </span>
                       <span className="pointer-events-none absolute top-1/2 left-7 h-1.5 w-1.5 -translate-y-1/2 rounded-[1px] bg-zinc-500 shadow-[inset_0_0_0_1px_rgb(0_0_0/0.45)]" />
@@ -304,8 +304,8 @@ export function RackEditorPage() {
                       style={{
                         top: blockTop(mount.position_u, mount.u_height, rack.u_height, rack.descending_units) + 1,
                         height: mount.u_height * ROW - 2,
-                        left: 36,
-                        right: 28,
+                        left: 52,
+                        right: 40,
                         background: `linear-gradient(180deg, hsl(${hue} 32% 46%), hsl(${hue} 28% 28%))`,
                         boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.28), inset 0 -1px 0 rgb(0 0 0 / 0.35)",
                       }}

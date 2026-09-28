@@ -151,6 +151,74 @@ export interface FinanceEntry {
   notes: string | null;
 }
 
+export interface PlatformCluster {
+  id: string;
+  name: string;
+  endpoint: string | null;
+  version: string | null;
+  environment: string;
+  project_id: string | null;
+  project_name: string | null;
+  host_id: string | null;
+  notes: string | null;
+}
+
+export interface PlatformMcp {
+  id: string;
+  name: string;
+  endpoint: string;
+  transport: string;
+  cluster_id: string | null;
+  cluster_name: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  description: string | null;
+}
+
+export interface PlatformAgent {
+  id: string;
+  name: string;
+  kind: string;
+  endpoint: string | null;
+  model: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  description: string | null;
+  mcp_ids: string[];
+  mcp_names: string[];
+}
+
+export interface PlatformRoute {
+  id: string;
+  name: string;
+  host: string;
+  path: string;
+  target_kind: string;
+  target_id: string | null;
+  target_url: string | null;
+  target_name: string | null;
+  vlan_id: string | null;
+  vlan_label: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  notes: string | null;
+}
+
+export interface PlatformOverview {
+  clusters: PlatformCluster[];
+  mcp: PlatformMcp[];
+  agents: PlatformAgent[];
+  routes: PlatformRoute[];
+  counts: {
+    clusters: number;
+    mcp: number;
+    agents: number;
+    routes: number;
+    vlans: number;
+    vms: number;
+  };
+}
+
 export interface BoardCard {
   id: string;
   project_id: string;
