@@ -119,6 +119,9 @@ services:
         condition: service_healthy
     environment: *api-env
     command: ["arq", "worker.worker.WorkerSettings"]
+    # Образ общий с API, его проверка слушает порт 8000. У обработчика этого порта нет.
+    healthcheck:
+      disable: true
 
   web:
     build:
