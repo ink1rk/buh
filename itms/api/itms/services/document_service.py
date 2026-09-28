@@ -9,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from itms.core.context import current_context
 from itms.core.errors import Conflict, Invalid, NotFound
+from itms.domain.document_templates import TEMPLATES
 from itms.domain.locations import PATH_SEPARATOR, build_path
 from itms.domain.search import document_document
 from itms.models.documents import Document, DocumentFolder, DocumentLink, DocumentVersion
-from itms.models.enums import DocumentStatus
+from itms.models.enums import DocumentKind, DocumentStatus
 from itms.services import search_service
 
 DOCUMENT_FIELDS = ("title", "kind", "summary", "folder_id", "owner_employee_id",
@@ -351,3 +352,48 @@ async def review_overdue(session: AsyncSession, limit: int = 20) -> list[Documen
 
 
 PATH_SEP = PATH_SEPARATOR
+
+
+async def template_catalog(session: AsyncSession) -> list[dict[str, Any]]:
+    titles = [item["title"] for item in TEMPLATES]
+    rows = (
+        await session.execute(
+            select(Document.id, Document.title).where(
+                Document.title.in_(titles),
+                Document.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    installed = {title: document_id for document_id, title in rows}
+    return [
+        {
+            "title": item["title"],
+            "kind": item["kind"],
+            "summary": item["summary"],
+            "installed": item["title"] in installed,
+            "document_id": installed.get(item["title"]),
+        }
+        for item in TEMPLATES
+    ]
+
+
+async def install_templates(session: AsyncSession) -> dict[str, int]:
+    have = {item["title"] for item in await template_catalog(session) if item["installed"]}
+    created = skipped = 0
+    for item in TEMPLATES:
+        if item["title"] in have:
+            skipped += 1
+            continue
+        await create_document(
+            session,
+            {
+                "title": item["title"],
+                "kind": DocumentKind(item["kind"]),
+                "summary": item["summary"],
+                "content": item["content"],
+                "content_format": "markdown",
+                "links": [],
+            },
+        )
+        created += 1
+    return {"created": created, "skipped": skipped}

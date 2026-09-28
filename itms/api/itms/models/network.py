@@ -23,7 +23,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import CIDR, ENUM, INET, MACADDR
+from sqlalchemy.dialects.postgresql import CIDR, ENUM, INET, JSONB, MACADDR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from itms.models.base import ActorMixin, Base, TimestampMixin, uuid_pk
@@ -110,6 +110,8 @@ class DevicePart(Base, TimestampMixin, ActorMixin):
         ForeignKey("device_model.id", ondelete="RESTRICT"), nullable=False
     )
     quantity: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)
+    #: Имена мест на плате: CPU1, A1/CPU1. Пусто у дисков и адаптеров.
+    slots: Mapped[list[str] | None] = mapped_column(JSONB)
 
     device: Mapped[Device] = relationship(back_populates="parts")
     component: Mapped[DeviceModel] = relationship(lazy="joined")

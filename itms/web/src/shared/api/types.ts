@@ -133,6 +133,45 @@ export interface Responsibility {
   color: string | null;
 }
 
+export interface Department {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
+export interface FinanceEntry {
+  id: string;
+  department_id: string | null;
+  kind: string;
+  direction: string;
+  period: string;
+  article: string;
+  planned: string;
+  actual: string;
+  notes: string | null;
+}
+
+export interface BoardCard {
+  id: string;
+  project_id: string;
+  project_key: string;
+  project_name: string;
+  number: number;
+  label: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+}
+
+export interface DocumentTemplate {
+  title: string;
+  kind: string;
+  summary: string;
+  installed: boolean;
+  document_id: string | null;
+}
+
 export interface Employee {
   id: string;
   full_name: string;
@@ -327,6 +366,7 @@ export interface DevicePart {
   id: string;
   quantity: number;
   component_model_id: string;
+  slots: string[] | null;
   component: DeviceModel;
 }
 
@@ -337,6 +377,8 @@ export interface DeviceParts {
   ram_type: string | null;
   drive_bays: number | null;
   drive_form: string | null;
+  cpu_slot_names: string[];
+  ram_slot_names: string[];
   items: DevicePart[];
 }
 

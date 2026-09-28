@@ -95,6 +95,7 @@ TABLES_TO_CLEAR = (
     "user_session",
     "user_account",
     "employee",
+    "finance_entry",
     "department",
     "organization",
     "tag",

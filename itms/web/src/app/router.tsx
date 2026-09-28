@@ -22,6 +22,9 @@ import { ImportPage } from "@/features/imports/ImportPage";
 import { IpamPage } from "@/features/ipam/IpamPage";
 import { LocationsPage } from "@/features/locations/LocationsPage";
 import { PowerPage } from "@/features/power/PowerPage";
+import { FinancePage } from "@/features/office/FinancePage";
+import { KanbanPage } from "@/features/office/KanbanPage";
+import { TemplatesPage } from "@/features/office/TemplatesPage";
 import { AnalyticsPage } from "@/features/projects/AnalyticsPage";
 import { ProjectPage } from "@/features/projects/ProjectPage";
 import { ProjectsPage } from "@/features/projects/ProjectsPage";
@@ -53,6 +56,9 @@ export const router = createBrowserRouter([
       { path: "/racks/:rackId", element: <RackEditorPage /> },
       { path: "/floorplans/:planId", element: <FloorplanPage /> },
       { path: "/projects", element: <ProjectsPage /> },
+      { path: "/office/kanban", element: <KanbanPage /> },
+      { path: "/office/finance", element: <FinancePage /> },
+      { path: "/office/templates", element: <TemplatesPage /> },
       { path: "/analytics", element: <AnalyticsPage /> },
       { path: "/projects/:projectId", element: <ProjectPage /> },
       {

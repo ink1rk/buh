@@ -35,6 +35,7 @@ from itms.models.documents import (
     DocumentVersion,
     FileObject,
 )
+from itms.models.finance import FinanceEntry
 from itms.models.floorplan import Floorplan, FloorplanItem
 from itms.models.network import (
     CableRoute,
@@ -103,6 +104,7 @@ __all__ = [
     "Employee",
     "EmployeeResponsibility",
     "FileObject",
+    "FinanceEntry",
     "Floorplan",
     "FloorplanItem",
     "ImportJob",

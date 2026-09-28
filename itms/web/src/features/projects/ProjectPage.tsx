@@ -186,7 +186,7 @@ export function ProjectPage() {
   const { data, isLoading } = useProject(projectId);
   const [params] = useSearchParams();
   const taskFromUrl = params.get("task");
-  const [tab, setTab] = useState("overview");
+  const [tab, setTab] = useState("board");
   const [openTask, setOpenTask] = useState<string | null>(taskFromUrl);
   useEffect(() => {
     if (taskFromUrl) setOpenTask(taskFromUrl);

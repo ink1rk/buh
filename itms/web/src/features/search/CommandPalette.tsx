@@ -1,4 +1,4 @@
-import { Boxes, CornerDownLeft, Cpu, FileText, FolderKanban, ListChecks, MapPin, Search, Users, Workflow, Zap } from "lucide-react";
+import { Boxes, CornerDownLeft, Cpu, FileText, FolderKanban, Kanban, ListChecks, MapPin, Search, Users, Wallet, Workflow, Zap } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -52,6 +52,8 @@ export function CommandPalette() {
     () => [
       { label: t("search.actionTask"), path: "/work", icon: ListChecks },
       { label: t("search.actionProject"), path: "/projects", icon: FolderKanban },
+      { label: t("search.actionKanban"), path: "/office/kanban", icon: Kanban },
+      { label: t("search.actionBudget"), path: "/office/finance", icon: Wallet },
       { label: t("search.actionObject"), path: "/ci", icon: Boxes },
       { label: t("search.actionDiagram"), path: "/diagrams", icon: Workflow },
       { label: t("search.actionPower"), path: "/power", icon: Zap },

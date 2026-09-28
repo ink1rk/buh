@@ -21,6 +21,7 @@ from itms.api.schemas.network import (
     WarrantyRow,
 )
 from itms.domain.permissions import Permission
+from itms.domain.platform_slots import cpu_names, ram_names
 from itms.models.enums import DeviceRole
 from itms.services import device_service, network_service, parts_service
 
@@ -36,6 +37,8 @@ def _parts_payload(device, parts) -> DevicePartsRead:
         ram_type=limits.ram_type,
         drive_bays=limits.drive_bays,
         drive_form=limits.drive_form,
+        cpu_slot_names=cpu_names(limits.cpu_sockets),
+        ram_slot_names=ram_names(limits.ram_slots, limits.cpu_sockets),
         items=[DevicePartRead.model_validate(part) for part in parts],
     )
 
@@ -89,7 +92,7 @@ async def set_part(
     ci_id: uuid.UUID, payload: DevicePartWrite, session: SessionDep
 ) -> DevicePartsRead:
     await parts_service.set_part(
-        session, ci_id, payload.component_model_id, payload.quantity
+        session, ci_id, payload.component_model_id, payload.quantity, payload.slots
     )
     device, parts = await parts_service.list_parts(session, ci_id)
     return _parts_payload(device, parts)

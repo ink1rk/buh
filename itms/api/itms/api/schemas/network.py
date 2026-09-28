@@ -165,12 +165,14 @@ class DevicePartRead(ORMModel):
     id: uuid.UUID
     quantity: int
     component_model_id: uuid.UUID
+    slots: list[str] | None = None
     component: DeviceModelRead
 
 
 class DevicePartWrite(BaseModel):
     component_model_id: uuid.UUID
     quantity: int = Field(default=1, ge=1, le=128)
+    slots: list[str] | None = None
 
 
 class DevicePartsRead(BaseModel):
@@ -180,6 +182,8 @@ class DevicePartsRead(BaseModel):
     ram_type: str | None
     drive_bays: int | None
     drive_form: str | None
+    cpu_slot_names: list[str] = Field(default_factory=list)
+    ram_slot_names: list[str] = Field(default_factory=list)
     items: list[DevicePartRead]
 
 

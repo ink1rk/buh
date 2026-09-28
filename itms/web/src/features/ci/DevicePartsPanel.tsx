@@ -9,6 +9,8 @@ import { Field, Input, Select } from "@/shared/ui/Field";
 import { FormError, Panel } from "@/shared/ui/Layout";
 import { toast } from "@/shared/ui/toast";
 
+import { PlatformBoard } from "./PlatformBoard";
+
 const CLASSES = ["CPU", "BOARD", "MEMORY", "DISK", "NIC", "HBA", "PSU"] as const;
 
 export function DevicePartsPanel({ ciId }: { ciId: string }) {
@@ -25,7 +27,8 @@ export function DevicePartsPanel({ ciId }: { ciId: string }) {
   });
 
   const save = useApiMutation(
-    (body: { component_model_id: string; quantity: number }) => mutations.setDevicePart(ciId, body),
+    (body: { component_model_id: string; quantity: number; slots?: string[] }) =>
+      mutations.setDevicePart(ciId, body),
     [keys.deviceParts(ciId)],
     {
       onSuccess: () => {
@@ -44,6 +47,32 @@ export function DevicePartsPanel({ ciId }: { ciId: string }) {
     },
   );
 
+  function toggleSlot(name: string) {
+    const items = data?.items ?? [];
+    const owner = items.find((part) => (part.slots ?? []).includes(name));
+    if (owner) {
+      const next = (owner.slots ?? []).filter((slot) => slot !== name);
+      if (next.length === 0) {
+        remove.mutate(owner.id);
+        return;
+      }
+      save.mutate({
+        component_model_id: owner.component_model_id,
+        quantity: next.length,
+        slots: next,
+      });
+      return;
+    }
+    const expected = (data?.cpu_slot_names ?? []).includes(name) ? "CPU" : "MEMORY";
+    if (kind !== expected || !modelId) {
+      toast.error(t("devices.pickPart"));
+      return;
+    }
+    const existing = items.find((part) => part.component_model_id === modelId);
+    const next = [...(existing?.slots ?? []), name];
+    save.mutate({ component_model_id: modelId, quantity: next.length, slots: next });
+  }
+
   const capacity = [
     data?.cpu_sockets ? `${data.cpu_sockets}× ${data.cpu_socket ?? t("devices.parts")}` : "",
     data?.ram_slots ? `${data.ram_slots}× ${data.ram_type ?? "RAM"}` : "",
@@ -54,6 +83,12 @@ export function DevicePartsPanel({ ciId }: { ciId: string }) {
 
   return (
     <Panel title={t("devices.parts")}>
+      <PlatformBoard
+        cpuNames={data?.cpu_slot_names ?? []}
+        ramNames={data?.ram_slot_names ?? []}
+        items={data?.items ?? []}
+        onToggle={toggleSlot}
+      />
       <p className="mb-3 text-xs text-muted">{capacity || t("devices.partsHint")}</p>
       <ul className="mb-3 flex flex-col gap-1">
         {(data?.items ?? []).length === 0 && (
@@ -67,7 +102,9 @@ export function DevicePartsPanel({ ciId }: { ciId: string }) {
             <span className="min-w-0 flex-1 truncate">
               {part.component.manufacturer.name} {part.component.model}
             </span>
-            <span className="tabular-nums text-muted">× {part.quantity}</span>
+            <span className="max-w-40 truncate text-right font-mono text-[10px] text-muted">
+              {part.slots?.length ? part.slots.join(" ") : `× ${part.quantity}`}
+            </span>
             <IconButton label={t("app.delete")} onClick={() => remove.mutate(part.id)}>
               <Trash2 size={13} />
             </IconButton>

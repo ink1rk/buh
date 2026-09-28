@@ -17,6 +17,10 @@ import type {
   DeviceModel,
   DeviceParts,
   DeviceRow,
+  BoardCard,
+  Department,
+  DocumentTemplate,
+  FinanceEntry,
   DiagramFull,
   DiagramNode,
   DiagramSummary,
@@ -77,6 +81,10 @@ export const keys = {
   locations: ["locations"] as const,
   locationTree: ["locations", "tree"] as const,
   employees: ["employees"] as const,
+  departments: ["departments"] as const,
+  finance: (kind: string) => ["finance", kind] as const,
+  projectBoard: ["projects", "board"] as const,
+  documentTemplates: ["documents", "templates"] as const,
   responsibilities: ["responsibilities"] as const,
   workload: ["workload"] as const,
   documents: (params: unknown) => ["documents", "list", params] as const,
@@ -229,6 +237,34 @@ export function useEmployees() {
   return useQuery({
     queryKey: keys.employees,
     queryFn: () => api.get<Employee[]>("/directory/employees"),
+  });
+}
+
+export function useDepartments() {
+  return useQuery({
+    queryKey: keys.departments,
+    queryFn: () => api.get<Department[]>("/directory/departments"),
+  });
+}
+
+export function useFinance(kind: string) {
+  return useQuery({
+    queryKey: keys.finance(kind),
+    queryFn: () => api.get<FinanceEntry[]>("/finance", { kind }),
+  });
+}
+
+export function useProjectBoard() {
+  return useQuery({
+    queryKey: keys.projectBoard,
+    queryFn: () => api.get<BoardCard[]>("/projects/board"),
+  });
+}
+
+export function useDocumentTemplates() {
+  return useQuery({
+    queryKey: keys.documentTemplates,
+    queryFn: () => api.get<DocumentTemplate[]>("/documents/templates"),
   });
 }
 
@@ -727,8 +763,10 @@ export const mutations = {
 
   saveDevice: (ciId: string, body: Record<string, unknown>, provenance?: Provenance) =>
     api.put<Device>(`/devices/${ciId}`, body, provenance),
-  setDevicePart: (ciId: string, body: { component_model_id: string; quantity: number }) =>
-    api.put<DeviceParts>(`/devices/${ciId}/parts`, body),
+  setDevicePart: (
+    ciId: string,
+    body: { component_model_id: string; quantity: number; slots?: string[] },
+  ) => api.put<DeviceParts>(`/devices/${ciId}/parts`, body),
   deleteDevicePart: (ciId: string, partId: string) =>
     api.delete<{ ok: boolean }>(`/devices/${ciId}/parts/${partId}`),
   createInterface: (ciId: string, body: Record<string, unknown>, provenance?: Provenance) =>
@@ -842,4 +880,11 @@ export const mutations = {
     api.put<RackElevation>(`/racks/${rackId}/mounts`, body, provenance),
   removeMount: (rackId: string, mountId: string, toStock: boolean, provenance?: Provenance) =>
     api.delete<RackElevation>(`/racks/${rackId}/mounts/${mountId}?to_stock=${toStock}`, provenance),
+
+  createFinance: (body: Record<string, unknown>) => api.post<FinanceEntry>("/finance", body),
+  updateFinance: (id: string, body: Record<string, unknown>) =>
+    api.patch<FinanceEntry>(`/finance/${id}`, body),
+  deleteFinance: (id: string) => api.delete<{ ok: boolean }>(`/finance/${id}`),
+  installDocumentTemplates: () =>
+    api.post<{ created: number; skipped: number }>("/documents/templates/install"),
 };

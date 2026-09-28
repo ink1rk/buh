@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from itms.core.errors import Invalid, NotFound
+from itms.domain.platform_slots import cpu_names, ram_names
 from itms.models.catalog import DeviceModel
 from itms.models.enums import INSTALLABLE_COMPONENTS, ComponentClass
 from itms.models.network import Device, DevicePart
@@ -119,8 +120,45 @@ async def list_parts(session: AsyncSession, ci_id: uuid.UUID) -> tuple[Device, l
     return device, parts
 
 
+def _place(
+    kind: ComponentClass,
+    quantity: int,
+    slots: list[str] | None,
+    limits: PlatformLimits,
+    others: list[DevicePart],
+) -> list[str] | None:
+    names = cpu_names(limits.cpu_sockets) if kind == ComponentClass.CPU else []
+    if kind == ComponentClass.MEMORY:
+        names = ram_names(limits.ram_slots, limits.cpu_sockets)
+    if kind not in {ComponentClass.CPU, ComponentClass.MEMORY} or not names:
+        return None
+    used = {name for part in others for name in (part.slots or [])}
+    chosen = slots
+    if chosen is None:
+        free = [name for name in names if name not in used]
+        if len(free) < quantity:
+            label = "сокетов" if kind == ComponentClass.CPU else "слотов памяти"
+            raise Invalid(f"Свободных {label} меньше, чем ставите: {len(free)}")
+        return free[:quantity]
+    if len(chosen) != quantity:
+        raise Invalid("Число мест на плате не совпадает с количеством")
+    if len(set(chosen)) != len(chosen):
+        raise Invalid("Одно место на плате указано дважды")
+    unknown = [name for name in chosen if name not in names]
+    if unknown:
+        raise Invalid(f"На платформе нет места {unknown[0]}")
+    taken = [name for name in chosen if name in used]
+    if taken:
+        raise Invalid(f"Место {taken[0]} уже занято")
+    return chosen
+
+
 async def set_part(
-    session: AsyncSession, ci_id: uuid.UUID, component_model_id: uuid.UUID, quantity: int
+    session: AsyncSession,
+    ci_id: uuid.UUID,
+    component_model_id: uuid.UUID,
+    quantity: int,
+    slots: list[str] | None = None,
 ) -> DevicePart:
     if quantity < 1:
         raise Invalid("Количество должно быть не меньше 1")
@@ -146,6 +184,8 @@ async def set_part(
         session.add(existing)
     else:
         existing.quantity = quantity
+    limits = limits_for(device.model, draft)
+    existing.slots = _place(kind, quantity, slots, limits, draft)
     draft.append(existing)
     _check(draft, device.model)
     await session.flush()
