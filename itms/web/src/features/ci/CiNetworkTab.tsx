@@ -42,7 +42,7 @@ function ProfileForm({
   const { t, te } = useI18n();
   const { data: meta } = useMeta();
   const { data: models } = useDeviceModels({
-    limit: 500,
+    limit: 1000,
     offset: 0,
     component_class: "CHASSIS",
   });

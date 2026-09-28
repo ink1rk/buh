@@ -251,7 +251,9 @@ async def install_library(session: AsyncSession) -> dict[str, int]:
         manufacturer = manufacturers[key]
         exists = (
             await session.execute(
-                select(DeviceModel).where(
+                select(DeviceModel)
+                .options(selectinload(DeviceModel.port_templates))
+                .where(
                     DeviceModel.manufacturer_id == manufacturer.id,
                     DeviceModel.model == spec.model,
                 )
@@ -268,6 +270,22 @@ async def install_library(session: AsyncSession) -> dict[str, int]:
             if exists.drive_bays is None and spec.drive_bays:
                 exists.drive_bays = spec.drive_bays
                 exists.drive_form = spec.drive_form
+            known = {item.name_pattern for item in exists.port_templates}
+            for port in spec.ports:
+                if port.name_pattern in known:
+                    continue
+                session.add(
+                    PortTemplate(
+                        device_model_id=exists.id,
+                        name_pattern=port.name_pattern,
+                        count=port.count,
+                        start_index=port.start_index,
+                        interface_type=port.interface_type,
+                        speed_mbps=port.speed_mbps,
+                        poe_capable=port.poe_capable,
+                        position=port.position,
+                    )
+                )
             skipped_models += 1
             continue
         await create_model(

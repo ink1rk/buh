@@ -223,6 +223,71 @@ _SERVERS: tuple[tuple, ...] = (
     ("Fujitsu", "PRIMERGY RX2530 M7", 1, 500, 1200, 2, "LGA4677", 32, "DDR5", 8, "SFF"),
     ("Fujitsu", "PRIMERGY RX4770 M7", 4, 1200, 2600, 4, "LGA4677", 64, "DDR5", 8, "SFF"),
     ("Fujitsu", "PRIMERGY TX2550 M7", 0, 400, 1200, 2, "LGA4677", 16, "DDR5", 8, "LFF"),
+    ("HPE", "ProLiant DL20 Gen9", 1, 120, 400, 1, "LGA1151", 4, "DDR4", 2, "LFF"),
+    ("HPE", "ProLiant DL60 Gen9", 1, 200, 500, 1, "LGA2011-3", 8, "DDR4", 4, "LFF"),
+    ("HPE", "ProLiant DL80 Gen9", 2, 300, 800, 2, "LGA2011-3", 16, "DDR4", 12, "LFF"),
+    ("HPE", "ProLiant DL120 Gen9", 1, 250, 600, 1, "LGA2011-3", 8, "DDR4", 4, "LFF"),
+    ("HPE", "ProLiant DL160 Gen9", 1, 350, 800, 2, "LGA2011-3", 16, "DDR4", 8, "SFF"),
+    ("HPE", "ProLiant DL180 Gen9", 2, 400, 900, 2, "LGA2011-3", 16, "DDR4", 12, "LFF"),
+    ("HPE", "ProLiant DL360 Gen9", 1, 400, 800, 2, "LGA2011-3", 24, "DDR4", 8, "SFF"),
+    ("HPE", "ProLiant DL380 Gen9", 2, 500, 1200, 2, "LGA2011-3", 24, "DDR4", 24, "SFF"),
+    ("HPE", "ProLiant DL560 Gen9", 2, 800, 1600, 4, "LGA2011-3", 48, "DDR4", 6, "SFF"),
+    ("HPE", "ProLiant DL580 Gen9", 4, 1000, 2000, 4, "LGA2011-3", 96, "DDR4", 10, "SFF"),
+    ("HPE", "ProLiant ML110 Gen9", 0, 150, 400, 1, "LGA1151", 4, "DDR4", 4, "LFF"),
+    ("HPE", "ProLiant ML150 Gen9", 0, 250, 700, 2, "LGA2011-3", 16, "DDR4", 8, "LFF"),
+    ("HPE", "ProLiant ML350 Gen9", 0, 400, 1000, 2, "LGA2011-3", 24, "DDR4", 16, "SFF"),
+    ("HPE", "ProLiant BL460c Gen9", 0, 400, 800, 2, "LGA2011-3", 16, "DDR4", 2, "SFF"),
+    ("HPE", "ProLiant DL360p Gen8", 1, 350, 750, 2, "LGA2011", 24, "DDR3", 8, "SFF"),
+    ("HPE", "ProLiant DL380p Gen8", 2, 450, 1200, 2, "LGA2011", 24, "DDR3", 16, "SFF"),
+    ("HPE", "ProLiant DL380e Gen8", 2, 400, 1000, 2, "LGA2011", 12, "DDR3", 12, "LFF"),
+    ("HPE", "ProLiant DL160 Gen8", 1, 300, 750, 2, "LGA2011", 16, "DDR3", 8, "SFF"),
+    ("HPE", "ProLiant ML350p Gen8", 0, 350, 900, 2, "LGA2011", 24, "DDR3", 8, "LFF"),
+    ("HPE", "ProLiant BL460c Gen8", 0, 350, 750, 2, "LGA2011", 16, "DDR3", 2, "SFF"),
+    ("HPE", "ProLiant DL325 Gen10", 1, 300, 700, 1, "SP3", 16, "DDR4", 8, "SFF"),
+    ("HPE", "ProLiant DL385 Gen10", 2, 500, 1400, 2, "SP3", 32, "DDR4", 24, "SFF"),
+    ("HPE", "ProLiant DL385 Gen10 Plus", 2, 550, 1600, 2, "SP3", 32, "DDR4", 24, "SFF"),
+    ("HPE", "ProLiant DL560 Gen10", 2, 800, 1800, 4, "LGA3647", 48, "DDR4", 6, "SFF"),
+    ("HPE", "ProLiant DL580 Gen10", 4, 1100, 2200, 4, "LGA3647", 48, "DDR4", 8, "SFF"),
+    ("HPE", "Synergy 480 Gen10", 0, 500, 1200, 2, "LGA3647", 24, "DDR4", 2, "SFF"),
+    ("Dell", "PowerEdge R230", 1, 120, 350, 1, "LGA1151", 4, "DDR4", 4, "LFF"),
+    ("Dell", "PowerEdge R330", 1, 150, 400, 1, "LGA1151", 4, "DDR4", 4, "LFF"),
+    ("Dell", "PowerEdge R430", 1, 300, 700, 2, "LGA2011-3", 12, "DDR4", 4, "LFF"),
+    ("Dell", "PowerEdge R530", 2, 350, 800, 2, "LGA2011-3", 12, "DDR4", 8, "LFF"),
+    ("Dell", "PowerEdge R630", 1, 400, 900, 2, "LGA2011-3", 24, "DDR4", 10, "SFF"),
+    ("Dell", "PowerEdge R730", 2, 500, 1200, 2, "LGA2011-3", 24, "DDR4", 16, "SFF"),
+    ("Dell", "PowerEdge R730xd", 2, 550, 1400, 2, "LGA2011-3", 24, "DDR4", 24, "SFF"),
+    ("Dell", "PowerEdge T630", 0, 400, 1100, 2, "LGA2011-3", 24, "DDR4", 8, "LFF"),
+    ("Dell", "PowerEdge R620", 1, 350, 800, 2, "LGA2011", 24, "DDR3", 10, "SFF"),
+    ("Dell", "PowerEdge R720", 2, 450, 1100, 2, "LGA2011", 24, "DDR3", 16, "SFF"),
+    ("Dell", "PowerEdge R720xd", 2, 500, 1300, 2, "LGA2011", 24, "DDR3", 24, "SFF"),
+    ("Dell", "PowerEdge T620", 0, 400, 1100, 2, "LGA2011", 24, "DDR3", 8, "LFF"),
+    ("Dell", "PowerEdge R440", 1, 300, 750, 2, "LGA3647", 16, "DDR4", 4, "LFF"),
+    ("Dell", "PowerEdge R540", 2, 400, 1000, 2, "LGA3647", 16, "DDR4", 12, "LFF"),
+    ("Dell", "PowerEdge R640", 1, 450, 1100, 2, "LGA3647", 24, "DDR4", 10, "SFF"),
+    ("Dell", "PowerEdge R740", 2, 550, 1400, 2, "LGA3647", 24, "DDR4", 16, "SFF"),
+    ("Dell", "PowerEdge R740xd", 2, 600, 1600, 2, "LGA3647", 24, "DDR4", 24, "SFF"),
+    ("Dell", "PowerEdge T640", 0, 450, 1200, 2, "LGA3647", 24, "DDR4", 8, "LFF"),
+    ("Dell", "PowerEdge FC640", 0, 450, 1100, 2, "LGA3647", 16, "DDR4", 2, "SFF"),
+    ("Lenovo", "System x3550 M5", 1, 400, 900, 2, "LGA2011-3", 24, "DDR4", 8, "SFF"),
+    ("Lenovo", "System x3650 M5", 2, 500, 1200, 2, "LGA2011-3", 24, "DDR4", 16, "SFF"),
+    ("Lenovo", "ThinkSystem SR570", 1, 300, 750, 2, "LGA3647", 16, "DDR4", 4, "LFF"),
+    ("Lenovo", "ThinkSystem SR550", 2, 350, 900, 2, "LGA3647", 12, "DDR4", 8, "LFF"),
+    ("Lenovo", "ThinkSystem SR630", 1, 450, 1100, 2, "LGA3647", 24, "DDR4", 10, "SFF"),
+    ("Lenovo", "ThinkSystem SR650", 2, 550, 1400, 2, "LGA3647", 24, "DDR4", 16, "SFF"),
+    ("Huawei", "FusionServer RH2288 V3", 2, 450, 1100, 2, "LGA2011-3", 16, "DDR4", 12, "LFF"),
+    ("Huawei", "FusionServer 2288H V3", 2, 450, 1100, 2, "LGA2011-3", 16, "DDR4", 8, "SFF"),
+    ("Huawei", "FusionServer 1288H V5", 1, 400, 1000, 2, "LGA3647", 24, "DDR4", 8, "SFF"),
+    ("Huawei", "FusionServer 2488H V5", 2, 800, 1800, 4, "LGA3647", 48, "DDR4", 8, "SFF"),
+    ("ASUS", "RS700-E9-RS4", 1, 400, 1000, 2, "LGA3647", 16, "DDR4", 4, "SFF"),
+    ("ASUS", "RS720-E9-RS12", 2, 500, 1300, 2, "LGA3647", 16, "DDR4", 12, "SFF"),
+    ("Supermicro", "SYS-1029U-TRT", 1, 450, 1100, 2, "LGA3647", 24, "DDR4", 10, "SFF"),
+    ("Supermicro", "SYS-2029U-TRT", 2, 550, 1400, 2, "LGA3647", 24, "DDR4", 12, "SFF"),
+    ("Fujitsu", "PRIMERGY RX2530 M2", 1, 350, 800, 2, "LGA2011-3", 24, "DDR4", 8, "SFF"),
+    ("Fujitsu", "PRIMERGY RX2540 M2", 2, 450, 1100, 2, "LGA2011-3", 24, "DDR4", 16, "SFF"),
+    ("Fujitsu", "PRIMERGY RX2530 M4", 1, 400, 1000, 2, "LGA3647", 24, "DDR4", 8, "SFF"),
+    ("Fujitsu", "PRIMERGY RX2540 M4", 2, 500, 1300, 2, "LGA3647", 24, "DDR4", 16, "SFF"),
+    ("Fujitsu", "PRIMERGY RX2530 M5", 1, 450, 1100, 2, "LGA4189", 32, "DDR4", 8, "SFF"),
+    ("Fujitsu", "PRIMERGY RX2540 M5", 2, 550, 1400, 2, "LGA4189", 32, "DDR4", 16, "SFF"),
 )
 
 _BOARDS: tuple[tuple, ...] = (
@@ -230,12 +295,48 @@ _BOARDS: tuple[tuple, ...] = (
     ("Supermicro", "X12DPi-NT6", 2, "LGA4189", 16, "DDR4"),
     ("Supermicro", "H13SSL-N", 1, "SP5", 12, "DDR5"),
     ("Supermicro", "H12SSL-i", 1, "SP3", 8, "DDR4"),
+    ("Supermicro", "X11DPi-N", 2, "LGA3647", 16, "DDR4"),
+    ("Supermicro", "X10DRi", 2, "LGA2011-3", 16, "DDR4"),
+    ("Supermicro", "X9DRi-LN4F", 2, "LGA2011", 16, "DDR3"),
     ("ASUS", "Z13PR-D32", 2, "LGA4677", 32, "DDR5"),
     ("ASUS", "Pro WS W790-ACE", 1, "LGA4677", 8, "DDR5"),
 )
 
 # (вендор, модель, сокет, пояснение)
 _CPUS: tuple[tuple[str, str, str, str], ...] = (
+    ("Intel", "Xeon E3-1220 v5", "LGA1151", "4 ядра, DDR4 ECC UDIMM."),
+    ("Intel", "Xeon E3-1240 v5", "LGA1151", "4 ядра, DDR4 ECC UDIMM."),
+    ("Intel", "Xeon E3-1270 v6", "LGA1151", "4 ядра, DDR4 ECC UDIMM."),
+    ("Intel", "Xeon E-2136", "LGA1151", "6 ядер, DDR4 ECC UDIMM."),
+    ("Intel", "Xeon E-2236", "LGA1151", "6 ядер, DDR4 ECC UDIMM."),
+    ("Intel", "Xeon E5-2620 v2", "LGA2011", "6 ядер, Ivy Bridge-EP, DDR3."),
+    ("Intel", "Xeon E5-2650 v2", "LGA2011", "8 ядер, Ivy Bridge-EP, DDR3."),
+    ("Intel", "Xeon E5-2670 v2", "LGA2011", "10 ядер, Ivy Bridge-EP, DDR3."),
+    ("Intel", "Xeon E5-2690 v2", "LGA2011", "10 ядер, Ivy Bridge-EP, DDR3."),
+    ("Intel", "Xeon E5-2620 v3", "LGA2011-3", "6 ядер, Haswell-EP, DDR4."),
+    ("Intel", "Xeon E5-2630 v4", "LGA2011-3", "10 ядер, Broadwell-EP, DDR4."),
+    ("Intel", "Xeon E5-2640 v4", "LGA2011-3", "10 ядер, Broadwell-EP, DDR4."),
+    ("Intel", "Xeon E5-2650 v4", "LGA2011-3", "12 ядер, Broadwell-EP, DDR4."),
+    ("Intel", "Xeon E5-2660 v4", "LGA2011-3", "14 ядер, Broadwell-EP, DDR4."),
+    ("Intel", "Xeon E5-2680 v3", "LGA2011-3", "12 ядер, Haswell-EP, DDR4."),
+    ("Intel", "Xeon E5-2680 v4", "LGA2011-3", "14 ядер, Broadwell-EP, DDR4."),
+    ("Intel", "Xeon E5-2690 v4", "LGA2011-3", "14 ядер, Broadwell-EP, DDR4."),
+    ("Intel", "Xeon E5-2697 v4", "LGA2011-3", "18 ядер, Broadwell-EP, DDR4."),
+    ("Intel", "Xeon E5-2699 v4", "LGA2011-3", "22 ядра, Broadwell-EP, DDR4."),
+    ("Intel", "Xeon Silver 4110", "LGA3647", "8 ядер, Skylake."),
+    ("Intel", "Xeon Silver 4114", "LGA3647", "10 ядер, Skylake."),
+    ("Intel", "Xeon Silver 4210", "LGA3647", "10 ядер, Cascade Lake."),
+    ("Intel", "Xeon Silver 4214", "LGA3647", "12 ядер, Cascade Lake."),
+    ("Intel", "Xeon Gold 5118", "LGA3647", "12 ядер, Skylake."),
+    ("Intel", "Xeon Gold 6130", "LGA3647", "16 ядер, Skylake."),
+    ("Intel", "Xeon Gold 6138", "LGA3647", "20 ядер, Skylake."),
+    ("Intel", "Xeon Gold 6148", "LGA3647", "20 ядер, Skylake."),
+    ("Intel", "Xeon Gold 6248", "LGA3647", "20 ядер, Cascade Lake."),
+    ("Intel", "Xeon Gold 6258R", "LGA3647", "28 ядер, Cascade Lake."),
+    ("Intel", "Xeon Platinum 8160", "LGA3647", "24 ядра, Skylake."),
+    ("Intel", "Xeon Platinum 8176", "LGA3647", "28 ядер, Skylake."),
+    ("Intel", "Xeon Platinum 8260", "LGA3647", "24 ядра, Cascade Lake."),
+    ("Intel", "Xeon Platinum 8280", "LGA3647", "28 ядер, Cascade Lake."),
     ("Intel", "Xeon E-2388G", "LGA1200", "8 ядер, DDR4 ECC UDIMM."),
     ("Intel", "Xeon E-2488", "LGA1700", "8 ядер, DDR5 ECC UDIMM."),
     ("Intel", "Xeon Silver 4314", "LGA4189", "16 ядер, Ice Lake."),
@@ -249,6 +350,11 @@ _CPUS: tuple[tuple[str, str, str, str], ...] = (
     ("Intel", "Xeon Platinum 8460Y+", "LGA4677", "40 ядер, Sapphire Rapids."),
     ("Intel", "Xeon Platinum 8480+", "LGA4677", "56 ядер, Sapphire Rapids."),
     ("Intel", "Xeon Platinum 8592+", "LGA4677", "64 ядра, Emerald Rapids."),
+    ("AMD", "EPYC 7302", "SP3", "16 ядер, Rome."),
+    ("AMD", "EPYC 7402", "SP3", "24 ядра, Rome."),
+    ("AMD", "EPYC 7502", "SP3", "32 ядра, Rome."),
+    ("AMD", "EPYC 7542", "SP3", "32 ядра, Rome."),
+    ("AMD", "EPYC 7742", "SP3", "64 ядра, Rome."),
     ("AMD", "EPYC 7543", "SP3", "32 ядра, Milan."),
     ("AMD", "EPYC 7763", "SP3", "64 ядра, Milan."),
     ("AMD", "EPYC 9124", "SP5", "16 ядер, Genoa."),
@@ -263,6 +369,14 @@ _CPUS: tuple[tuple[str, str, str, str], ...] = (
 
 # (вендор, модель, тип)
 _RAM: tuple[tuple[str, str, str], ...] = (
+    ("Samsung", "DDR3 RDIMM 8 ГБ 1600", "DDR3"),
+    ("Samsung", "DDR3 RDIMM 16 ГБ 1600", "DDR3"),
+    ("Samsung", "DDR3 RDIMM 32 ГБ 1866", "DDR3"),
+    ("Samsung", "DDR4 RDIMM 8 ГБ 2400", "DDR4"),
+    ("Samsung", "DDR4 RDIMM 16 ГБ 2400", "DDR4"),
+    ("Samsung", "DDR4 RDIMM 32 ГБ 2400", "DDR4"),
+    ("Samsung", "DDR4 RDIMM 16 ГБ 2666", "DDR4"),
+    ("Samsung", "DDR4 RDIMM 32 ГБ 2933", "DDR4"),
     ("Samsung", "DDR4 RDIMM 16 ГБ 3200", "DDR4"),
     ("Samsung", "DDR4 RDIMM 32 ГБ 3200", "DDR4"),
     ("Samsung", "DDR4 RDIMM 64 ГБ 3200", "DDR4"),
@@ -280,10 +394,16 @@ _RAM: tuple[tuple[str, str, str], ...] = (
     ("Kingston", "DDR4 ECC UDIMM 16 ГБ", "DDR4"),
     ("Kingston", "DDR4 ECC UDIMM 32 ГБ", "DDR4"),
     ("Kingston", "DDR5 ECC UDIMM 32 ГБ", "DDR5"),
+    ("HPE", "SmartMemory DDR3 16 ГБ", "DDR3"),
+    ("HPE", "SmartMemory DDR4 16 ГБ 2400", "DDR4"),
+    ("HPE", "SmartMemory DDR4 32 ГБ 2400", "DDR4"),
     ("HPE", "SmartMemory DDR4 32 ГБ", "DDR4"),
     ("HPE", "SmartMemory DDR5 32 ГБ", "DDR5"),
     ("HPE", "SmartMemory DDR5 64 ГБ", "DDR5"),
     ("HPE", "SmartMemory DDR5 128 ГБ", "DDR5"),
+    ("Dell", "DDR3 RDIMM 16 ГБ", "DDR3"),
+    ("Dell", "DDR4 RDIMM 16 ГБ 2400", "DDR4"),
+    ("Dell", "DDR4 RDIMM 32 ГБ 2666", "DDR4"),
     ("Dell", "DDR4 RDIMM 32 ГБ", "DDR4"),
     ("Dell", "DDR5 RDIMM 32 ГБ", "DDR5"),
     ("Dell", "DDR5 RDIMM 64 ГБ", "DDR5"),
@@ -295,6 +415,9 @@ _DISKS: tuple[tuple[str, str, str], ...] = (
     ("Seagate", "Exos 7E8 4 ТБ", "LFF"),
     ("Seagate", "Exos X18 16 ТБ", "LFF"),
     ("Seagate", "Exos X20 20 ТБ", "LFF"),
+    ("Seagate", "Savvio 600 ГБ 10k", "SFF"),
+    ("Seagate", "Exos 10E2400 1.2 ТБ", "SFF"),
+    ("Seagate", "Exos 10E2400 1.8 ТБ", "SFF"),
     ("Seagate", "Exos 10E2400 2.4 ТБ", "SFF"),
     ("Western Digital", "Ultrastar DC HC550 16 ТБ", "LFF"),
     ("Western Digital", "Ultrastar DC HC560 20 ТБ", "LFF"),
@@ -310,6 +433,9 @@ _DISKS: tuple[tuple[str, str, str], ...] = (
     ("Micron", "7450 MAX 1.6 ТБ NVMe", "NVMe"),
     ("HPE", "1.92 ТБ SATA MU", "SFF"),
     ("HPE", "3.84 ТБ NVMe MU", "NVMe"),
+    ("HPE", "600 ГБ SAS 10k", "SFF"),
+    ("HPE", "1.2 ТБ SAS 10k", "SFF"),
+    ("HPE", "1.8 ТБ SAS 10k", "SFF"),
     ("HPE", "2.4 ТБ SAS 10k", "SFF"),
     ("Dell", "1.92 ТБ SATA SSD", "SFF"),
     ("Dell", "3.84 ТБ NVMe", "NVMe"),
@@ -318,6 +444,8 @@ _DISKS: tuple[tuple[str, str, str], ...] = (
 )
 
 _NICS: tuple[tuple[str, str, str], ...] = (
+    ("Intel", "I350-T4", "4× RJ45 1 Гбит/с."),
+    ("Intel", "X520-DA2", "2× SFP+ 10 Гбит/с."),
     ("Intel", "X710-DA2", "2× SFP+ 10 Гбит/с."),
     ("Intel", "X710-DA4", "4× SFP+ 10 Гбит/с."),
     ("Intel", "E810-XXVDA2", "2× SFP28 25 Гбит/с."),
@@ -329,6 +457,9 @@ _NICS: tuple[tuple[str, str, str], ...] = (
 )
 
 _HBAS: tuple[tuple[str, str, str], ...] = (
+    ("HPE", "H240", "SAS HBA на 8 внутренних линий."),
+    ("Dell", "PERC H730", "RAID-контроллер 12 Гбит/с SAS."),
+    ("Dell", "PERC H740P", "RAID-контроллер 12 Гбит/с SAS."),
     ("Broadcom", "LPe35002", "2× 32 Гбит/с Fibre Channel."),
     ("Broadcom", "LPe36002", "2× 64 Гбит/с Fibre Channel."),
     ("Marvell", "QLE2772", "2× 32 Гбит/с Fibre Channel."),
@@ -338,8 +469,11 @@ _HBAS: tuple[tuple[str, str, str], ...] = (
 )
 
 _PSUS: tuple[tuple[str, str], ...] = (
+    ("HPE", "Flex Slot 500 Вт",),
     ("HPE", "Flex Slot 800 Вт",),
     ("HPE", "Flex Slot 1600 Вт",),
+    ("Dell", "750 Вт 12G/13G",),
+    ("Dell", "1100 Вт 13G",),
     ("Dell", "Titanium 800 Вт",),
     ("Dell", "Titanium 1400 Вт",),
     ("Dell", "Titanium 2400 Вт",),
@@ -352,8 +486,9 @@ def _servers() -> list[ModelSpec]:
     for row in _SERVERS:
         vendor, model, u, typical, maximum, sockets, socket, slots, ram, bays, form = row
         extra = ""
-        if "MX760c" in model:
-            extra = "Лезвие шасси MX7000, само по себе юниты стойки не занимает."
+        blade = any(token in model for token in ("MX760c", "BL460", "Synergy", "FC640"))
+        if blade:
+            extra = "Лезвие, само по себе юниты стойки не занимает."
         elif u == 0:
             extra = "Башня, в стойку без комплекта не ставится."
         elif "5288" in model or "Apollo" in model or "SSG-" in model:
@@ -474,10 +609,9 @@ def _network() -> list[ModelSpec]:
         ("MES3348", 48, 4, False, DeviceRole.L3_SWITCH, 55, 120),
         ("MES5312", 0, 12, False, DeviceRole.L3_SWITCH, 50, 120),
         ("MES5324", 0, 24, False, DeviceRole.L3_SWITCH, 60, 140),
-        ("MES5448", 0, 48, False, DeviceRole.L3_SWITCH, 80, 180),
     ]
     for model, copper, uplinks, poe, role, typical, maximum in eltex:
-        slow = "MES23" in model or "MES24" in model
+        slow = model in {"MES3308F", "MES3324F"}
         uplink = InterfaceType.SFP if slow else InterfaceType.SFP_PLUS
         speed = 1000 if uplink == InterfaceType.SFP else 10000
         items.append(
@@ -485,6 +619,49 @@ def _network() -> list[ModelSpec]:
                 "Eltex", model, copper, uplinks, poe=poe, role=role,
                 typical=typical, maximum=maximum, uplink=uplink, speed=speed,
                 pattern="gi1/0/{n}",
+            )
+        )
+    # 48-портовые Eltex: медь или оптика плюс аплинки 10/40/100G.
+    eltex_48 = [
+        ("MES2348B", 48, False, 4, 0, DeviceRole.L3_SWITCH, 50, 120, 1),
+        ("MES2348P", 48, True, 4, 0, DeviceRole.L3_SWITCH, 80, 1600, 2),
+        ("MES2300-48P", 48, True, 4, 0, DeviceRole.L3_SWITCH, 80, 1600, 2),
+        ("MES2300B-48", 48, False, 4, 0, DeviceRole.L3_SWITCH, 50, 120, 1),
+        ("MES2448B", 48, False, 4, 0, DeviceRole.L3_SWITCH, 50, 120, 1),
+        ("MES2420-48P", 48, True, 4, 0, DeviceRole.L2_SWITCH, 80, 1500, 2),
+        ("MES3400-48", 48, False, 4, 0, DeviceRole.L3_SWITCH, 55, 140, 2),
+        ("MES3400-48F", 0, False, 48, 4, DeviceRole.L3_SWITCH, 60, 160, 2),
+        ("MES3348F", 0, False, 48, 4, DeviceRole.L3_SWITCH, 60, 160, 2),
+        ("MES5448", 0, False, 48, 4, DeviceRole.L3_SWITCH, 90, 250, 2),
+        ("MES5300-48", 0, False, 48, 6, DeviceRole.L3_SWITCH, 120, 300, 2),
+        ("MES5305-48", 0, False, 48, 6, DeviceRole.L3_SWITCH, 120, 300, 2),
+        ("MES5310-48", 0, False, 48, 6, DeviceRole.L3_SWITCH, 140, 350, 2),
+        ("MES5400-48", 0, False, 48, 6, DeviceRole.L3_SWITCH, 150, 400, 2),
+        ("MES5410-48", 0, False, 48, 6, DeviceRole.L3_SWITCH, 160, 400, 2),
+    ]
+    for model, copper, poe, sfp, qsfp, role, typical, maximum, psu in eltex_48:
+        ports: list[PortSpec] = []
+        if copper:
+            ports.append(_p("gi1/0/{n}", copper, InterfaceType.RJ45, 1000, poe=poe, position=10))
+        if model.endswith("F"):
+            ports.append(_p("sfp{n}", 48, InterfaceType.SFP, 1000, position=20))
+            ports.append(_p("sfpplus{n}", 4, InterfaceType.SFP_PLUS, 10000, position=30))
+            note = "48× SFP 1 Гбит/с и 4× SFP+ 10 Гбит/с."
+        elif model == "MES5448":
+            ports.append(_p("sfp{n}", 48, InterfaceType.SFP_PLUS, 10000, position=20))
+            ports.append(_p("qsfp{n}", 4, InterfaceType.QSFP_PLUS, 40000, position=30))
+            note = "48× 10 Гбит/с и 4× 40 Гбит/с."
+        elif model.startswith(("MES53", "MES54")):
+            ports.append(_p("sfp{n}", sfp, InterfaceType.SFP_PLUS, 10000, position=20))
+            ports.append(_p("qsfp{n}", qsfp, InterfaceType.QSFP28, 100000, position=30))
+            note = "48× 10 Гбит/с и аплинки 100 Гбит/с."
+        else:
+            ports.append(_p("sfp{n}", sfp, InterfaceType.SFP_PLUS, 10000, position=20))
+            note = "48 портов доступа и 4 аплинка 10 Гбит/с."
+        items.append(
+            _box(
+                "Eltex", model, role, 1, tuple(ports),
+                typical=typical, maximum=maximum, psu=psu, weight=5, extra=note,
             )
         )
     items.append(
@@ -538,8 +715,56 @@ def _network() -> list[ModelSpec]:
                 typical=typical, maximum=maximum,
             )
         )
+    items.append(
+        _box(
+            "MikroTik", "CRS354-48G-4S+2Q+RM", DeviceRole.L2_SWITCH, 1,
+            (
+                _p("ether{n}", 48, InterfaceType.RJ45, 1000, position=10),
+                _p("sfp-sfpplus{n}", 4, InterfaceType.SFP_PLUS, 10000, position=20),
+                _p("qsfpplus{n}", 2, InterfaceType.QSFP_PLUS, 40000, position=30),
+            ),
+            typical=40, maximum=60, psu=2, weight=4,
+            extra="48× 1 Гбит/с, 4× 10 Гбит/с и 2× 40 Гбит/с.",
+        )
+    )
+    items.append(
+        _box(
+            "MikroTik", "CRS354-48P-4S+2Q+RM", DeviceRole.L2_SWITCH, 1,
+            (
+                _p("ether{n}", 48, InterfaceType.RJ45, 1000, poe=True, position=10),
+                _p("sfp-sfpplus{n}", 4, InterfaceType.SFP_PLUS, 10000, position=20),
+                _p("qsfpplus{n}", 2, InterfaceType.QSFP_PLUS, 40000, position=30),
+            ),
+            typical=80, maximum=800, psu=1, weight=6,
+            extra="48× PoE, 4× 10 Гбит/с и 2× 40 Гбит/с. Бюджет PoE около 700 Вт.",
+        )
+    )
     items.append(_ap("MikroTik", "cAP ax", 12))
     items.append(_ap("MikroTik", "hAP ax3", 15))
+    items.append(
+        _sw(
+            "Cisco", "Catalyst 2960X-48FPS-L", 48, 4, poe=True, role=DeviceRole.L2_SWITCH,
+            typical=60, maximum=800, uplink=InterfaceType.SFP, speed=1000, pattern="Gi1/0/{n}",
+        )
+    )
+    items.append(
+        _sw(
+            "Cisco", "Catalyst 9200-48P", 48, 4, poe=True, role=DeviceRole.L3_SWITCH,
+            typical=80, maximum=1000, pattern="Gi1/0/{n}",
+        )
+    )
+    items.append(
+        _sw(
+            "Huawei", "S5735-L48T4X-A", 48, 4, poe=False, role=DeviceRole.L3_SWITCH,
+            typical=50, maximum=150, pattern="GE1/0/{n}",
+        )
+    )
+    items.append(
+        _sw(
+            "Aruba", "2930F-48G-PoE", 48, 4, poe=True, role=DeviceRole.L3_SWITCH,
+            typical=70, maximum=500, uplink=InterfaceType.SFP, speed=1000, pattern="1/{n}",
+        )
+    )
 
     unifi_sw = [
         ("USW-24-PoE", 24, 2, True, 40, 400),

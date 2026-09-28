@@ -38,6 +38,15 @@ async def test_catalog_library_is_idempotent(client: AsyncClient, api: str) -> N
 
     keys = {(item.manufacturer.lower(), item.model) for item in LIBRARY}
     assert len(keys) == len(LIBRARY)
+    gen9 = next(item for item in LIBRARY if item.model == "ProLiant DL380 Gen9")
+    assert gen9.cpu_socket == "LGA2011-3"
+    assert gen9.ram_type == "DDR4"
+    assert gen9.u_height == 2
+    crs = next(item for item in LIBRARY if item.model == "CRS354-48P-4S+2Q+RM")
+    assert sum(port.count for port in crs.ports) == 54
+    poe = next(item for item in LIBRARY if item.model == "MES2348P")
+    assert sum(port.count for port in poe.ports) == 52
+    assert any(port.poe_capable for port in poe.ports)
 
     ups = await client.get(f"{api}/catalog/models", params={"q": "Smart-UPS", "limit": 10})
     assert ups.json()["items"][0]["power_nameplate_w"] is None

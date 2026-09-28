@@ -19,7 +19,7 @@ export function DevicePartsPanel({ ciId }: { ciId: string }) {
   const [quantity, setQuantity] = useState("1");
   const [error, setError] = useState<string | null>(null);
   const { data: models } = useDeviceModels({
-    limit: 200,
+    limit: 500,
     offset: 0,
     component_class: kind,
   });
