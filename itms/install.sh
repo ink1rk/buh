@@ -123,8 +123,9 @@ use_current_storage_images() {
 
 wait_api() {
   local i state
+  echo "Жду, пока API начнёт отвечать..."
   for i in $(seq 1 40); do
-    if docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)" >/dev/null 2>&1; then
+    if timeout 8 docker compose exec -T api python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)" >/dev/null 2>&1; then
       return 0
     fi
     state="$(docker inspect -f '{{.State.Status}}' itms-api-1 2>/dev/null || true)"
@@ -138,6 +139,36 @@ wait_api() {
   echo "API ещё не ответил. Журнал:" >&2
   docker compose logs --tail 80 api >&2 || true
   return 1
+}
+
+# Вход через nginx: ответ API должен быть JSON, а не HTML-страница 502.
+verify_login_proxy() {
+  python3 - "${ENV_FILE}" << 'PY'
+import json, pathlib, sys, urllib.error, urllib.request
+env = {}
+for line in pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines():
+    if "=" in line and not line.lstrip().startswith("#"):
+        key, value = line.split("=", 1)
+        env[key] = value
+port = env.get("WEB_PORT") or "8080"
+url = f"http://127.0.0.1:{port}/api/v1/auth/login"
+body = json.dumps({"email": "nobody@itms.local", "password": "wrong-password"}).encode()
+req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"}, method="POST")
+try:
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        status, raw = resp.status, resp.read()
+except urllib.error.HTTPError as exc:
+    status, raw = exc.code, exc.read()
+except OSError as exc:
+    print(f"Веб-интерфейс не отвечает: {exc}", file=sys.stderr)
+    raise SystemExit(1)
+text = raw.decode("utf-8", "replace")
+if not text.lstrip().startswith("{") or status != 401 or "invalid_credentials" not in text:
+    print(f"Вход через веб не дошёл до API (HTTP {status}).", file=sys.stderr)
+    print(text[:400], file=sys.stderr)
+    raise SystemExit(1)
+print("Вход через веб отвечает JSON.")
+PY
 }
 
 reset_password() {
@@ -224,6 +255,7 @@ case "${1:-up}" in
     ;;
   up|"")
     install_mode="$(prepare_env)"
+    echo "Собираю и запускаю контейнеры. Первая сборка занимает несколько минут."
     if ! docker compose up -d --build; then
       echo "Стек не поднялся. Журнал API:" >&2
       docker compose ps >&2 || true
@@ -231,6 +263,9 @@ case "${1:-up}" in
       exit 1
     fi
     wait_api
+    verify_login_proxy
+    echo
+    docker compose ps
     echo
     if [[ "${install_mode}" == "fresh" && -f "${NOTE}" ]]; then
       cat "${NOTE}"

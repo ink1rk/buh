@@ -24,7 +24,9 @@ USER itms
 
 EXPOSE 8000
 
+# Образ общий у API и обработчика. У обработчика нет порта 8000:
+# для него проверка сразу успешна, для API — только ответ /health по IPv4.
 HEALTHCHECK --interval=5s --timeout=5s --start-period=90s --retries=20 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+    CMD python -c "import pathlib,urllib.request; cmd=pathlib.Path('/proc/1/cmdline').read_bytes(); raise SystemExit(0 if b'arq' in cmd else urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3) and 0)"
 
 CMD ["uvicorn", "itms.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]

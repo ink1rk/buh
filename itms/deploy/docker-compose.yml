@@ -119,9 +119,6 @@ services:
         condition: service_healthy
     environment: *api-env
     command: ["arq", "worker.worker.WorkerSettings"]
-    # Образ общий с API, его проверка слушает порт 8000. У обработчика этого порта нет.
-    healthcheck:
-      disable: true
 
   web:
     build:
@@ -132,17 +129,6 @@ services:
     depends_on:
       api:
         condition: service_started
-    command:
-      - /bin/sh
-      - -c
-      - |
-        i=0
-        while [ "$$i" -lt 40 ]; do
-          wget -q -O /dev/null http://api:8000/health && break
-          i=$$((i+1))
-          sleep 2
-        done
-        exec nginx -g "daemon off;"
     ports:
       - "${WEB_PORT:-8080}:80"
 
