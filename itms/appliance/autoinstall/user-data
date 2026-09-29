@@ -1,0 +1,18 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: ru_RU.UTF-8
+  keyboard:
+    layout: ru
+  identity:
+    hostname: itms
+    username: itms
+    # identity.password — SHA-512 hash, его подставляют при сборке ISO, не в git.
+  packages:
+    - docker.io
+    - docker-compose-v2
+  late-commands:
+    - curtin in-target -- mkdir -p /opt/itms
+    - curtin in-target -- systemctl enable docker
+  # Копирование itms/deploy и unit выполняется хуком live-build, когда ISO будет собран.
+  # Этот файл — черновик автоустановки, не готовый образ.
