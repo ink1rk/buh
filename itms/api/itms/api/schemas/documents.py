@@ -85,6 +85,19 @@ class DocumentVersionRead(ORMModel):
     is_current: bool
 
 
+class DocumentTemplateRead(BaseModel):
+    title: str
+    kind: DocumentKind
+    summary: str
+    installed: bool
+    document_id: uuid.UUID | None = None
+
+
+class DocumentTemplateInstall(BaseModel):
+    created: int
+    skipped: int
+
+
 class FolderCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     parent_id: uuid.UUID | None = None

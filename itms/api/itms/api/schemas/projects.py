@@ -349,3 +349,16 @@ class CheckCreate(BaseModel):
 
 class CheckUpdate(BaseModel):
     done: bool
+
+
+class BoardCard(BaseModel):
+    id: uuid.UUID
+    project_id: uuid.UUID
+    project_key: str
+    project_name: str
+    number: int
+    label: str
+    title: str
+    status: TaskStatus
+    priority: Priority
+    due_date: date | None

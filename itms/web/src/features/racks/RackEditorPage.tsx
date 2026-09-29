@@ -15,7 +15,7 @@ import { toast } from "@/shared/ui/toast";
 
 import { ReasonField } from "../provenance/ReasonField";
 
-const ROW = 22;
+const ROW = 26;
 
 type Face = "FRONT" | "REAR";
 
@@ -41,6 +41,21 @@ function blockTop(position: number, height: number, rackU: number, descending: b
 function meter(used: number, max: number | null): number | null {
   if (max == null || max <= 0) return null;
   return Math.round((used / max) * 100);
+}
+
+function bezelHue(name: string): number {
+  let hash = 0;
+  for (const char of name) hash = (hash * 33 + char.charCodeAt(0)) >>> 0;
+  return hash % 360;
+}
+
+function Screw() {
+  return (
+    <span
+      aria-hidden
+      className="inline-block h-2.5 w-2.5 rounded-full border border-black/50 bg-[radial-gradient(circle_at_30%_30%,#e4e7ee,#6b7280_58%,#1f242c)]"
+    />
+  );
 }
 
 function meterTone(pct: number | null): string {
@@ -198,7 +213,7 @@ export function RackEditorPage() {
           </Button>
         </div>
       )}
-      <div className="grid items-start gap-3 lg:grid-cols-[240px_minmax(0,1fr)_220px]">
+      <div className="grid items-start gap-4 xl:grid-cols-[17rem_minmax(0,1fr)_16rem]">
         <Panel title={t("racks.warehouse")} bodyClassName="flex max-h-[70vh] flex-col gap-1 overflow-y-auto">
           {data.warehouse.length === 0 && <p className="text-xs text-muted">{t("app.empty")}</p>}
           {data.warehouse.map((item) => (
@@ -211,74 +226,113 @@ export function RackEditorPage() {
           ))}
         </Panel>
 
-        <Panel bodyClassName="overflow-x-auto">
-          <div className="flex gap-2">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 items-stretch gap-2">
             <ZeroRail
               title={t("racks.zeroLeft")}
               mounts={zero.filter((mount) => mount.zero_u_side === "LEFT")}
               onDrop={(ciId) => placeZero(ciId, "LEFT")}
               labelOf={(mount) => mount.name}
             />
-            <div className="relative min-w-[280px] flex-1" style={{ height: rack.u_height * ROW }}>
-              {Array.from({ length: rack.u_height }, (_, index) => {
-                const unit = rack.descending_units ? index + 1 : rack.u_height - index;
-                const hot = hoverSpan.includes(unit);
-                return (
-                  <button
-                    key={unit}
-                    type="button"
-                    className={cn(
-                      "absolute right-0 left-8 border-b border-app text-left",
-                      hot && "bg-[rgb(var(--accent-soft))]",
-                    )}
-                    style={{ top: index * ROW, height: ROW }}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      setHover(unit);
-                    }}
-                    onDragLeave={() => setHover(null)}
-                    onDrop={(event) => onDropUnit(unit, event)}
-                    onClick={() => {
-                      if (!selectedItem) return;
-                      void commit({
-                        ci_id: selectedItem.ci_id,
-                        position_u: unit,
-                        u_height: Math.max(selectedItem.u_height, 1),
-                        face,
-                      });
-                    }}
-                  >
-                    <span className="absolute -left-8 w-7 text-right font-mono text-[10px] text-muted">{unit}</span>
-                  </button>
-                );
-              })}
-              {visible.map((mount) => (
-                <Link
-                  key={mount.id}
-                  to={`/ci/${mount.ci_id}`}
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData("text/ci", mount.ci_id);
-                    event.dataTransfer.setData("text/height", String(mount.u_height));
-                  }}
-                  className={cn(
-                    "absolute right-0 left-8 flex items-center justify-between gap-2 overflow-hidden rounded border border-l-4 border-app bg-surface px-2 text-xs",
-                    mount.face === "FULL" && "border-l-[rgb(var(--danger))]",
-                    mount.is_reservation && "border-dashed opacity-70",
-                  )}
-                  style={{
-                    top: blockTop(mount.position_u, mount.u_height, rack.u_height, rack.descending_units) + 1,
-                    height: mount.u_height * ROW - 2,
-                  }}
-                  title={mount.name}
-                >
-                  <span className="truncate font-medium">{mount.name}</span>
-                  <span className="shrink-0 font-mono text-[10px] text-muted">
-                    U{mount.position_u}
-                    {mount.u_height > 1 ? `–${mount.position_u + mount.u_height - 1}` : ""}
-                  </span>
-                </Link>
-              ))}
+            <div
+              data-testid="rack-chassis"
+              className="min-w-0 flex-1 rounded-md px-3 py-3 shadow-[0_18px_44px_rgb(0_0_0/0.32)]"
+              style={{
+                background:
+                  "linear-gradient(90deg,#2a3038 0%,#4a5260 5.5%,#161a20 7%,#101318 93%,#4a5260 94.5%,#2a3038 100%)",
+              }}
+            >
+              <div className="mb-2 flex items-center justify-between px-1">
+                <Screw />
+                <span className="font-mono text-[10px] tracking-[0.22em] text-zinc-400">
+                  19″ · {rack.u_height}U
+                </span>
+                <Screw />
+              </div>
+              <div className="relative" style={{ height: rack.u_height * ROW }}>
+                {Array.from({ length: rack.u_height }, (_, index) => {
+                  const unit = rack.descending_units ? index + 1 : rack.u_height - index;
+                  const hot = hoverSpan.includes(unit);
+                  return (
+                    <button
+                      key={unit}
+                      type="button"
+                      className={cn(
+                        "absolute inset-x-0 border-b border-white/10 text-left",
+                        hot && "bg-sky-300/15",
+                      )}
+                      style={{ top: index * ROW, height: ROW }}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setHover(unit);
+                      }}
+                      onDragLeave={() => setHover(null)}
+                      onDrop={(event) => onDropUnit(unit, event)}
+                      onClick={() => {
+                        if (!selectedItem) return;
+                        void commit({
+                          ci_id: selectedItem.ci_id,
+                          position_u: unit,
+                          u_height: Math.max(selectedItem.u_height, 1),
+                          face,
+                        });
+                      }}
+                    >
+                      <span className="absolute top-0 left-0 w-8 text-center font-mono text-[10px] leading-[26px] text-zinc-400">
+                        {unit}
+                      </span>
+                      <span className="pointer-events-none absolute top-1/2 left-7 h-1.5 w-1.5 -translate-y-1/2 rounded-[1px] bg-zinc-500 shadow-[inset_0_0_0_1px_rgb(0_0_0/0.45)]" />
+                      <span className="pointer-events-none absolute top-1/2 right-1.5 h-1.5 w-1.5 -translate-y-1/2 rounded-[1px] bg-zinc-500 shadow-[inset_0_0_0_1px_rgb(0_0_0/0.45)]" />
+                    </button>
+                  );
+                })}
+                {visible.map((mount) => {
+                  const hue = bezelHue(mount.name);
+                  return (
+                    <Link
+                      key={mount.id}
+                      to={`/ci/${mount.ci_id}`}
+                      draggable
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData("text/ci", mount.ci_id);
+                        event.dataTransfer.setData("text/height", String(mount.u_height));
+                      }}
+                      className={cn(
+                        "absolute flex items-center justify-between gap-2 overflow-hidden rounded-[3px] border border-black/40 px-2 text-xs text-white",
+                        mount.is_reservation && "border-dashed opacity-75",
+                      )}
+                      style={{
+                        top: blockTop(mount.position_u, mount.u_height, rack.u_height, rack.descending_units) + 1,
+                        height: mount.u_height * ROW - 2,
+                        left: 52,
+                        right: 40,
+                        background: `linear-gradient(180deg, hsl(${hue} 32% 46%), hsl(${hue} 28% 28%))`,
+                        boxShadow: "inset 0 1px 0 rgb(255 255 255 / 0.28), inset 0 -1px 0 rgb(0 0 0 / 0.35)",
+                      }}
+                      title={mount.name}
+                    >
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 shrink-0 rounded-full",
+                            mount.face === "FULL" ? "bg-rose-300" : "bg-emerald-300",
+                          )}
+                        />
+                        <span className="truncate font-medium">{mount.name}</span>
+                      </span>
+                      <span className="shrink-0 font-mono text-[10px] text-white/70">
+                        U{mount.position_u}
+                        {mount.u_height > 1 ? `–${mount.position_u + mount.u_height - 1}` : ""}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+              <div className="mt-2 flex items-center justify-between px-1">
+                <Screw />
+                <span className="font-mono text-[10px] tracking-[0.16em] text-zinc-500">{face}</span>
+                <Screw />
+              </div>
             </div>
             <ZeroRail
               title={t("racks.zeroRight")}
@@ -288,7 +342,7 @@ export function RackEditorPage() {
             />
           </div>
           {selected && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-center gap-2">
               <Button disabled={busy} onClick={() => placeZero(selected, "LEFT")}>
                 {t("racks.zeroLeft")}
               </Button>
@@ -297,7 +351,7 @@ export function RackEditorPage() {
               </Button>
             </div>
           )}
-        </Panel>
+        </div>
 
         <div className="flex flex-col gap-3">
           <Panel title={t("racks.used")}>
@@ -394,7 +448,7 @@ function ZeroRail({
 }) {
   return (
     <div
-      className="flex w-16 shrink-0 flex-col gap-1 rounded border border-dashed border-app p-1"
+      className="flex w-14 shrink-0 flex-col gap-1 rounded-md border border-white/10 bg-[#171b21] p-1 text-zinc-300"
       onDragOver={(event) => event.preventDefault()}
       onDrop={(event) => {
         event.preventDefault();
@@ -402,9 +456,9 @@ function ZeroRail({
         if (ciId) onDrop(ciId);
       }}
     >
-      <p className="text-[10px] text-muted">{title}</p>
+      <p className="text-[10px] text-zinc-400">{title}</p>
       {mounts.map((mount) => (
-        <Link key={mount.id} to={`/ci/${mount.ci_id}`} className="truncate rounded bg-[rgb(var(--surface-muted))] px-1 py-1 text-[10px]">
+        <Link key={mount.id} to={`/ci/${mount.ci_id}`} className="truncate rounded bg-white/10 px-1 py-1 text-[10px] text-zinc-100">
           {labelOf(mount)}
         </Link>
       ))}

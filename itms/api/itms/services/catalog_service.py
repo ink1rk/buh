@@ -32,6 +32,13 @@ MODEL_FIELDS = (
     "utilization_factor",
     "airflow",
     "notes",
+    "component_class",
+    "cpu_sockets",
+    "cpu_socket",
+    "ram_slots",
+    "ram_type",
+    "drive_bays",
+    "drive_form",
 )
 TEMPLATE_FIELDS = (
     "name_pattern",
@@ -94,6 +101,7 @@ async def list_models(
     q: str | None = None,
     manufacturer_id: uuid.UUID | None = None,
     role: str | None = None,
+    component_class: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> tuple[list[DeviceModel], int]:
@@ -102,6 +110,8 @@ async def list_models(
         stmt = stmt.where(DeviceModel.manufacturer_id == manufacturer_id)
     if role:
         stmt = stmt.where(DeviceModel.default_role == role)
+    if component_class:
+        stmt = stmt.where(DeviceModel.component_class == component_class)
     if q:
         pattern = f"%{q.lower()}%"
         stmt = stmt.where(
@@ -215,8 +225,56 @@ async def add_port_template(
     return template
 
 
+async def _adopt_vendor(session: AsyncSession, alias: str, canonical: str) -> None:
+    """Переносит модели со старого имени производителя на то, под которым их ищут."""
+    source = (
+        await session.execute(
+            select(Manufacturer).where(func.lower(Manufacturer.name) == alias.lower())
+        )
+    ).scalar_one_or_none()
+    if source is None or source.name.lower() == canonical.lower():
+        return
+    target = (
+        await session.execute(
+            select(Manufacturer).where(func.lower(Manufacturer.name) == canonical.lower())
+        )
+    ).scalar_one_or_none()
+    if target is None:
+        source.name = canonical
+        await session.flush()
+        return
+    taken = {
+        name.lower()
+        for name in (
+            await session.execute(
+                select(DeviceModel.model).where(DeviceModel.manufacturer_id == target.id)
+            )
+        ).scalars()
+    }
+    models = (
+        await session.execute(select(DeviceModel).where(DeviceModel.manufacturer_id == source.id))
+    ).scalars()
+    for item in models:
+        if item.model.lower() in taken:
+            continue
+        item.manufacturer_id = target.id
+        taken.add(item.model.lower())
+    await session.flush()
+    left = (
+        await session.execute(
+            select(func.count())
+            .select_from(DeviceModel)
+            .where(DeviceModel.manufacturer_id == source.id)
+        )
+    ).scalar_one()
+    if int(left) == 0:
+        await session.delete(source)
+        await session.flush()
+
+
 async def install_library(session: AsyncSession) -> dict[str, int]:
     """Ставит библиотеку моделей. Повторный вызов не создаёт дубликаты."""
+    await _adopt_vendor(session, "HPE", "HP")
     manufacturers: dict[str, Manufacturer] = {}
     created_manufacturers = 0
     skipped_manufacturers = 0
@@ -241,15 +299,41 @@ async def install_library(session: AsyncSession) -> dict[str, int]:
         manufacturer = manufacturers[key]
         exists = (
             await session.execute(
-                select(DeviceModel.id)
+                select(DeviceModel)
+                .options(selectinload(DeviceModel.port_templates))
                 .where(
                     DeviceModel.manufacturer_id == manufacturer.id,
                     DeviceModel.model == spec.model,
                 )
-                .limit(1)
             )
         ).scalar_one_or_none()
         if exists:
+            # Уже поставленная модель не дублируется, но пустая платформа дописывается.
+            if exists.cpu_sockets is None and spec.cpu_sockets:
+                exists.cpu_sockets = spec.cpu_sockets
+                exists.cpu_socket = spec.cpu_socket
+                exists.ram_slots = spec.ram_slots
+                exists.ram_type = spec.ram_type
+                exists.notes = spec.notes
+            if exists.drive_bays is None and spec.drive_bays:
+                exists.drive_bays = spec.drive_bays
+                exists.drive_form = spec.drive_form
+            known = {item.name_pattern for item in exists.port_templates}
+            for port in spec.ports:
+                if port.name_pattern in known:
+                    continue
+                session.add(
+                    PortTemplate(
+                        device_model_id=exists.id,
+                        name_pattern=port.name_pattern,
+                        count=port.count,
+                        start_index=port.start_index,
+                        interface_type=port.interface_type,
+                        speed_mbps=port.speed_mbps,
+                        poe_capable=port.poe_capable,
+                        position=port.position,
+                    )
+                )
             skipped_models += 1
             continue
         await create_model(
@@ -265,6 +349,13 @@ async def install_library(session: AsyncSession) -> dict[str, int]:
                 "power_nameplate_w": spec.power_nameplate_w,
                 "power_max_w": spec.power_max_w,
                 "notes": spec.notes,
+                "component_class": spec.component_class,
+                "cpu_sockets": spec.cpu_sockets,
+                "cpu_socket": spec.cpu_socket,
+                "ram_slots": spec.ram_slots,
+                "ram_type": spec.ram_type,
+                "drive_bays": spec.drive_bays,
+                "drive_form": spec.drive_form,
                 "port_templates": [
                     {
                         "name_pattern": port.name_pattern,

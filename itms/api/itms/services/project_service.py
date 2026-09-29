@@ -136,6 +136,36 @@ async def _milestone(
     return milestone
 
 
+async def board_cards(session: AsyncSession) -> list[dict[str, Any]]:
+    """Задачи всех действующих проектов для общей доски."""
+    rows = (
+        await session.execute(
+            select(Task, Project)
+            .join(Project, Project.id == Task.project_id)
+            .where(
+                Task.status != TaskStatus.CANCELLED,
+                Project.status != ProjectStatus.CANCELLED,
+            )
+            .order_by(Task.due_date.asc().nulls_last(), Project.key, Task.number)
+        )
+    ).all()
+    return [
+        {
+            "id": task.id,
+            "project_id": project.id,
+            "project_key": project.key,
+            "project_name": project.name,
+            "number": task.number,
+            "label": f"{project.key}-{task.number}",
+            "title": task.title,
+            "status": task.status,
+            "priority": task.priority,
+            "due_date": task.due_date,
+        }
+        for task, project in rows
+    ]
+
+
 async def list_projects(session: AsyncSession) -> list[dict[str, Any]]:
     projects = list((await session.execute(select(Project).order_by(Project.key))).scalars())
     if not projects:

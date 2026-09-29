@@ -15,7 +15,17 @@ import type {
   Dashboard,
   Device,
   DeviceModel,
+  DeviceParts,
   DeviceRow,
+  BoardCard,
+  Department,
+  DocumentTemplate,
+  FinanceEntry,
+  PlatformAgent,
+  PlatformCluster,
+  PlatformMcp,
+  PlatformOverview,
+  PlatformRoute,
   DiagramFull,
   DiagramNode,
   DiagramSummary,
@@ -76,6 +86,11 @@ export const keys = {
   locations: ["locations"] as const,
   locationTree: ["locations", "tree"] as const,
   employees: ["employees"] as const,
+  departments: ["departments"] as const,
+  finance: (kind: string) => ["finance", kind] as const,
+  projectBoard: ["projects", "board"] as const,
+  documentTemplates: ["documents", "templates"] as const,
+  platform: ["platform"] as const,
   responsibilities: ["responsibilities"] as const,
   workload: ["workload"] as const,
   documents: (params: unknown) => ["documents", "list", params] as const,
@@ -91,6 +106,7 @@ export const keys = {
   device: (id: string) => ["devices", id] as const,
   deviceInterfaces: (id: string) => ["devices", id, "interfaces"] as const,
   devicePorts: (id: string) => ["devices", id, "ports"] as const,
+  deviceParts: (id: string) => ["devices", id, "parts"] as const,
   warranty: (days: number) => ["devices", "warranty", days] as const,
   connections: (params: unknown) => ["network", "connections", params] as const,
   trace: (id: string) => ["network", "trace", id] as const,
@@ -230,6 +246,41 @@ export function useEmployees() {
   });
 }
 
+export function useDepartments() {
+  return useQuery({
+    queryKey: keys.departments,
+    queryFn: () => api.get<Department[]>("/directory/departments"),
+  });
+}
+
+export function useFinance(kind: string) {
+  return useQuery({
+    queryKey: keys.finance(kind),
+    queryFn: () => api.get<FinanceEntry[]>("/finance", { kind }),
+  });
+}
+
+export function useProjectBoard() {
+  return useQuery({
+    queryKey: keys.projectBoard,
+    queryFn: () => api.get<BoardCard[]>("/projects/board"),
+  });
+}
+
+export function usePlatform() {
+  return useQuery({
+    queryKey: keys.platform,
+    queryFn: () => api.get<PlatformOverview>("/platform"),
+  });
+}
+
+export function useDocumentTemplates() {
+  return useQuery({
+    queryKey: keys.documentTemplates,
+    queryFn: () => api.get<DocumentTemplate[]>("/documents/templates"),
+  });
+}
+
 export function useResponsibilities() {
   return useQuery({
     queryKey: keys.responsibilities,
@@ -322,6 +373,7 @@ export interface ModelListParams {
   q?: string;
   manufacturer_id?: string;
   role?: string;
+  component_class?: string;
   limit: number;
   offset: number;
 }
@@ -477,6 +529,14 @@ export function useDevice(id: string | undefined) {
     queryFn: () => api.get<Device>(`/devices/${id}`),
     enabled: Boolean(id),
     retry: false,
+  });
+}
+
+export function useDeviceParts(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.deviceParts(id ?? ""),
+    queryFn: () => api.get<DeviceParts>(`/devices/${id}/parts`),
+    enabled: Boolean(id),
   });
 }
 
@@ -716,6 +776,12 @@ export const mutations = {
 
   saveDevice: (ciId: string, body: Record<string, unknown>, provenance?: Provenance) =>
     api.put<Device>(`/devices/${ciId}`, body, provenance),
+  setDevicePart: (
+    ciId: string,
+    body: { component_model_id: string; quantity: number; slots?: string[] },
+  ) => api.put<DeviceParts>(`/devices/${ciId}/parts`, body),
+  deleteDevicePart: (ciId: string, partId: string) =>
+    api.delete<{ ok: boolean }>(`/devices/${ciId}/parts/${partId}`),
   createInterface: (ciId: string, body: Record<string, unknown>, provenance?: Provenance) =>
     api.post<InterfaceRow[]>(`/devices/${ciId}/interfaces`, body, provenance),
   createInterfacesFromModel: (ciId: string) =>
@@ -827,4 +893,22 @@ export const mutations = {
     api.put<RackElevation>(`/racks/${rackId}/mounts`, body, provenance),
   removeMount: (rackId: string, mountId: string, toStock: boolean, provenance?: Provenance) =>
     api.delete<RackElevation>(`/racks/${rackId}/mounts/${mountId}?to_stock=${toStock}`, provenance),
+
+  createFinance: (body: Record<string, unknown>) => api.post<FinanceEntry>("/finance", body),
+  updateFinance: (id: string, body: Record<string, unknown>) =>
+    api.patch<FinanceEntry>(`/finance/${id}`, body),
+  deleteFinance: (id: string) => api.delete<{ ok: boolean }>(`/finance/${id}`),
+  installDocumentTemplates: () =>
+    api.post<{ created: number; skipped: number }>("/documents/templates/install"),
+
+  createCluster: (body: Record<string, unknown>) =>
+    api.post<PlatformCluster>("/platform/clusters", body),
+  deleteCluster: (id: string) => api.delete<{ ok: boolean }>(`/platform/clusters/${id}`),
+  createMcp: (body: Record<string, unknown>) => api.post<PlatformMcp>("/platform/mcp", body),
+  deleteMcp: (id: string) => api.delete<{ ok: boolean }>(`/platform/mcp/${id}`),
+  createAgent: (body: Record<string, unknown>) => api.post<PlatformAgent>("/platform/agents", body),
+  deleteAgent: (id: string) => api.delete<{ ok: boolean }>(`/platform/agents/${id}`),
+  createServiceRoute: (body: Record<string, unknown>) =>
+    api.post<PlatformRoute>("/platform/routes", body),
+  deleteServiceRoute: (id: string) => api.delete<{ ok: boolean }>(`/platform/routes/${id}`),
 };

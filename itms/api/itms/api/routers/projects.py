@@ -14,6 +14,7 @@ from itms.api.schemas.planning import (
     TemplateCreate,
 )
 from itms.api.schemas.projects import (
+    BoardCard,
     CheckCreate,
     CheckUpdate,
     CiLink,
@@ -74,6 +75,11 @@ async def create_from_template(payload: TemplateCreate, session: SessionDep) -> 
 @router.get("/analytics", response_model=Analytics, dependencies=[requires(Permission.CI_READ)])
 async def project_analytics(session: SessionDep) -> Analytics:
     return Analytics.model_validate(await planning_service.analytics(session))
+
+
+@router.get("/board", response_model=list[BoardCard], dependencies=[requires(Permission.CI_READ)])
+async def project_board(session: SessionDep) -> list[BoardCard]:
+    return [BoardCard.model_validate(row) for row in await project_service.board_cards(session)]
 
 
 @router.get("/views", response_model=list[SavedViewRead])

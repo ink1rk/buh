@@ -41,6 +41,13 @@ class ModelSpec:
     weight_kg: float | None = None
     is_full_depth: bool = True
     notes: str = CATALOG_NOTE
+    component_class: str = "CHASSIS"
+    cpu_sockets: int | None = None
+    cpu_socket: str | None = None
+    ram_slots: int | None = None
+    ram_type: str | None = None
+    drive_bays: int | None = None
+    drive_form: str | None = None
 
 
 def _p(
@@ -55,7 +62,21 @@ def _p(
     return PortSpec(pattern, count, kind, speed, poe, 1, position)
 
 
-def _server(vendor: str, model: str, u: float, typical: int, maximum: int) -> ModelSpec:
+def _server(
+    vendor: str,
+    model: str,
+    u: float,
+    typical: int,
+    maximum: int,
+    *,
+    sockets: int = 2,
+    socket: str = "LGA4677",
+    ram_slots: int = 32,
+    ram: str = "DDR5",
+    bays: int = 8,
+    form: str = "SFF",
+) -> ModelSpec:
+    platform = f"{sockets}× {socket}, {ram_slots}× {ram}, {bays}× {form}."
     return ModelSpec(
         vendor,
         model,
@@ -70,10 +91,17 @@ def _server(vendor: str, model: str, u: float, typical: int, maximum: int) -> Mo
         power_nameplate_w=typical,
         power_max_w=maximum,
         weight_kg=26 if u >= 2 else 16,
+        notes=f"{platform} {CATALOG_NOTE}",
+        cpu_sockets=sockets,
+        cpu_socket=socket,
+        ram_slots=ram_slots,
+        ram_type=ram,
+        drive_bays=bays,
+        drive_form=form,
     )
 
 
-LIBRARY: tuple[ModelSpec, ...] = (
+_LIBRARY_BASE: tuple[ModelSpec, ...] = (
     ModelSpec(
         "Cisco",
         "Catalyst 9300-48P",
@@ -206,14 +234,32 @@ LIBRARY: tuple[ModelSpec, ...] = (
         is_full_depth=False,
         notes=CATALOG_NOTE + " Нестоечная точка доступа.",
     ),
-    _server("Dell", "PowerEdge R750", 2, 800, 1400),
-    _server("HPE", "ProLiant DL380 Gen11", 2, 700, 1600),
-    _server("Lenovo", "ThinkSystem SR650 V3", 2, 700, 1600),
-    _server("Supermicro", "SYS-120U-TNR", 1, 400, 800),
-    _server("Fujitsu", "PRIMERGY RX2540 M7", 2, 700, 1600),
-    _server("Huawei", "FusionServer 2288H V6", 2, 700, 1600),
+    _server(
+        "Dell", "PowerEdge R750", 2, 800, 1400,
+        sockets=2, socket="LGA4189", ram_slots=32, ram="DDR4", bays=16, form="SFF",
+    ),
+    _server(
+        "HP", "ProLiant DL380 Gen11", 2, 700, 1600,
+        sockets=2, socket="LGA4677", ram_slots=32, ram="DDR5", bays=24, form="SFF",
+    ),
+    _server(
+        "Lenovo", "ThinkSystem SR650 V3", 2, 700, 1600,
+        sockets=2, socket="LGA4677", ram_slots=32, ram="DDR5", bays=16, form="SFF",
+    ),
+    _server(
+        "Supermicro", "SYS-120U-TNR", 1, 400, 800,
+        sockets=2, socket="LGA4189", ram_slots=32, ram="DDR4", bays=10, form="SFF",
+    ),
+    _server(
+        "Fujitsu", "PRIMERGY RX2540 M7", 2, 700, 1600,
+        sockets=2, socket="LGA4677", ram_slots=32, ram="DDR5", bays=16, form="SFF",
+    ),
+    _server(
+        "Huawei", "FusionServer 2288H V6", 2, 700, 1600,
+        sockets=2, socket="LGA4189", ram_slots=32, ram="DDR4", bays=12, form="SFF",
+    ),
     ModelSpec(
-        "HPE",
+        "HP",
         "Alletra 5030",
         DeviceRole.STORAGE,
         2,
@@ -329,3 +375,13 @@ LIBRARY: tuple[ModelSpec, ...] = (
         notes=CATALOG_NOTE + " Рабочая станция HP Inc, не сервер HPE.",
     ),
 )
+
+
+def load_library() -> tuple[ModelSpec, ...]:
+    """Базовые паспорта плюс расширенный каталог серверов, СХД, сети и комплектующих."""
+    from itms.domain.catalog_hardware import HARDWARE
+
+    return (*_LIBRARY_BASE, *HARDWARE)
+
+
+LIBRARY: tuple[ModelSpec, ...] = load_library()

@@ -133,6 +133,113 @@ export interface Responsibility {
   color: string | null;
 }
 
+export interface Department {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
+export interface FinanceEntry {
+  id: string;
+  department_id: string | null;
+  kind: string;
+  direction: string;
+  period: string;
+  article: string;
+  planned: string;
+  actual: string;
+  notes: string | null;
+}
+
+export interface PlatformCluster {
+  id: string;
+  name: string;
+  endpoint: string | null;
+  version: string | null;
+  environment: string;
+  project_id: string | null;
+  project_name: string | null;
+  host_id: string | null;
+  notes: string | null;
+}
+
+export interface PlatformMcp {
+  id: string;
+  name: string;
+  endpoint: string;
+  transport: string;
+  cluster_id: string | null;
+  cluster_name: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  description: string | null;
+}
+
+export interface PlatformAgent {
+  id: string;
+  name: string;
+  kind: string;
+  endpoint: string | null;
+  model: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  description: string | null;
+  mcp_ids: string[];
+  mcp_names: string[];
+}
+
+export interface PlatformRoute {
+  id: string;
+  name: string;
+  host: string;
+  path: string;
+  target_kind: string;
+  target_id: string | null;
+  target_url: string | null;
+  target_name: string | null;
+  vlan_id: string | null;
+  vlan_label: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  notes: string | null;
+}
+
+export interface PlatformOverview {
+  clusters: PlatformCluster[];
+  mcp: PlatformMcp[];
+  agents: PlatformAgent[];
+  routes: PlatformRoute[];
+  counts: {
+    clusters: number;
+    mcp: number;
+    agents: number;
+    routes: number;
+    vlans: number;
+    vms: number;
+  };
+}
+
+export interface BoardCard {
+  id: string;
+  project_id: string;
+  project_key: string;
+  project_name: string;
+  number: number;
+  label: string;
+  title: string;
+  status: string;
+  priority: string;
+  due_date: string | null;
+}
+
+export interface DocumentTemplate {
+  title: string;
+  kind: string;
+  summary: string;
+  installed: boolean;
+  document_id: string | null;
+}
+
 export interface Employee {
   id: string;
   full_name: string;
@@ -313,7 +420,34 @@ export interface DeviceModel {
   utilization_factor: number | null;
   airflow: string | null;
   notes: string | null;
+  component_class: string;
+  cpu_sockets: number | null;
+  cpu_socket: string | null;
+  ram_slots: number | null;
+  ram_type: string | null;
+  drive_bays: number | null;
+  drive_form: string | null;
   port_templates: PortTemplate[];
+}
+
+export interface DevicePart {
+  id: string;
+  quantity: number;
+  component_model_id: string;
+  slots: string[] | null;
+  component: DeviceModel;
+}
+
+export interface DeviceParts {
+  cpu_sockets: number | null;
+  cpu_socket: string | null;
+  ram_slots: number | null;
+  ram_type: string | null;
+  drive_bays: number | null;
+  drive_form: string | null;
+  cpu_slot_names: string[];
+  ram_slot_names: string[];
+  items: DevicePart[];
 }
 
 export interface Device {

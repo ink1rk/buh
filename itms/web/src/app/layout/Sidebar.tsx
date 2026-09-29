@@ -3,7 +3,11 @@ import {
   FileText,
   FolderKanban,
   History,
+  Kanban,
+  Container,
   BarChart3,
+  Library,
+  Wallet,
   LayoutDashboard,
   Layers,
   ListChecks,
@@ -62,13 +66,37 @@ const GROUPS: NavGroup[] = [
     ],
   },
   {
-    labelKey: "nav.groupWork",
+    labelKey: "nav.groupOffice",
     items: [
       {
         to: "/projects",
         labelKey: "nav.projects",
         icon: FolderKanban,
         match: (pathname) => starts(pathname, ["/projects"]),
+      },
+      {
+        to: "/office/kanban",
+        labelKey: "nav.kanban",
+        icon: Kanban,
+        match: (pathname) => pathname === "/office/kanban",
+      },
+      {
+        to: "/office/platform",
+        labelKey: "nav.platform",
+        icon: Container,
+        match: (pathname) => starts(pathname, ["/office/platform"]),
+      },
+      {
+        to: "/office/finance",
+        labelKey: "nav.budget",
+        icon: Wallet,
+        match: (pathname) => pathname === "/office/finance",
+      },
+      {
+        to: "/office/templates",
+        labelKey: "nav.templates",
+        icon: Library,
+        match: (pathname) => pathname === "/office/templates",
       },
       {
         to: "/analytics",

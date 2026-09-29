@@ -28,6 +28,7 @@ import { ConnectionDialog } from "../network/ConnectionDialog";
 import { InterfaceDialog } from "../network/InterfaceDialog";
 import { TraceDialog } from "../network/TraceDialog";
 import { ConfirmDialog, ReasonField } from "../provenance/ReasonField";
+import { DevicePartsPanel } from "./DevicePartsPanel";
 
 function ProfileForm({
   ciId,
@@ -40,7 +41,11 @@ function ProfileForm({
 }) {
   const { t, te } = useI18n();
   const { data: meta } = useMeta();
-  const { data: models } = useDeviceModels({ limit: 200, offset: 0 });
+  const { data: models } = useDeviceModels({
+    limit: 1000,
+    offset: 0,
+    component_class: "CHASSIS",
+  });
 
   const [form, setForm] = useState<Record<string, string>>({
     device_model_id: device?.device_model_id ?? "",
@@ -501,6 +506,8 @@ export function CiNetworkTab({ ciId }: { ciId: string }) {
           <Metric label={t("devices.portsUsed")} value={usage?.used ?? 0} />
         </div>
       </div>
+
+      <DevicePartsPanel ciId={ciId} />
 
       <Panel
         title={t("network.interfaces")}

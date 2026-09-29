@@ -13,6 +13,8 @@ from itms.api.schemas.documents import (
     DocumentLinkRead,
     DocumentLinkWrite,
     DocumentRead,
+    DocumentTemplateInstall,
+    DocumentTemplateRead,
     DocumentUpdate,
     DocumentVersionRead,
     FolderCreate,
@@ -87,6 +89,19 @@ async def list_folders(session: SessionDep) -> list[FolderRead]:
 async def create_folder(payload: FolderCreate, session: SessionDep) -> FolderRead:
     folder = await document_service.create_folder(session, payload.model_dump(exclude_unset=True))
     return FolderRead.model_validate(folder)
+
+
+@router.get("/templates", response_model=list[DocumentTemplateRead],
+            dependencies=[requires(Permission.DOCUMENT_READ)])
+async def list_templates(session: SessionDep) -> list[DocumentTemplateRead]:
+    rows = await document_service.template_catalog(session)
+    return [DocumentTemplateRead.model_validate(row) for row in rows]
+
+
+@router.post("/templates/install", response_model=DocumentTemplateInstall, status_code=201,
+             dependencies=[requires(Permission.DOCUMENT_WRITE)])
+async def install_templates(session: SessionDep) -> DocumentTemplateInstall:
+    return DocumentTemplateInstall.model_validate(await document_service.install_templates(session))
 
 
 @router.get("/{document_id}", response_model=DocumentDetail,

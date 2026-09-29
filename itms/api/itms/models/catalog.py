@@ -13,7 +13,7 @@ from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from itms.models.base import ActorMixin, Base, TimestampMixin, uuid_pk
-from itms.models.enums import DeviceRole, InterfaceType
+from itms.models.enums import ComponentClass, DeviceRole, InterfaceType
 
 
 class Manufacturer(Base, TimestampMixin, ActorMixin):
@@ -57,6 +57,18 @@ class DeviceModel(Base, TimestampMixin, ActorMixin):
     utilization_factor: Mapped[float | None] = mapped_column(Numeric(4, 3))
     airflow: Mapped[str | None] = mapped_column(String(32))
     notes: Mapped[str | None] = mapped_column(Text)
+    #: CHASSIS — устройство целиком. Остальные значения — то, что ставится внутрь.
+    component_class: Mapped[ComponentClass] = mapped_column(
+        String(16), nullable=False, default=ComponentClass.CHASSIS, server_default="CHASSIS"
+    )
+    cpu_sockets: Mapped[int | None] = mapped_column(SmallInteger)
+    #: LGA4677, SP5, LGA4189 и другие посадочные места процессора.
+    cpu_socket: Mapped[str | None] = mapped_column(String(32))
+    ram_slots: Mapped[int | None] = mapped_column(SmallInteger)
+    ram_type: Mapped[str | None] = mapped_column(String(16))
+    drive_bays: Mapped[int | None] = mapped_column(SmallInteger)
+    #: SFF, LFF, NVMe, EDSFF.
+    drive_form: Mapped[str | None] = mapped_column(String(32))
 
     manufacturer: Mapped[Manufacturer] = relationship(lazy="joined")
     port_templates: Mapped[list[PortTemplate]] = relationship(

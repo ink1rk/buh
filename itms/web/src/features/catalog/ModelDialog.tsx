@@ -84,6 +84,13 @@ export function ModelDialog({
       power_max_w: model?.power_max_w != null ? String(model.power_max_w) : "",
       airflow: model?.airflow ?? "",
       notes: model?.notes ?? "",
+      component_class: model?.component_class ?? "CHASSIS",
+      cpu_sockets: model?.cpu_sockets != null ? String(model.cpu_sockets) : "",
+      cpu_socket: model?.cpu_socket ?? "",
+      ram_slots: model?.ram_slots != null ? String(model.ram_slots) : "",
+      ram_type: model?.ram_type ?? "",
+      drive_bays: model?.drive_bays != null ? String(model.drive_bays) : "",
+      drive_form: model?.drive_form ?? "",
     });
   }
 
@@ -150,6 +157,13 @@ export function ModelDialog({
       power_max_w: numberOrNull(text("power_max_w")),
       airflow: text("airflow").trim() || null,
       notes: text("notes").trim() || null,
+      component_class: form.component_class || "CHASSIS",
+      cpu_sockets: numberOrNull(text("cpu_sockets")),
+      cpu_socket: text("cpu_socket").trim() || null,
+      ram_slots: numberOrNull(text("ram_slots")),
+      ram_type: text("ram_type").trim() || null,
+      drive_bays: numberOrNull(text("drive_bays")),
+      drive_form: text("drive_form").trim() || null,
     };
     if (!model) body.port_templates = drafts.map(templatePayload);
     save.mutate(body);
@@ -302,6 +316,66 @@ export function ModelDialog({
               min={0}
               value={text("weight_kg")}
               onChange={(event) => set("weight_kg", event.target.value)}
+            />
+          </Field>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-4">
+          <Field label={t("catalog.componentClass")}>
+            <Select
+              value={text("component_class")}
+              onChange={(event) => set("component_class", event.target.value)}
+              options={["CHASSIS", "BOARD", "CPU", "MEMORY", "DISK", "NIC", "HBA", "PSU"].map(
+                (value) => ({ value, label: te("componentClass", value) }),
+              )}
+            />
+          </Field>
+          <Field label={t("catalog.cpuSockets")}>
+            <Input
+              type="number"
+              min={0}
+              value={text("cpu_sockets")}
+              onChange={(event) => set("cpu_sockets", event.target.value)}
+            />
+          </Field>
+          <Field label={t("catalog.cpuSocket")}>
+            <Input
+              value={text("cpu_socket")}
+              placeholder="LGA4677"
+              onChange={(event) => set("cpu_socket", event.target.value)}
+            />
+          </Field>
+          <Field label={t("catalog.ramSlots")}>
+            <Input
+              type="number"
+              min={0}
+              value={text("ram_slots")}
+              onChange={(event) => set("ram_slots", event.target.value)}
+            />
+          </Field>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label={t("catalog.ramType")}>
+            <Input
+              value={text("ram_type")}
+              placeholder="DDR5"
+              onChange={(event) => set("ram_type", event.target.value)}
+            />
+          </Field>
+          <Field label={t("catalog.driveBays")}>
+            <Input
+              type="number"
+              min={0}
+              value={text("drive_bays")}
+              onChange={(event) => set("drive_bays", event.target.value)}
+            />
+          </Field>
+          <Field label={t("catalog.driveForm")}>
+            <Input
+              value={text("drive_form")}
+              placeholder="SFF"
+              onChange={(event) => set("drive_form", event.target.value)}
             />
           </Field>
         </div>

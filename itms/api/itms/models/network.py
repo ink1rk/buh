@@ -23,7 +23,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
-from sqlalchemy.dialects.postgresql import CIDR, ENUM, INET, MACADDR
+from sqlalchemy.dialects.postgresql import CIDR, ENUM, INET, JSONB, MACADDR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from itms.models.base import ActorMixin, Base, TimestampMixin, uuid_pk
@@ -88,6 +88,33 @@ class Device(Base, TimestampMixin, ActorMixin):
     notes: Mapped[str | None] = mapped_column(Text)
 
     model: Mapped[DeviceModel | None] = relationship(lazy="joined")
+    parts: Mapped[list[DevicePart]] = relationship(
+        back_populates="device", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+
+class DevicePart(Base, TimestampMixin, ActorMixin):
+    """Установленное комплектующее: процессор, плата, модуль памяти, диск, адаптер."""
+
+    __tablename__ = "device_part"
+    __table_args__ = (
+        UniqueConstraint("device_id", "component_model_id"),
+        CheckConstraint("quantity >= 1", name="quantity"),
+    )
+
+    id: Mapped[uuid.UUID] = uuid_pk()
+    device_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("device.id", ondelete="CASCADE"), nullable=False
+    )
+    component_model_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("device_model.id", ondelete="RESTRICT"), nullable=False
+    )
+    quantity: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)
+    #: Имена мест на плате: CPU1, A1/CPU1. Пусто у дисков и адаптеров.
+    slots: Mapped[list[str] | None] = mapped_column(JSONB)
+
+    device: Mapped[Device] = relationship(back_populates="parts")
+    component: Mapped[DeviceModel] = relationship(lazy="joined")
 
 
 class Interface(Base, TimestampMixin, ActorMixin):

@@ -35,6 +35,7 @@ from itms.models.documents import (
     DocumentVersion,
     FileObject,
 )
+from itms.models.finance import FinanceEntry
 from itms.models.floorplan import Floorplan, FloorplanItem
 from itms.models.network import (
     CableRoute,
@@ -47,6 +48,7 @@ from itms.models.network import (
     Vlan,
     Vrf,
 )
+from itms.models.platform import AgentMcp, AgentService, K8sCluster, McpServer, ServiceRoute
 from itms.models.power import (
     PowerFeed,
     PowerLink,
@@ -76,6 +78,8 @@ from itms.models.transition import ChangeItem, PlannedChange, StateSnapshot
 from itms.models.virtualization import ComputeHost, VirtualMachine
 
 __all__ = [
+    "AgentMcp",
+    "AgentService",
     "AppSetting",
     "Attachment",
     "AuditChange",
@@ -103,14 +107,17 @@ __all__ = [
     "Employee",
     "EmployeeResponsibility",
     "FileObject",
+    "FinanceEntry",
     "Floorplan",
     "FloorplanItem",
     "ImportJob",
     "Interface",
     "InterfaceVlan",
     "IpAddress",
+    "K8sCluster",
     "Location",
     "Manufacturer",
+    "McpServer",
     "Milestone",
     "Notification",
     "Organization",
@@ -133,6 +140,7 @@ __all__ = [
     "ResponsibilityArea",
     "SavedView",
     "SearchIndex",
+    "ServiceRoute",
     "StateSnapshot",
     "Tag",
     "Task",

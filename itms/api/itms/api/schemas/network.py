@@ -11,6 +11,7 @@ from itms.models.enums import (
     CableCategory,
     CableMedium,
     CiStatus,
+    ComponentClass,
     ConnectionStatus,
     Criticality,
     DeviceRole,
@@ -97,6 +98,13 @@ class DeviceModelWrite(BaseModel):
     utilization_factor: float | None = Field(default=None, gt=0, le=1)
     airflow: str | None = None
     notes: str | None = None
+    component_class: ComponentClass = ComponentClass.CHASSIS
+    cpu_sockets: int | None = Field(default=None, ge=0, le=16)
+    cpu_socket: str | None = Field(default=None, max_length=32)
+    ram_slots: int | None = Field(default=None, ge=0, le=128)
+    ram_type: str | None = Field(default=None, max_length=16)
+    drive_bays: int | None = Field(default=None, ge=0, le=120)
+    drive_form: str | None = Field(default=None, max_length=32)
     port_templates: list[PortTemplateWrite] = Field(default_factory=list)
 
 
@@ -116,6 +124,13 @@ class DeviceModelUpdate(BaseModel):
     utilization_factor: float | None = None
     airflow: str | None = None
     notes: str | None = None
+    component_class: ComponentClass | None = None
+    cpu_sockets: int | None = Field(default=None, ge=0, le=16)
+    cpu_socket: str | None = None
+    ram_slots: int | None = Field(default=None, ge=0, le=128)
+    ram_type: str | None = None
+    drive_bays: int | None = Field(default=None, ge=0, le=120)
+    drive_form: str | None = None
 
 
 class DeviceModelRead(ORMModel):
@@ -136,7 +151,40 @@ class DeviceModelRead(ORMModel):
     utilization_factor: float | None
     airflow: str | None
     notes: str | None
+    component_class: ComponentClass = ComponentClass.CHASSIS
+    cpu_sockets: int | None = None
+    cpu_socket: str | None = None
+    ram_slots: int | None = None
+    ram_type: str | None = None
+    drive_bays: int | None = None
+    drive_form: str | None = None
     port_templates: list[PortTemplateRead] = Field(default_factory=list)
+
+
+class DevicePartRead(ORMModel):
+    id: uuid.UUID
+    quantity: int
+    component_model_id: uuid.UUID
+    slots: list[str] | None = None
+    component: DeviceModelRead
+
+
+class DevicePartWrite(BaseModel):
+    component_model_id: uuid.UUID
+    quantity: int = Field(default=1, ge=1, le=128)
+    slots: list[str] | None = None
+
+
+class DevicePartsRead(BaseModel):
+    cpu_sockets: int | None
+    cpu_socket: str | None
+    ram_slots: int | None
+    ram_type: str | None
+    drive_bays: int | None
+    drive_form: str | None
+    cpu_slot_names: list[str] = Field(default_factory=list)
+    ram_slot_names: list[str] = Field(default_factory=list)
+    items: list[DevicePartRead]
 
 
 # --- Устройства ---------------------------------------------------------------

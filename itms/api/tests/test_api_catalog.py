@@ -20,7 +20,47 @@ async def test_catalog_library_is_idempotent(client: AsyncClient, api: str) -> N
     model = listed.json()["items"][0]
     assert model["power_nameplate_w"] == 800
     assert model["u_height"] == 2
+    assert model["cpu_socket"] == "LGA4189"
+    assert model["ram_slots"] == 32
     assert sum(item["count"] for item in model["port_templates"]) == 5
+
+    platform = await client.get(
+        f"{api}/catalog/models", params={"q": "DL380 Gen11", "limit": 10}
+    )
+    dl380 = platform.json()["items"][0]
+    assert dl380["cpu_sockets"] == 2
+    assert dl380["cpu_socket"] == "LGA4677"
+    assert dl380["u_height"] == 2
+
+    storage = await client.get(f"{api}/catalog/models", params={"q": "3PAR 8200", "limit": 10})
+    assert storage.json()["items"][0]["u_height"] == 2
+    assert storage.json()["items"][0]["drive_bays"] == 24
+
+    keys = {(item.manufacturer.lower(), item.model) for item in LIBRARY}
+    assert len(keys) == len(LIBRARY)
+    gen9 = next(item for item in LIBRARY if item.model == "ProLiant DL380 Gen9")
+    assert gen9.manufacturer == "HP"
+    assert gen9.cpu_socket == "LGA2011-3"
+    hp_servers = [
+        item
+        for item in LIBRARY
+        if item.manufacturer == "HP" and item.default_role.value == "SERVER"
+    ]
+    assert len(hp_servers) >= 50
+    dell_servers = [
+        item
+        for item in LIBRARY
+        if item.manufacturer == "Dell" and item.default_role.value == "SERVER"
+    ]
+    assert len(dell_servers) >= 60
+    assert not any(item.manufacturer.lower() == "hpe" for item in LIBRARY)
+    assert gen9.ram_type == "DDR4"
+    assert gen9.u_height == 2
+    crs = next(item for item in LIBRARY if item.model == "CRS354-48P-4S+2Q+RM")
+    assert sum(port.count for port in crs.ports) == 54
+    poe = next(item for item in LIBRARY if item.model == "MES2348P")
+    assert sum(port.count for port in poe.ports) == 52
+    assert any(port.poe_capable for port in poe.ports)
 
     ups = await client.get(f"{api}/catalog/models", params={"q": "Smart-UPS", "limit": 10})
     assert ups.json()["items"][0]["power_nameplate_w"] is None

@@ -82,11 +82,18 @@ async def list_models(
     q: str | None = None,
     manufacturer_id: uuid.UUID | None = None,
     role: str | None = None,
-    limit: int = Query(default=100, le=500),
+    component_class: str | None = None,
+    limit: int = Query(default=100, le=1000),
     offset: int = 0,
 ) -> Page[DeviceModelRead]:
     items, total = await catalog_service.list_models(
-        session, q=q, manufacturer_id=manufacturer_id, role=role, limit=limit, offset=offset
+        session,
+        q=q,
+        manufacturer_id=manufacturer_id,
+        role=role,
+        component_class=component_class,
+        limit=limit,
+        offset=offset,
     )
     return Page[DeviceModelRead](
         items=[DeviceModelRead.model_validate(item) for item in items],

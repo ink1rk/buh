@@ -7,8 +7,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from itms.api.deps import base_context
 from itms.api.routers import (
@@ -21,12 +21,14 @@ from itms.api.routers import (
     documents,
     exports,
     files,
+    finance,
     floorplans,
     ipam,
     locations,
     network,
     notifications,
     ops,
+    platform,
     power,
     projects,
     racks,
@@ -147,8 +149,10 @@ app.include_router(users.router, prefix=prefix)
 app.include_router(documents.router, prefix=prefix)
 app.include_router(exports.router, prefix=prefix)
 app.include_router(files.router, prefix=prefix)
+app.include_router(finance.router, prefix=prefix)
 app.include_router(floorplans.router, prefix=prefix)
 app.include_router(ops.search_router, prefix=prefix)
 app.include_router(ops.audit_router, prefix=prefix)
 app.include_router(ops.import_router, prefix=prefix)
 app.include_router(ops.dashboard_router, prefix=prefix)
+app.include_router(platform.router, prefix=prefix)
