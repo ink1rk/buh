@@ -225,8 +225,56 @@ async def add_port_template(
     return template
 
 
+async def _adopt_vendor(session: AsyncSession, alias: str, canonical: str) -> None:
+    """Переносит модели со старого имени производителя на то, под которым их ищут."""
+    source = (
+        await session.execute(
+            select(Manufacturer).where(func.lower(Manufacturer.name) == alias.lower())
+        )
+    ).scalar_one_or_none()
+    if source is None or source.name.lower() == canonical.lower():
+        return
+    target = (
+        await session.execute(
+            select(Manufacturer).where(func.lower(Manufacturer.name) == canonical.lower())
+        )
+    ).scalar_one_or_none()
+    if target is None:
+        source.name = canonical
+        await session.flush()
+        return
+    taken = {
+        name.lower()
+        for name in (
+            await session.execute(
+                select(DeviceModel.model).where(DeviceModel.manufacturer_id == target.id)
+            )
+        ).scalars()
+    }
+    models = (
+        await session.execute(select(DeviceModel).where(DeviceModel.manufacturer_id == source.id))
+    ).scalars()
+    for item in models:
+        if item.model.lower() in taken:
+            continue
+        item.manufacturer_id = target.id
+        taken.add(item.model.lower())
+    await session.flush()
+    left = (
+        await session.execute(
+            select(func.count())
+            .select_from(DeviceModel)
+            .where(DeviceModel.manufacturer_id == source.id)
+        )
+    ).scalar_one()
+    if int(left) == 0:
+        await session.delete(source)
+        await session.flush()
+
+
 async def install_library(session: AsyncSession) -> dict[str, int]:
     """Ставит библиотеку моделей. Повторный вызов не создаёт дубликаты."""
+    await _adopt_vendor(session, "HPE", "HP")
     manufacturers: dict[str, Manufacturer] = {}
     created_manufacturers = 0
     skipped_manufacturers = 0

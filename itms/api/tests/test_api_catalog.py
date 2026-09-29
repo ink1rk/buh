@@ -39,7 +39,21 @@ async def test_catalog_library_is_idempotent(client: AsyncClient, api: str) -> N
     keys = {(item.manufacturer.lower(), item.model) for item in LIBRARY}
     assert len(keys) == len(LIBRARY)
     gen9 = next(item for item in LIBRARY if item.model == "ProLiant DL380 Gen9")
+    assert gen9.manufacturer == "HP"
     assert gen9.cpu_socket == "LGA2011-3"
+    hp_servers = [
+        item
+        for item in LIBRARY
+        if item.manufacturer == "HP" and item.default_role.value == "SERVER"
+    ]
+    assert len(hp_servers) >= 50
+    dell_servers = [
+        item
+        for item in LIBRARY
+        if item.manufacturer == "Dell" and item.default_role.value == "SERVER"
+    ]
+    assert len(dell_servers) >= 60
+    assert not any(item.manufacturer.lower() == "hpe" for item in LIBRARY)
     assert gen9.ram_type == "DDR4"
     assert gen9.u_height == 2
     crs = next(item for item in LIBRARY if item.model == "CRS354-48P-4S+2Q+RM")

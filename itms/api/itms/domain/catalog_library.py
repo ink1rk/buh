@@ -239,7 +239,7 @@ _LIBRARY_BASE: tuple[ModelSpec, ...] = (
         sockets=2, socket="LGA4189", ram_slots=32, ram="DDR4", bays=16, form="SFF",
     ),
     _server(
-        "HPE", "ProLiant DL380 Gen11", 2, 700, 1600,
+        "HP", "ProLiant DL380 Gen11", 2, 700, 1600,
         sockets=2, socket="LGA4677", ram_slots=32, ram="DDR5", bays=24, form="SFF",
     ),
     _server(
@@ -259,7 +259,7 @@ _LIBRARY_BASE: tuple[ModelSpec, ...] = (
         sockets=2, socket="LGA4189", ram_slots=32, ram="DDR4", bays=12, form="SFF",
     ),
     ModelSpec(
-        "HPE",
+        "HP",
         "Alletra 5030",
         DeviceRole.STORAGE,
         2,
