@@ -374,7 +374,8 @@ class Mailbox:
     def _connect(self):
         try:
             client = imaplib.IMAP4_SSL(self.account.imap_host, self.account.imap_port,
-                                       ssl_context=ssl.create_default_context())
+                                       ssl_context=ssl.create_default_context(),
+                                       timeout=45)
             client.login(self.account.user, self.account.password)
             return client
         except imaplib.IMAP4.error as e:
