@@ -68,6 +68,11 @@ systemctl enable --now assistant.service
 if [ -f /etc/cursor-gateway.env ]; then
   systemctl enable --now cursor-gateway.service
 fi
+if [ -f /etc/tg-user.env ]; then
+  install -m 644 "${INSTALL_DIR}/hermes/tg-user.service" /etc/systemd/system/tg-user.service
+  systemctl daemon-reload
+  systemctl enable --now tg-user.service
+fi
 
 # Бинарник Hermes — под пользователем, который им пользуется.
 # С этой сети Vercel часто отвечает 403, поэтому запасной адрес — скрипт в GitHub.
