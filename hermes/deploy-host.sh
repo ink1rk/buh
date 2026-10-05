@@ -53,7 +53,7 @@ TG_INGEST=0
 NOTIFY=0
 LLM_DEFAULT_PROVIDER=local
 LLM_PRIVATE_PROVIDER=local
-EXT_PROXY=
+EXT_PROXY=http://172.20.20.231:8080
 EOF
 chown root:"${HERMES_USER}" /etc/assistant.env
 chmod 640 /etc/assistant.env
@@ -107,6 +107,33 @@ ASSISTANT_URL=http://127.0.0.1:8800
 TG_USER_URL=http://127.0.0.1:8810
 EOF
 fi
+# Прокси на исходящие вызовы Hermes. Локальный шлюз не проксируем.
+upsert_env() {
+  local key="$1" value="$2" file="$3"
+  if grep -q "^${key}=" "${file}"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "${file}"
+  else
+    printf '%s=%s\n' "${key}" "${value}" >> "${file}"
+  fi
+}
+PROXY_URL="http://172.20.20.231:8080"
+PROXY_SKIP="localhost,127.0.0.1,::1,172.20.20.0/24,10.0.0.0/8,192.168.0.0/16,.lan"
+for key in HTTP_PROXY HTTPS_PROXY http_proxy https_proxy TELEGRAM_PROXY; do
+  upsert_env "${key}" "${PROXY_URL}" "${HERMES_HOME}/.env"
+done
+upsert_env NO_PROXY "${PROXY_SKIP}" "${HERMES_HOME}/.env"
+upsert_env no_proxy "${PROXY_SKIP}" "${HERMES_HOME}/.env"
+install -d -o "${HERMES_USER}" -g "${HERMES_USER}" "/home/${HERMES_USER}/.config/systemd/user/hermes-gateway.service.d"
+cat > "/home/${HERMES_USER}/.config/systemd/user/hermes-gateway.service.d/proxy.conf" <<EOF
+[Service]
+Environment=HTTP_PROXY=${PROXY_URL}
+Environment=HTTPS_PROXY=${PROXY_URL}
+Environment=http_proxy=${PROXY_URL}
+Environment=https_proxy=${PROXY_URL}
+Environment=NO_PROXY=${PROXY_SKIP}
+Environment=no_proxy=${PROXY_SKIP}
+EOF
+chown "${HERMES_USER}:${HERMES_USER}" "/home/${HERMES_USER}/.config/systemd/user/hermes-gateway.service.d/proxy.conf"
 chown "${HERMES_USER}:${HERMES_USER}" "${HERMES_HOME}/config.yaml" "${HERMES_HOME}/.env"
 chmod 600 "${HERMES_HOME}/.env"
 
