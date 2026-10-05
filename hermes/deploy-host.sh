@@ -84,8 +84,13 @@ systemctl daemon-reload
 systemctl enable --now assistant.service
 
 # Бинарник Hermes — под пользователем, который им пользуется.
+# С этой сети Vercel часто отвечает 403, поэтому запасной адрес — скрипт в GitHub.
 if ! sudo -u "${HERMES_USER}" -H bash -lc 'command -v hermes' >/dev/null 2>&1; then
-  sudo -u "${HERMES_USER}" -H bash -lc 'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --non-interactive'
+  if ! curl -fsSL -o /tmp/hermes-install.sh https://hermes-agent.nousresearch.com/install.sh; then
+    curl -fsSL -o /tmp/hermes-install.sh https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh
+  fi
+  chmod 644 /tmp/hermes-install.sh
+  sudo -u "${HERMES_USER}" -H bash -lc 'bash /tmp/hermes-install.sh --non-interactive'
 fi
 
 HERMES_HOME="/home/${HERMES_USER}/.hermes"
