@@ -8,8 +8,7 @@ ENV SERVICE=${SERVICE} \
     MCP_HOST=0.0.0.0 \
     MCP_PORT=8080 \
     MCP_STATELESS=true \
-    MCP_JSON_RESPONSE=true \
-    MCP_ENABLE_WRITES=false
+    MCP_JSON_RESPONSE=true
 
 WORKDIR /app
 COPY requirements.txt .

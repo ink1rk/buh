@@ -27,12 +27,6 @@ def mailbox(value: str) -> str:
     return text
 
 
-def emails(values: list[str], maximum: int = 20) -> list[str]:
-    if not isinstance(values, list) or not values or len(values) > maximum:
-        raise IntegrationError(f"Укажите от 1 до {maximum} адресов")
-    return [mailbox(item) for item in values]
-
-
 def plain_text(value: str, field: str, maximum: int) -> str:
     text = value.strip()
     if not text:

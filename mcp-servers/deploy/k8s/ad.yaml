@@ -11,7 +11,6 @@ data:
   AD_TLS_VERIFY: "true"
   AD_BASE_DN: "DC=example,DC=local"
   AD_TIMEOUT: "15"
-  MCP_ENABLE_WRITES: "false"
   MCP_STATELESS: "true"
   MCP_JSON_RESPONSE: "true"
   MCP_RESOURCE_URL: "http://mcp-ad.mcp-systems.svc.cluster.local:8080"

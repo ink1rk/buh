@@ -1,8 +1,6 @@
 import anyio
 import httpx2 as httpx
-import pytest
 from urllib.parse import unquote
-from mcp.server.mcpserver.exceptions import ToolError
 
 from exchange.ews import EwsExchange
 from exchange.graph import GraphExchange
@@ -46,25 +44,22 @@ def test_graph_lists_messages_with_app_token():
     assert seen[0].url.host == "login.microsoftonline.com"
 
 
-def test_graph_send_stays_behind_write_flag(monkeypatch):
-    monkeypatch.delenv("MCP_ENABLE_WRITES", raising=False)
-
+def test_exchange_tools_are_read_only():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.host == "login.microsoftonline.com":
             return httpx.Response(200, json={"access_token": "tok", "expires_in": 3600})
-        raise AssertionError("отправка не должна выходить в Graph, пока запись выключена")
+        raise AssertionError(request.url.path)
 
     graph = GraphExchange("tenant", "app", "secret", http=httpx.Client(transport=httpx.MockTransport(handler)))
     server = create_server(client=graph)
-    with pytest.raises(ToolError, match="MCP_ENABLE_WRITES"):
-        anyio.run(
-            server.call_tool,
-            "exchange_send_mail",
-            {"mailbox_id": "user@example.com", "to": ["a@b.c"], "subject": "hi", "body": "text"},
-        )
+    tools = anyio.run(server.list_tools)
+    names = {tool.name for tool in tools}
+    assert "exchange_list_messages" in names
+    assert not names & {"exchange_send_mail", "exchange_create_event"}
+    assert all(tool.annotations is not None and tool.annotations.read_only_hint for tool in tools)
 
 
-def test_ews_escapes_subject_and_targets_mailbox():
+def test_ews_escapes_search_and_targets_mailbox():
     captured: list[str] = []
 
     def poster(xml: str) -> str:
@@ -79,8 +74,8 @@ def test_ews_escapes_subject_and_targets_mailbox():
         impersonate=False,
         poster=poster,
     )
-    ews.send_mail("user@example.com", ["finance@example.com"], "a</t:Subject>", "hello")
+    ews.list_messages("user@example.com", query="a</t:Constant>")
     xml = captured[0]
-    assert "a&lt;/t:Subject&gt;" in xml
+    assert "a&lt;/t:Constant&gt;" in xml
     assert "<t:EmailAddress>user@example.com</t:EmailAddress>" in xml
-    assert "a</t:Subject>" not in xml
+    assert "a</t:Constant>" not in xml

@@ -8,7 +8,6 @@ data:
   ONEC_HTTP_SERVICE_URL: ""
   ONEC_VERIFY_TLS: "true"
   ONEC_TIMEOUT: "30"
-  MCP_ENABLE_WRITES: "false"
   MCP_STATELESS: "true"
   MCP_JSON_RESPONSE: "true"
   MCP_RESOURCE_URL: "http://mcp-onec.mcp-systems.svc.cluster.local:8080"

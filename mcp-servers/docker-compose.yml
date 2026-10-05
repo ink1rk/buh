@@ -16,7 +16,6 @@ services:
       AD_BIND_PASSWORD: ${AD_BIND_PASSWORD:-}
       AD_BASE_DN: ${AD_BASE_DN:-DC=example,DC=local}
       MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
-      MCP_ENABLE_WRITES: ${MCP_ENABLE_WRITES:-false}
 
   exchange:
     build:
@@ -38,7 +37,6 @@ services:
       EXCHANGE_IMPERSONATE: ${EXCHANGE_IMPERSONATE:-false}
       EXCHANGE_VERIFY_TLS: ${EXCHANGE_VERIFY_TLS:-true}
       MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
-      MCP_ENABLE_WRITES: ${MCP_ENABLE_WRITES:-false}
 
   onec:
     build:
@@ -55,4 +53,3 @@ services:
       ONEC_HTTP_SERVICE_URL: ${ONEC_HTTP_SERVICE_URL:-}
       ONEC_VERIFY_TLS: ${ONEC_VERIFY_TLS:-true}
       MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
-      MCP_ENABLE_WRITES: ${MCP_ENABLE_WRITES:-false}

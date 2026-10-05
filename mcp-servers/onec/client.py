@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import re
 from typing import Any
@@ -67,6 +66,8 @@ class OneCClient:
         )
 
     def _request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        if method.upper() != "GET":
+            raise IntegrationError("1С MCP работает только на чтение")
         self._same_origin(url, self.base_url if url.startswith(self.base_url) else self.http_service_url)
         headers = {"Accept": "application/json", **(kwargs.pop("headers", {}) or {})}
         try:
@@ -111,14 +112,10 @@ class OneCClient:
             raise IntegrationError(f"Некорректный {name}")
         return text
 
-    def _object_url(self, entity: str, guid: str | None = None, action: str | None = None) -> str:
+    def _object_url(self, entity: str, guid: str | None = None) -> str:
         url = f"{self.base_url}/{self._entity(entity)}"
         if guid:
             url += f"(guid'{self._guid(guid)}')"
-        if action:
-            if action not in {"Post()", "Unpost()"}:
-                raise IntegrationError("Неизвестное действие документа")
-            url += f"/{action}"
         return url
 
     def ping(self) -> dict[str, Any]:
@@ -185,36 +182,10 @@ class OneCClient:
             raise IntegrationError(f"1С вернула нечисловой $count: {text[:80]}") from exc
         return {"entity": entity, "count": number}
 
-    def create(self, entity: str, payload: dict[str, Any]) -> dict[str, Any]:
-        _check_payload(payload)
-        response = self._request("POST", self._object_url(entity), json=payload)
-        return _json(response) if response.content else {"created": True, "entity": entity}
-
-    def update(self, entity: str, guid: str, payload: dict[str, Any]) -> dict[str, Any]:
-        _check_payload(payload)
-        response = self._request("PATCH", self._object_url(entity, guid), json=payload)
-        if not response.content:
-            return {"updated": True, "entity": entity, "guid": guid}
-        return _json(response)
-
-    def post_document(self, entity: str, guid: str) -> dict[str, Any]:
-        self._request("POST", self._object_url(entity, guid, "Post()"), content=b"")
-        return {"posted": True, "entity": entity, "guid": guid}
-
-    def unpost_document(self, entity: str, guid: str) -> dict[str, Any]:
-        self._request("POST", self._object_url(entity, guid, "Unpost()"), content=b"")
-        return {"unposted": True, "entity": entity, "guid": guid}
-
-    def call_http(self, path: str, method: str = "GET", query: dict[str, Any] | None = None, payload: dict[str, Any] | None = None) -> Any:
+    def call_http(self, path: str, query: dict[str, Any] | None = None) -> Any:
         if not self.http_service_url:
             raise IntegrationError("ONEC_HTTP_SERVICE_URL не задан")
-        verb = method.upper()
-        if verb not in {"GET", "POST", "PUT", "PATCH", "DELETE"}:
-            raise IntegrationError("Метод HTTP-сервиса должен быть GET, POST, PUT, PATCH или DELETE")
-        url = self._service_url(path)
-        if payload is not None:
-            _check_payload(payload)
-        response = self._request(verb, url, params=query or None, json=payload if payload else None)
+        response = self._request("GET", self._service_url(path), params=query or None)
         if not response.content:
             return {"ok": True, "status": response.status_code}
         try:
@@ -242,14 +213,6 @@ def _check_base(url: str) -> str:
     if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username or parsed.password:
         raise IntegrationError("Адрес 1С должен быть http(s) без логина в URL")
     return url.strip().rstrip("/")
-
-
-def _check_payload(payload: dict[str, Any]) -> None:
-    if not isinstance(payload, dict):
-        raise IntegrationError("Тело должно быть JSON-объектом")
-    raw = json.dumps(payload, ensure_ascii=False)
-    if len(raw) > 200_000:
-        raise IntegrationError("Слишком большой JSON")
 
 
 def _json(response: httpx.Response) -> Any:

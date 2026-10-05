@@ -15,15 +15,15 @@
 - `GET /healthz` — проверка процесса, без токена
 - `POST /mcp` — MCP Streamable HTTP, ответ JSON
 
-Запись выключена, пока на поде нет `MCP_ENABLE_WRITES=true`.
+Серверы только читают. Инструментов записи нет: учётку, письмо, встречу или документ 1С через них изменить нельзя.
 
 ## Что умеют
 
-**AD:** поиск пользователей, групп, компьютеров и OU; карточка пользователя; состав группы. При включённой записи: снять блокировку, включить или отключить учётку, членство в обычной группе, сброс пароля по LDAPS. Пароль в ответ не возвращается. Встроенный Administrator, krbtgt и группы Domain/Enterprise/Schema Admins, Administrators, Account Operators, Backup Operators этим сервером не меняются.
+**AD:** поиск пользователей, групп, компьютеров и OU; карточка пользователя; состав группы. Пароли и хэши не возвращаются. Сервисную учётную запись в домене тоже ограничьте чтением.
 
-**Exchange:** найти человека, папки, список писем (тема и preview), одно письмо, календарь. Текст письма только по `include_body=true` и обрезается. Отправка и создание встречи — только при записи. Ящик передаётся в каждом вызове.
+**Exchange:** найти человека, папки, список писем (тема и preview), одно письмо, календарь. Текст письма только по `include_body=true` и обрезается. Ящик передаётся в каждом вызове. Приложению Graph достаточно `User.Read.All`, `Mail.Read` и `Calendars.Read`. Для EWS учётке хватает чтения ящиков, без Send As.
 
-**1С:** список сущностей OData, выборка, объект по GUID, `$count`. При записи: создать, изменить, провести и отменить проведение. `onec_call_http` ходит только внутрь `ONEC_HTTP_SERVICE_URL`.
+**1С:** список сущностей OData, выборка, объект по GUID, `$count`. `onec_call_http` делает только GET внутри `ONEC_HTTP_SERVICE_URL`. Пользователю 1С выдайте права на чтение нужных объектов.
 
 Сюда не входят дамп хэшей, Kerberoasting, DCSync и прочие атакующие сценарии, скрытые правила пересылки почты и массовая выгрузка ящиков. COM к 1С из Linux-контейнера тоже нет: снаружи базы используется OData.
 
@@ -75,14 +75,14 @@ kubectl apply -k deploy/k8s
 
 ## Переменные
 
-Общие: `MCP_HOST`, `MCP_PORT` (8080), `MCP_PATH` (`/mcp`), `MCP_AUTH_TOKEN`, `MCP_ENABLE_WRITES`, `MCP_STATELESS`, `MCP_JSON_RESPONSE`, `MCP_TRANSPORT` (`streamable-http` или `stdio`).
+Общие: `MCP_HOST`, `MCP_PORT` (8080), `MCP_PATH` (`/mcp`), `MCP_AUTH_TOKEN`, `MCP_STATELESS`, `MCP_JSON_RESPONSE`, `MCP_TRANSPORT` (`streamable-http` или `stdio`).
 
 **AD:** `AD_SERVER`, `AD_PORT`, `AD_USE_SSL`, `AD_STARTTLS`, `AD_TLS_VERIFY`, `AD_BIND_USER`, `AD_BIND_PASSWORD`, `AD_BASE_DN`, `AD_TIMEOUT`.
 
-**Exchange Graph** (`EXCHANGE_MODE=graph`): `EXCHANGE_TENANT_ID`, `EXCHANGE_CLIENT_ID`, `EXCHANGE_CLIENT_SECRET`. Приложению нужны права приложения с admin consent: `User.Read.All`, `Mail.Read`, `Mail.Send`, `Calendars.ReadWrite`. Лишние права можно не выдавать: инструмент упрётся в 403.
+**Exchange Graph** (`EXCHANGE_MODE=graph`): `EXCHANGE_TENANT_ID`, `EXCHANGE_CLIENT_ID`, `EXCHANGE_CLIENT_SECRET`. Приложению нужны права приложения с admin consent: `User.Read.All`, `Mail.Read`, `Calendars.Read`. `Mail.Send` и `Calendars.ReadWrite` не выдавайте.
 
 **Exchange EWS** (`EXCHANGE_MODE=ews`): `EXCHANGE_EWS_URL`, `EXCHANGE_USERNAME`, `EXCHANGE_PASSWORD`, `EXCHANGE_AUTH` (`ntlm` или `basic`), `EXCHANGE_IMPERSONATE`, `EXCHANGE_VERIFY_TLS`, `EXCHANGE_VERSION`.
 
-**1С:** `ONEC_BASE_URL` (публикация `.../odata/standard.odata`), `ONEC_USERNAME`, `ONEC_PASSWORD`, `ONEC_VERIFY_TLS`, необязательный `ONEC_HTTP_SERVICE_URL`. У пользователя 1С должны быть права на нужные объекты OData.
+**1С:** `ONEC_BASE_URL` (публикация `.../odata/standard.odata`), `ONEC_USERNAME`, `ONEC_PASSWORD`, `ONEC_VERIFY_TLS`, необязательный `ONEC_HTTP_SERVICE_URL`. У пользователя 1С должны быть права только на чтение нужных объектов OData.
 
 Поиск в AD ограничен базой `AD_BASE_DN`. Запросы 1С не уходят с настроенного хоста и не следуют редиректам.

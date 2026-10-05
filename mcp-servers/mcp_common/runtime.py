@@ -24,12 +24,6 @@ READ = ToolAnnotations(
     idempotent_hint=True,
     open_world_hint=True,
 )
-WRITE = ToolAnnotations(
-    read_only_hint=False,
-    destructive_hint=True,
-    idempotent_hint=False,
-    open_world_hint=True,
-)
 
 _MAX_CHARS = 80_000
 
@@ -39,18 +33,6 @@ def env_bool(name: str, default: bool) -> bool:
     if raw is None or raw.strip() == "":
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
-
-
-def writes_enabled() -> bool:
-    return env_bool("MCP_ENABLE_WRITES", False)
-
-
-def require_write() -> None:
-    if not writes_enabled():
-        raise ToolError(
-            "Запись выключена. Чтобы разрешить изменяющие инструменты, "
-            "установите MCP_ENABLE_WRITES=true на этом сервере."
-        )
 
 
 def dump(data: Any) -> str:

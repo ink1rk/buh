@@ -3,27 +3,15 @@ import json
 from mcp.server.mcpserver import MCPServer
 
 from mcp_common.errors import IntegrationError
-from mcp_common.runtime import READ, WRITE, build_server, require_write, tool_result
+from mcp_common.runtime import READ, build_server, tool_result
 from onec.client import OneCClient
 
 _INSTRUCTIONS = (
-    "1С:Предприятие через OData опубликованной базы. "
+    "1С:Предприятие только на чтение, через OData опубликованной базы. "
     "Имена сущностей как в $metadata, например Catalog_Контрагенты или "
     "Document_РеализацияТоваровУслуг. Сначала посмотри список сущностей, "
-    "потом читай с $top. Создание, изменение и проведение требуют MCP_ENABLE_WRITES=true."
+    "потом читай с $top. Объекты не создаются, не меняются и не проводятся."
 )
-
-
-def _object(payload_json: str) -> dict:
-    if not payload_json.strip():
-        raise IntegrationError("Нужен JSON-объект")
-    try:
-        data = json.loads(payload_json)
-    except json.JSONDecodeError as exc:
-        raise IntegrationError("payload_json не является JSON") from exc
-    if not isinstance(data, dict):
-        raise IntegrationError("payload_json должен быть объектом")
-    return data
 
 
 def _query(query_json: str) -> dict:
@@ -75,45 +63,12 @@ def create_server(client: OneCClient | None = None) -> MCPServer:
         """Количество объектов, можно с $filter."""
         return tool_result(lambda: onec.count(entity, filter))
 
-    @server.tool(annotations=WRITE)
-    def onec_create(entity: str, payload_json: str) -> str:
-        """Создать объект. payload_json — JSON с реквизитами и табличными частями."""
-        require_write()
-        return tool_result(lambda: onec.create(entity, _object(payload_json)))
+    @server.tool(annotations=READ)
+    def onec_call_http(path: str, query_json: str = "") -> str:
+        """GET опубликованного HTTP-сервиса внутри ONEC_HTTP_SERVICE_URL.
 
-    @server.tool(annotations=WRITE)
-    def onec_update(entity: str, guid: str, payload_json: str) -> str:
-        """Изменить реквизиты объекта по GUID."""
-        require_write()
-        return tool_result(lambda: onec.update(entity, guid, _object(payload_json)))
-
-    @server.tool(annotations=WRITE)
-    def onec_post_document(entity: str, guid: str) -> str:
-        """Провести документ."""
-        require_write()
-        return tool_result(lambda: onec.post_document(entity, guid))
-
-    @server.tool(annotations=WRITE)
-    def onec_unpost_document(entity: str, guid: str) -> str:
-        """Отменить проведение документа."""
-        require_write()
-        return tool_result(lambda: onec.unpost_document(entity, guid))
-
-    @server.tool(annotations=WRITE)
-    def onec_call_http(path: str, method: str = "GET", query_json: str = "", payload_json: str = "") -> str:
-        """Вызвать опубликованный HTTP-сервис внутри ONEC_HTTP_SERVICE_URL.
-
-        path относительный, например hs/exchange/status не нужен целиком:
-        если база URL уже кончается на /hs/exchange, path — status.
-        Методы кроме GET требуют MCP_ENABLE_WRITES=true.
+        path относительный: если базовый URL уже кончается на /hs/exchange, path — status.
         """
-        if method.upper() != "GET":
-            require_write()
-
-        def run():
-            payload = _object(payload_json) if payload_json.strip() else None
-            return onec.call_http(path, method, _query(query_json), payload)
-
-        return tool_result(run)
+        return tool_result(lambda: onec.call_http(path, _query(query_json)))
 
     return server

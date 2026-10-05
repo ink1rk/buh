@@ -16,7 +16,7 @@ from xml.sax.saxutils import escape
 
 from mcp_common.errors import IntegrationError
 from mcp_common.runtime import env_bool
-from mcp_common.validate import clamp_limit, emails, mailbox, plain_text
+from mcp_common.validate import clamp_limit, mailbox, plain_text
 
 NS = {
     "s": "http://schemas.xmlsoap.org/soap/envelope/",
@@ -249,30 +249,6 @@ class EwsExchange:
             raise IntegrationError("Письмо не найдено")
         return _ews_message(node, include_body=include_body)
 
-    def send_mail(self, mailbox_id: str, to: list[str], subject: str, body: str) -> dict[str, Any]:
-        owner = mailbox(mailbox_id)
-        recipients = emails(to)
-        blocks = "".join(
-            f"<t:Mailbox><t:EmailAddress>{escape(addr)}</t:EmailAddress></t:Mailbox>" for addr in recipients
-        )
-        saved = "" if self.impersonate else f"<m:SavedItemFolderId>{_folder_xml('sentitems', owner, False)}</m:SavedItemFolderId>"
-        self._call(
-            f"""
-            <m:CreateItem MessageDisposition="SendAndSaveCopy">
-              {saved}
-              <m:Items>
-                <t:Message>
-                  <t:Subject>{escape(plain_text(subject, "subject", 255))}</t:Subject>
-                  <t:Body BodyType="Text">{escape(plain_text(body, "body", 20_000))}</t:Body>
-                  <t:ToRecipients>{blocks}</t:ToRecipients>
-                </t:Message>
-              </m:Items>
-            </m:CreateItem>
-            """,
-            owner,
-        )
-        return {"sent": True, "mailbox": owner, "to": recipients}
-
     def list_events(self, mailbox_id: str, start: str, end: str, limit: int = 20) -> dict[str, Any]:
         owner = mailbox(mailbox_id)
         applied = clamp_limit(limit, 40)
@@ -288,42 +264,6 @@ class EwsExchange:
         )
         events = [_ews_event(node) for node in root.findall(".//t:CalendarItem", NS)]
         return {"mailbox": owner, "count": len(events), "events": events}
-
-    def create_event(
-        self,
-        mailbox_id: str,
-        subject: str,
-        start: str,
-        end: str,
-        body: str = "",
-        timezone: str = "UTC",
-    ) -> dict[str, Any]:
-        owner = mailbox(mailbox_id)
-        zone = escape(plain_text(timezone, "timezone", 64))
-        root = self._call(
-            f"""
-            <m:CreateItem SendMeetingInvitations="SendToNone">
-              <m:SavedItemFolderId>{_folder_xml("calendar", owner, self.impersonate)}</m:SavedItemFolderId>
-              <m:Items>
-                <t:CalendarItem>
-                  <t:Subject>{escape(plain_text(subject, "subject", 255))}</t:Subject>
-                  <t:Body BodyType="Text">{escape(body.strip()[:20_000])}</t:Body>
-                  <t:Start>{escape(_timestamp(start))}</t:Start>
-                  <t:End>{escape(_timestamp(end))}</t:End>
-                  <t:StartTimeZone Id="{zone}"/>
-                  <t:EndTimeZone Id="{zone}"/>
-                </t:CalendarItem>
-              </m:Items>
-            </m:CreateItem>
-            """,
-            owner,
-        )
-        node = root.find(".//t:CalendarItem", NS)
-        item_id = root.find(".//t:ItemId", NS)
-        event = _ews_event(node) if node is not None else {"subject": subject}
-        if item_id is not None:
-            event["id"] = item_id.get("Id")
-        return event
 
 
 def _check_url(url: str) -> None:

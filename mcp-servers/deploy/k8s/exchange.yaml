@@ -11,7 +11,6 @@ data:
   EXCHANGE_VERIFY_TLS: "true"
   EXCHANGE_VERSION: "Exchange2013"
   EXCHANGE_TIMEOUT: "30"
-  MCP_ENABLE_WRITES: "false"
   MCP_STATELESS: "true"
   MCP_JSON_RESPONSE: "true"
   MCP_RESOURCE_URL: "http://mcp-exchange.mcp-systems.svc.cluster.local:8080"

@@ -10,7 +10,7 @@ from urllib.parse import quote
 import httpx2 as httpx
 
 from mcp_common.errors import IntegrationError
-from mcp_common.validate import clamp_limit, emails, mailbox, plain_text
+from mcp_common.validate import clamp_limit, mailbox, plain_text
 
 _MESSAGE_SELECT = "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments"
 _BODY_LIMIT = 8000
@@ -77,6 +77,8 @@ class GraphExchange:
         return token
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+        if method.upper() != "GET":
+            raise IntegrationError("Exchange MCP работает только на чтение")
         headers = dict(kwargs.pop("headers", {}) or {})
         headers["Authorization"] = f"Bearer {self._token_value()}"
         try:
@@ -181,23 +183,6 @@ class GraphExchange:
         )
         return _message(payload, include_body=include_body)
 
-    def send_mail(self, mailbox_id: str, to: list[str], subject: str, body: str) -> dict[str, Any]:
-        owner = mailbox(mailbox_id)
-        recipients = emails(to)
-        self._request(
-            "POST",
-            f"/users/{quote(owner)}/sendMail",
-            json={
-                "message": {
-                    "subject": plain_text(subject, "subject", 255),
-                    "body": {"contentType": "Text", "content": plain_text(body, "body", 20_000)},
-                    "toRecipients": [{"emailAddress": {"address": addr}} for addr in recipients],
-                },
-                "saveToSentItems": True,
-            },
-        )
-        return {"sent": True, "mailbox": owner, "to": recipients}
-
     def list_events(self, mailbox_id: str, start: str, end: str, limit: int = 20) -> dict[str, Any]:
         owner = mailbox(mailbox_id)
         applied = clamp_limit(limit, 40)
@@ -213,29 +198,6 @@ class GraphExchange:
         )
         events = [_event(item) for item in payload.get("value", [])]
         return {"mailbox": owner, "count": len(events), "events": events}
-
-    def create_event(
-        self,
-        mailbox_id: str,
-        subject: str,
-        start: str,
-        end: str,
-        body: str = "",
-        timezone: str = "UTC",
-    ) -> dict[str, Any]:
-        owner = mailbox(mailbox_id)
-        zone = plain_text(timezone, "timezone", 64)
-        payload = self._request(
-            "POST",
-            f"/users/{quote(owner)}/calendar/events",
-            json={
-                "subject": plain_text(subject, "subject", 255),
-                "start": {"dateTime": _timestamp(start), "timeZone": zone},
-                "end": {"dateTime": _timestamp(end), "timeZone": zone},
-                "body": {"contentType": "Text", "content": body.strip()[:20_000]},
-            },
-        )
-        return _event(payload)
 
 
 def _error_text(response: httpx.Response) -> str:

@@ -2,7 +2,6 @@ import anyio
 import httpx2 as httpx
 import pytest
 from urllib.parse import unquote
-from mcp.server.mcpserver.exceptions import ToolError
 
 from mcp_common.errors import IntegrationError
 from onec.client import OneCClient
@@ -48,33 +47,13 @@ def test_embedded_credentials_in_url_are_rejected():
         OneCClient("http://user:pass@onec.local/acc/odata/standard.odata", "mcp", "secret")
 
 
-def test_create_is_off_until_writes_enabled(monkeypatch):
-    monkeypatch.delenv("MCP_ENABLE_WRITES", raising=False)
-
-    def handler(_request: httpx.Request) -> httpx.Response:
-        raise AssertionError("POST не должен уходить, пока запись выключена")
+def test_tools_are_read_only():
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError(request.method)
 
     server = create_server(client=client_for(handler))
-    with pytest.raises(ToolError, match="MCP_ENABLE_WRITES"):
-        anyio.run(
-            server.call_tool,
-            "onec_create",
-            {"entity": "Catalog_Контрагенты", "payload_json": '{"Description":"Ромашка"}'},
-        )
-
-    monkeypatch.setenv("MCP_ENABLE_WRITES", "true")
-    seen: list[httpx.Request] = []
-
-    def allow(request: httpx.Request) -> httpx.Response:
-        seen.append(request)
-        return httpx.Response(201, json={"Ref_Key": GUID})
-
-    server = create_server(client=client_for(allow))
-    result = anyio.run(
-        server.call_tool,
-        "onec_create",
-        {"entity": "Catalog_Контрагенты", "payload_json": '{"Description":"Ромашка"}'},
-    )
-    assert result.is_error is False
-    assert seen[0].method == "POST"
-    assert GUID in result.content[0].text
+    tools = anyio.run(server.list_tools)
+    names = {tool.name for tool in tools}
+    assert {"onec_list", "onec_get", "onec_count"} <= names
+    assert not names & {"onec_create", "onec_update", "onec_post_document", "onec_unpost_document"}
+    assert all(tool.annotations is not None and tool.annotations.read_only_hint for tool in tools)

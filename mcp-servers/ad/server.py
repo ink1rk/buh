@@ -1,14 +1,12 @@
 from mcp.server.mcpserver import MCPServer
 
 from ad.client import ADClient
-from mcp_common.runtime import READ, WRITE, build_server, require_write, tool_result
+from mcp_common.runtime import READ, build_server, tool_result
 
 _INSTRUCTIONS = (
-    "Каталог Active Directory через сервисную учётную запись. "
+    "Каталог Active Directory только на чтение. "
     "Ищи людей, группы и компьютеры по короткому фрагменту имени, не выгружай домен целиком. "
-    "Изменяющие инструменты работают только при MCP_ENABLE_WRITES=true. "
-    "Встроенные администраторы и группы вроде Domain Admins этим сервером не меняются. "
-    "Пароли и хэши не запрашиваются и не возвращаются: новый пароль в ответ не повторяй."
+    "Пароли и хэши не запрашиваются и не возвращаются. Учётные записи этим сервером не меняются."
 )
 
 
@@ -53,35 +51,5 @@ def create_server(client: ADClient | None = None) -> MCPServer:
     def ad_list_ous(limit: int = 50, base_dn: str = "") -> str:
         """Список подразделений (OU) под базой поиска."""
         return tool_result(lambda: ad.list_ous(limit, base_dn or None))
-
-    @server.tool(annotations=WRITE)
-    def ad_unlock_user(identity: str) -> str:
-        """Снять блокировку входа (lockoutTime=0). Запись, не для привилегированных учёток."""
-        require_write()
-        return tool_result(lambda: ad.unlock_user(identity))
-
-    @server.tool(annotations=WRITE)
-    def ad_set_user_enabled(identity: str, enabled: bool) -> str:
-        """Включить или отключить учётную запись. Запись, не для привилегированных учёток."""
-        require_write()
-        return tool_result(lambda: ad.set_user_enabled(identity, enabled))
-
-    @server.tool(annotations=WRITE)
-    def ad_add_group_member(user_identity: str, group_identity: str) -> str:
-        """Добавить пользователя в обычную группу. Привилегированные группы запрещены."""
-        require_write()
-        return tool_result(lambda: ad.add_group_member(user_identity, group_identity))
-
-    @server.tool(annotations=WRITE)
-    def ad_remove_group_member(user_identity: str, group_identity: str) -> str:
-        """Убрать пользователя из обычной группы. Привилегированные группы запрещены."""
-        require_write()
-        return tool_result(lambda: ad.remove_group_member(user_identity, group_identity))
-
-    @server.tool(annotations=WRITE)
-    def ad_reset_password(identity: str, new_password: str, must_change: bool = True) -> str:
-        """Сбросить пароль по LDAPS. Пароль в ответе не возвращается и его не нужно повторять."""
-        require_write()
-        return tool_result(lambda: ad.reset_password(identity, new_password, must_change))
 
     return server

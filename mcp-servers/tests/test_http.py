@@ -60,7 +60,8 @@ def test_health_and_initialize(monkeypatch):
             json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
         )
         names = {item["name"] for item in tools.json()["result"]["tools"]}
-        assert {"ad_search_users", "ad_reset_password", "ad_ping"} <= names
+        assert {"ad_search_users", "ad_ping"} <= names
+        assert "ad_reset_password" not in names
 
 
 def test_gateway_token_does_not_cover_health(monkeypatch):

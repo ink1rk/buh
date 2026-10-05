@@ -1,8 +1,7 @@
-"""Чтение и точечные изменения Active Directory по LDAPS.
+"""Чтение Active Directory по LDAPS.
 
-Сервисная учётная запись задаётся окружением. Хэши паролей не читаются.
-Операции над встроенными администраторами и привилегированными группами
-отклоняются: их делают вне агента.
+Сервисная учётная запись задаётся окружением и должна иметь только права на чтение.
+Хэши паролей не читаются. Каталог этим клиентом не изменяется.
 """
 
 from __future__ import annotations
@@ -14,17 +13,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Iterator
 
-from ldap3 import (
-    BASE,
-    MODIFY_ADD,
-    MODIFY_DELETE,
-    MODIFY_REPLACE,
-    NONE,
-    SUBTREE,
-    Connection,
-    Server,
-    Tls,
-)
+from ldap3 import BASE, NONE, SUBTREE, Connection, Server, Tls
 from ldap3.utils.conv import escape_filter_chars
 
 from mcp_common.errors import IntegrationError
@@ -50,7 +39,6 @@ USER_ATTRS = [
     "lockoutTime",
     "whenCreated",
     "whenChanged",
-    "objectSid",
     "primaryGroupID",
     "description",
 ]
@@ -61,7 +49,6 @@ GROUP_ATTRS = [
     "description",
     "mail",
     "groupType",
-    "objectSid",
 ]
 COMPUTER_ATTRS = [
     "distinguishedName",
@@ -73,17 +60,6 @@ COMPUTER_ATTRS = [
     "userAccountControl",
 ]
 
-# RID известных привилегированных групп и встроенных учёток.
-_PROTECTED_GROUP_RIDS = {512, 518, 519, 544, 548, 551}
-_PROTECTED_USER_RIDS = {500, 502}
-_PROTECTED_GROUP_NAMES = {
-    "domain admins",
-    "enterprise admins",
-    "schema admins",
-    "administrators",
-    "account operators",
-    "backup operators",
-}
 _ACCOUNT_DISABLE = 0x0002
 
 
@@ -128,29 +104,6 @@ class ADSettings:
             base_dn=os.environ["AD_BASE_DN"].strip(),
             timeout=int(os.environ.get("AD_TIMEOUT", "15")),
         )
-
-
-def sid_rid(value: Any) -> int | None:
-    if isinstance(value, list):
-        value = value[0] if value else None
-    if value is None:
-        return None
-    if isinstance(value, str) and value.upper().startswith("S-"):
-        try:
-            return int(value.rsplit("-", 1)[-1])
-        except ValueError:
-            return None
-    if isinstance(value, (bytes, bytearray)):
-        blob = bytes(value)
-        if len(blob) < 8:
-            return None
-        count = blob[1]
-        start = 8 + 4 * (count - 1)
-        end = start + 4
-        if count < 1 or end > len(blob):
-            return None
-        return int.from_bytes(blob[start:end], "little")
-    return None
 
 
 def _first(value: Any) -> Any:
@@ -253,13 +206,6 @@ def public_computer(raw: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def group_is_protected(raw: dict[str, Any]) -> bool:
-    if sid_rid(raw.get("objectSid")) in _PROTECTED_GROUP_RIDS:
-        return True
-    name = str(_first(raw.get("sAMAccountName")) or _first(raw.get("cn")) or "")
-    return name.casefold() in _PROTECTED_GROUP_NAMES
-
-
 class ADClient:
     def __init__(self, settings: ADSettings, connector: Callable[[], Any] | None = None):
         self.settings = settings
@@ -269,11 +215,8 @@ class ADClient:
     def from_env(cls) -> ADClient:
         return cls(ADSettings.from_env())
 
-    def _safe(self, exc: Exception, extra: str = "") -> str:
-        text = str(exc).replace(self.settings.bind_password, "***")
-        if extra:
-            text = text.replace(extra, "***")
-        return text[:300]
+    def _safe(self, exc: Exception) -> str:
+        return str(exc).replace(self.settings.bind_password, "***")[:300]
 
     def _connect(self) -> Connection:
         try:
@@ -384,16 +327,6 @@ class ADClient:
             raise IntegrationError(f"LDAP: {description}")
         return [_raw_entry(entry) for entry in entries[:limit]]
 
-    def _modify(self, conn: Any, dn: str, changes: dict[str, Any], redact: str = "") -> None:
-        try:
-            ok = conn.modify(dn, changes)
-        except Exception as exc:
-            raise IntegrationError(f"LDAP: {self._safe(exc, redact)}") from exc
-        if not ok:
-            description = (getattr(conn, "result", None) or {}).get("description") or "modify failed"
-            message = str(description).replace(redact, "***") if redact else str(description)
-            raise IntegrationError(f"LDAP: {message}")
-
     def _user_by_identity(self, conn: Any, identity: str) -> dict[str, Any]:
         ident = self._identity(identity)
         if self._is_dn(ident):
@@ -422,26 +355,6 @@ class ADClient:
         if len(rows) > 1:
             raise IntegrationError("Найдено несколько групп, уточните имя или DN")
         return rows[0]
-
-    def _assert_mutable_user(self, conn: Any, user: dict[str, Any]) -> None:
-        if sid_rid(user.get("objectSid")) in _PROTECTED_USER_RIDS:
-            raise IntegrationError("Операция запрещена для встроенной учётной записи")
-        if _integer(user.get("primaryGroupID")) in _PROTECTED_GROUP_RIDS:
-            raise IntegrationError("Операция запрещена: основная группа учётной записи привилегированная")
-        groups = [str(item) for item in _as_list(user.get("memberOf"))]
-        if not groups:
-            return
-        parts = "".join(f"(distinguishedName={escape_filter_chars(dn)})" for dn in groups[:50])
-        rows = self._search(
-            conn,
-            f"(&(objectClass=group)(|{parts}))",
-            ["distinguishedName", "sAMAccountName", "cn", "objectSid"],
-            limit=50,
-        )
-        if any(group_is_protected(row) for row in rows):
-            raise IntegrationError(
-                "Операция запрещена: учётная запись входит в привилегированную группу"
-            )
 
     def ping(self) -> dict[str, Any]:
         with self._session() as conn:
@@ -534,70 +447,3 @@ class ADClient:
             for row in rows
         ]
         return {"count": len(items), "ous": items}
-
-    def unlock_user(self, identity: str) -> dict[str, Any]:
-        with self._session() as conn:
-            user = self._user_by_identity(conn, identity)
-            self._assert_mutable_user(conn, user)
-            self._modify(conn, str(user["dn"]), {"lockoutTime": [(MODIFY_REPLACE, ["0"])]})
-        return {"dn": user["dn"], "sam": _first(user.get("sAMAccountName")), "unlocked": True}
-
-    def set_user_enabled(self, identity: str, enabled: bool) -> dict[str, Any]:
-        with self._session() as conn:
-            user = self._user_by_identity(conn, identity)
-            self._assert_mutable_user(conn, user)
-            current = _integer(user.get("userAccountControl"), 512)
-            updated = current & ~_ACCOUNT_DISABLE if enabled else current | _ACCOUNT_DISABLE
-            self._modify(
-                conn,
-                str(user["dn"]),
-                {"userAccountControl": [(MODIFY_REPLACE, [str(updated)])]},
-            )
-        return {"dn": user["dn"], "sam": _first(user.get("sAMAccountName")), "enabled": enabled}
-
-    def _change_membership(self, user_identity: str, group_identity: str, add: bool) -> dict[str, Any]:
-        operation = MODIFY_ADD if add else MODIFY_DELETE
-        with self._session() as conn:
-            user = self._user_by_identity(conn, user_identity)
-            group = self._group_by_identity(conn, group_identity)
-            self._assert_mutable_user(conn, user)
-            if group_is_protected(group):
-                raise IntegrationError("Изменение привилегированной группы запрещено")
-            self._modify(conn, str(group["dn"]), {"member": [(operation, [str(user["dn"])])]})
-        return {
-            "user_dn": user["dn"],
-            "group_dn": group["dn"],
-            "added" if add else "removed": True,
-        }
-
-    def add_group_member(self, user_identity: str, group_identity: str) -> dict[str, Any]:
-        return self._change_membership(user_identity, group_identity, add=True)
-
-    def remove_group_member(self, user_identity: str, group_identity: str) -> dict[str, Any]:
-        return self._change_membership(user_identity, group_identity, add=False)
-
-    def reset_password(self, identity: str, new_password: str, must_change: bool = True) -> dict[str, Any]:
-        if not (self.settings.use_ssl or self.settings.starttls):
-            raise IntegrationError("Сброс пароля доступен только по LDAPS или StartTLS")
-        if not isinstance(new_password, str) or len(new_password) < 12 or len(new_password) > 256:
-            raise IntegrationError("Пароль должен быть от 12 до 256 символов")
-        if any(ord(ch) < 32 for ch in new_password):
-            raise IntegrationError("Пароль содержит недопустимые символы")
-        with self._session() as conn:
-            user = self._user_by_identity(conn, identity)
-            self._assert_mutable_user(conn, user)
-            sam = str(_first(user.get("sAMAccountName")) or "")
-            if sam and sam.casefold() in new_password.casefold():
-                raise IntegrationError("Пароль не должен содержать имя учётной записи")
-            encoded = f'"{new_password}"'.encode("utf-16-le")
-            changes: dict[str, Any] = {
-                "unicodePwd": [(MODIFY_REPLACE, [encoded])],
-                "pwdLastSet": [(MODIFY_REPLACE, ["0" if must_change else "-1"])],
-            }
-            self._modify(conn, str(user["dn"]), changes, redact=new_password)
-        return {
-            "dn": user["dn"],
-            "sam": _first(user.get("sAMAccountName")),
-            "reset": True,
-            "must_change": must_change,
-        }
