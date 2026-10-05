@@ -16,9 +16,9 @@ toolsets:
   - memory
 
 tts:
-  provider: elevenlabs
-  elevenlabs:
-    model_id: eleven_multilingual_v2
+  provider: edge
+  edge:
+    voice: ru-RU-DmitryNeural
 
 skills:
   external_dirs:

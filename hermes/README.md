@@ -12,7 +12,7 @@
 | `obsidian` | записать и найти заметку |
 | `browser` | страница в браузере Hermes |
 | `telegram` | бот владельца, без сбора чужих чатов |
-| `voice` | ElevenLabs |
+| `voice` | Edge TTS, голос ru-RU-DmitryNeural |
 
 Команды читает `python3 -m desk` из этого каталога.
 
@@ -24,7 +24,7 @@
 BRANCH=cursor/news-composition-and-prompt-d806 bash hermes/deploy-host.sh
 ```
 
-Скрипт клонирует репозиторий в `/opt/assistant`, поднимает ассистента на `127.0.0.1:8800` и ставит Hermes пользователю `cursor`. Чужие чаты Telegram не собираются. Ключи модели, ElevenLabs и бота дописываются в `/home/cursor/.hermes/.env`, затем `hermes model` и `hermes gateway setup`.
+Скрипт клонирует репозиторий в `/opt/assistant`, поднимает ассистента на `127.0.0.1:8800` и ставит Hermes пользователю `cursor`. Чужие чаты Telegram не собираются. Ключ модели и токен бота дописываются в `/home/cursor/.hermes/.env`, затем `hermes model` и `hermes gateway setup`. Голос — Edge, без ключа.
 
 Бинарник Hermes — по инструкции Nous Research. Профиль:
 
@@ -32,6 +32,6 @@ BRANCH=cursor/news-composition-and-prompt-d806 bash hermes/deploy-host.sh
 HERMES_HOME=~/.hermes sh hermes/install.sh
 ```
 
-Секреты в `$HERMES_HOME/.env`: ключ модели, `ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ID`, `TELEGRAM_BOT_TOKEN`. Образец — `env.example`.
+Секреты в `$HERMES_HOME/.env`: ключ модели и `TELEGRAM_BOT_TOKEN`. Образец — `env.example`. Голос Edge ключ не требует.
 
 В Telegram голос: `/voice tts`. Чужие личные чаты не включаем.

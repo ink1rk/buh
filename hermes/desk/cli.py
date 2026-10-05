@@ -10,7 +10,6 @@ import json
 import os
 import re
 import sys
-import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -46,7 +45,7 @@ def modules() -> dict:
             {"name": "obsidian", "via": str(vault_path())},
             {"name": "browser", "via": "hermes toolset browser"},
             {"name": "telegram", "via": "hermes gateway + tg-user"},
-            {"name": "voice", "via": "elevenlabs"},
+            {"name": "voice", "via": "edge"},
         ]
     }
 
@@ -106,31 +105,28 @@ def search_notes(query: str, limit: int = 20) -> dict:
 
 
 def speak(text: str) -> dict:
-    key = os.environ.get("ELEVENLABS_API_KEY", "").strip()
-    voice = os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
-    if not key or not voice:
-        return {
-            "ok": False,
-            "error": "нет ELEVENLABS_API_KEY или ELEVENLABS_VOICE_ID",
-        }
-    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice}"
-    payload = json.dumps({
-        "text": text,
-        "model_id": os.environ.get("ELEVENLABS_MODEL", "eleven_multilingual_v2"),
-    }).encode()
-    request = urllib.request.Request(
-        url,
-        data=payload,
-        headers={"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
-        method="POST",
-    )
+    """Озвучка через Edge TTS. Ключ не нужен."""
+    phrase = text.strip()
+    if not phrase:
+        return {"ok": False, "error": "пустой текст"}
+    voice = os.environ.get("EDGE_TTS_VOICE", "ru-RU-DmitryNeural").strip() or "ru-RU-DmitryNeural"
     out = Path(os.environ.get("VOICE_OUT", "/tmp/hermes-voice.mp3"))
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            out.write_bytes(response.read())
-    except urllib.error.HTTPError as exc:
-        return {"ok": False, "error": f"elevenlabs {exc.code}"}
-    return {"ok": True, "path": str(out), "bytes": out.stat().st_size}
+        import asyncio
+        import edge_tts
+    except ImportError:
+        return {"ok": False, "error": "нет пакета edge-tts"}
+
+    async def _save() -> None:
+        await edge_tts.Communicate(phrase, voice).save(str(out))
+
+    try:
+        asyncio.run(_save())
+    except Exception as exc:
+        return {"ok": False, "error": f"edge {type(exc).__name__}"}
+    if not out.is_file() or out.stat().st_size == 0:
+        return {"ok": False, "error": "edge не записал звук"}
+    return {"ok": True, "path": str(out), "bytes": out.stat().st_size, "voice": voice}
 
 
 def main(argv: list[str] | None = None) -> int:

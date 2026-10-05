@@ -33,16 +33,29 @@ def test_mail_reads_the_assistant(monkeypatch):
     assert cli.mail()["path"] == "/api/mail"
 
 
-def test_voice_without_a_key_does_not_call_the_network(monkeypatch):
+def test_voice_uses_edge_without_a_key(monkeypatch, tmp_path):
+    import sys
+    import types
+
     monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
-    monkeypatch.delenv("ELEVENLABS_VOICE_ID", raising=False)
+    out = tmp_path / "voice.mp3"
+    monkeypatch.setenv("VOICE_OUT", str(out))
+    seen = {}
 
-    def boom(*_a, **_k):
-        raise AssertionError("сеть не нужна")
+    class _Communicate:
+        def __init__(self, text, voice):
+            seen["text"] = text
+            seen["voice"] = voice
 
-    monkeypatch.setattr(cli.urllib.request, "urlopen", boom)
+        async def save(self, path):
+            Path(path).write_bytes(b"audio")
+
+    monkeypatch.setitem(sys.modules, "edge_tts", types.SimpleNamespace(Communicate=_Communicate))
     result = cli.speak("привет")
-    assert result["ok"] is False
+    assert result["ok"] is True
+    assert result["voice"] == "ru-RU-DmitryNeural"
+    assert seen == {"text": "привет", "voice": "ru-RU-DmitryNeural"}
+    assert out.read_bytes() == b"audio"
 
 
 def test_cli_prints_json(capsys):
