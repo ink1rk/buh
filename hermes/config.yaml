@@ -2,10 +2,12 @@
 # Скопировать в $HERMES_HOME/config.yaml, если своего ещё нет.
 
 model:
-  # Локальный шлюз Cursor. Ключ шлюза — OPENAI_API_KEY в .env.
+  # Локальный шлюз Cursor. Без key_env Hermes шлёт заглушку no-key-required,
+  # и шлюз отвечает 401.
   default: cursor-grok-4.6-high-fast
   provider: custom
   base_url: http://127.0.0.1:8791/v1
+  key_env: OPENAI_API_KEY
 
 toolsets:
   - hermes-cli
