@@ -1,26 +1,28 @@
 ---
 name: mail
-description: Почта Яндекса и Gmail — что пришло, живы ли ящики.
-version: 1.0.0
+description: Почта Яндекса и Gmail через MCP — папки, последние письма, частые отправители.
+version: 1.1.0
 platforms: [linux, macos]
 metadata:
   hermes:
-    tags: [email, mail]
+    tags: [email, mail, mcp]
     category: productivity
     related_skills: [desk, calendar]
-    requires_toolsets: [terminal]
 ---
 
 # Почта
 
-Ящики уже опрашиваются ассистентом. Не подключай IMAP сам и не проси пароль.
+Ящики Яндекса и Gmail — серверы MCP `yandex` и `gmail`. Пароль не проси и IMAP сам не поднимай.
 
-```bash
-PYTHONPATH=. python3 -m desk mail
-```
+Инструменты, которые нужно вызвать, а не описать словами:
 
-Смотри `accounts`, `last.new`, `last.financial`, `last.errors`.
+- `yandex_status` / `gmail_status` — ящик отвечает или нет
+- `yandex_folders` / `gmail_folders` — какие папки уже есть
+- `yandex_recent` / `gmail_recent` — последние письма
+- `yandex_frequent_senders` / `gmail_frequent_senders` — кто пишет чаще, по подсчёту
+- `yandex_create_folder` / `gmail_create_folder` — одна папка
+- `yandex_create_sender_folders` / `gmail_create_sender_folders` — папки для повторяющихся отправителей
 
-- Письмо от человека — скажи, от кого и о чём, если это есть в ответе.
-- Чек и счёт (`last.financial`) — это не переписка. Скажи, от кого письмо и какая сумма, если она есть в ответе. Операцию из чека не заводи.
-- Отправку письма не делай из этого навыка. Если владелец просит ответить — подготовь текст и жди явного «отправь».
+`create_sender_folders` создаёт только те папки, которые следуют из выборки. Письма он не перекладывает и не удаляет. Если ящик не настроен, так и скажи — не предлагай режим Agent и не говори, что почта только для чтения.
+
+Отправку письма не делай, пока владелец явно не скажет «отправь».

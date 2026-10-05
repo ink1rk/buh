@@ -9,6 +9,7 @@
 требует регистрации приложения в Google Cloud и обновления токенов, а пароль
 приложения даёт тот же доступ по тем же IMAP и SMTP.
 """
+import base64
 import email
 import email.header
 import email.utils
@@ -277,6 +278,92 @@ def looks_personal(sender, headers, cfg=None, lists=None):
     return not lowered.intersection(BULK_HEADERS)
 
 
+def encode_imap_utf7(text):
+    """Имена папок в IMAP — modified UTF-7, не обычный UTF-8.
+
+    Иначе `CREATE` с кириллицей сервер не понимает, а Python рвёт команду
+    на не-ASCII ещё до отправки.
+    """
+    out, buf = [], []
+
+    def flush():
+        if not buf:
+            return
+        raw = "".join(buf).encode("utf-16-be")
+        encoded = base64.b64encode(raw).decode("ascii").rstrip("=").replace("/", ",")
+        out.append("&" + encoded + "-")
+        buf.clear()
+
+    for char in text or "":
+        code = ord(char)
+        if char == "&":
+            flush()
+            out.append("&-")
+        elif 0x20 <= code <= 0x7E:
+            flush()
+            out.append(char)
+        else:
+            buf.append(char)
+    flush()
+    return "".join(out)
+
+
+def decode_imap_utf7(text):
+    """Обратное к `encode_imap_utf7`. Битый кусок оставляем как есть."""
+    source = text or ""
+    out, index = [], 0
+    while index < len(source):
+        if source[index] != "&":
+            out.append(source[index])
+            index += 1
+            continue
+        end = source.find("-", index + 1)
+        if end < 0:
+            out.append(source[index:])
+            break
+        chunk = source[index + 1:end]
+        index = end + 1
+        if chunk == "":
+            out.append("&")
+            continue
+        padded = chunk.replace(",", "/")
+        padded += "=" * ((4 - len(padded) % 4) % 4)
+        try:
+            out.append(base64.b64decode(padded).decode("utf-16-be"))
+        except (ValueError, UnicodeDecodeError):
+            out.append("&" + chunk + "-")
+    return "".join(out)
+
+
+_LIST_LINE = re.compile(
+    r'\(([^)]*)\)\s+(?:"([^"]*)"|NIL)\s+(?:"((?:\\.|[^"])*)"|(\S+))\s*$')
+
+
+def parse_list_line(raw):
+    """Ответ LIST: флаги, разделитель и имя папки уже в обычном тексте."""
+    text = raw.decode("utf-8", "replace") if isinstance(raw, bytes) else str(raw)
+    match = _LIST_LINE.match(text.strip())
+    if not match:
+        return text.strip().strip('"')
+    quoted, atom = match.group(3), match.group(4)
+    name = atom if quoted is None else quoted.replace('\\"', '"').replace("\\\\", "\\")
+    return decode_imap_utf7(name)
+
+
+def folder_name_for(address, display):
+    """Имя папки из отправителя. Разделители IMAP в имени не оставляем."""
+    address = (address or "").strip().lower()
+    display = (display or "").strip()
+    if display and "@" not in display and display.lower() != address:
+        base = display
+    else:
+        local, _, domain = address.partition("@")
+        base = domain or local
+    base = re.sub(r"[\\/\r\n\x00|]+", " ", base)
+    base = re.sub(r"\s+", " ", base).strip(" .")
+    return (base or "письма")[:60]
+
+
 class Mailbox:
     """Один почтовый ящик по IMAP."""
 
@@ -358,6 +445,156 @@ class Mailbox:
         finally:
             self._logout(client)
 
+    def list_folders(self):
+        """Все папки ящика. Имена уже раскодированы из modified UTF-7."""
+        client = self._connect()
+        try:
+            status, data = client.list()
+            if status != "OK":
+                raise ProviderError(f"IMAP {self.account.name}: список папок не прочитан",
+                                    retryable=True)
+            names = []
+            for line in data or []:
+                if not line:
+                    continue
+                name = parse_list_line(line)
+                if name and name not in names:
+                    names.append(name)
+            return names
+        finally:
+            self._logout(client)
+
+    def recent(self, folder=None, limit=15):
+        """Последние письма: отправитель, тема и дата, без тела."""
+        folder = folder or self.cfg.folder
+        limit = max(1, min(int(limit), 40))
+        client = self._connect()
+        try:
+            self._select_folder(client, folder, readonly=True)
+            uids = self._uids(client)[-limit:]
+            letters = []
+            for uid in uids:
+                header = self._peek_header(client, uid)
+                if header:
+                    header["uid"] = uid.decode() if isinstance(uid, bytes) else str(uid)
+                    letters.append(header)
+            return {"account": self.account.name, "folder": folder, "letters": letters}
+        finally:
+            self._logout(client)
+
+    def frequent_senders(self, folder=None, sample=200):
+        """Кто пишет чаще всего в последних `sample` письмах. Имена не выдумываются."""
+        folder = folder or self.cfg.folder
+        sample = max(1, min(int(sample), 500))
+        client = self._connect()
+        try:
+            self._select_folder(client, folder, readonly=True)
+            uids = self._uids(client)[-sample:]
+            counts = {}
+            for uid in uids:
+                header = self._peek_header(client, uid)
+                if not header or not header["address"]:
+                    continue
+                slot = counts.setdefault(header["address"], {
+                    "address": header["address"], "name": header["name"], "count": 0})
+                slot["count"] += 1
+                if header["name"]:
+                    slot["name"] = header["name"]
+            ranked = sorted(counts.values(),
+                            key=lambda item: (-item["count"], item["address"]))
+            return {"account": self.account.name, "folder": folder,
+                    "sampled": len(uids), "senders": ranked}
+        finally:
+            self._logout(client)
+
+    def create_folder(self, name):
+        """Создать папку. Письма не перекладывает и ничего не удаляет."""
+        clean = self._folder_name(name)
+        client = self._connect()
+        try:
+            status, data = client.create(encode_imap_utf7(clean))
+            if status == "OK":
+                return {"account": self.account.name, "folder": clean, "created": True}
+            text = _imap_text(data).lower()
+            if "exist" in text or "already" in text:
+                return {"account": self.account.name, "folder": clean, "created": False,
+                        "reason": "уже есть"}
+            raise ProviderError(f"IMAP {self.account.name}: папка не создана ({text or status})",
+                                retryable=False)
+        finally:
+            self._logout(client)
+
+    def create_sender_folders(self, folder=None, sample=200, min_count=5, max_folders=10):
+        """Папки для отправителей, которые и так повторяются в выборке.
+
+        Порог и число папок приходят от вызывающего. Кого в выборке нет —
+        того и в списке нет: имена из частоты писем, не из догадки.
+        """
+        ranking = self.frequent_senders(folder, sample)
+        min_count = max(2, min(int(min_count), 100))
+        max_folders = max(1, min(int(max_folders), 30))
+        existing = {item.casefold() for item in self.list_folders()}
+        created, already = [], []
+        for sender in ranking["senders"]:
+            if sender["count"] < min_count or len(created) >= max_folders:
+                continue
+            name = folder_name_for(sender["address"], sender["name"])
+            # Два адреса с одним именем не должны делить одну папку.
+            if any(item["folder"].casefold() == name.casefold() for item in created):
+                domain = sender["address"].split("@")[-1]
+                name = folder_name_for(sender["address"], f"{name} {domain}")
+            if name.casefold() in existing:
+                already.append({"folder": name, **sender})
+                continue
+            made = self.create_folder(name)
+            existing.add(made["folder"].casefold())
+            record = {"folder": made["folder"], **sender}
+            if made["created"]:
+                created.append(record)
+            else:
+                already.append(record)
+        return {"account": self.account.name, "folder": ranking["folder"],
+                "sampled": ranking["sampled"], "min_count": min_count,
+                "created": created, "already": already,
+                "senders": ranking["senders"][:30]}
+
+    def _folder_name(self, name):
+        clean = re.sub(r"[\r\n\x00]+", " ", (name or "")).strip()
+        if not clean or clean in (".", ".."):
+            raise ProviderError("пустое имя папки", retryable=False)
+        if clean.upper() == "INBOX":
+            raise ProviderError("INBOX уже есть", retryable=False)
+        if len(clean) > 80:
+            raise ProviderError("имя папки длиннее 80 знаков", retryable=False)
+        return clean
+
+    def _select_folder(self, client, folder, readonly):
+        status, _ = client.select(folder, readonly=readonly)
+        if status != "OK":
+            raise ProviderError(f"нет папки {folder}", retryable=False)
+
+    def _uids(self, client):
+        status, data = client.uid("search", None, "ALL")
+        if status != "OK" or not data:
+            return []
+        return (data[0] or b"").split()
+
+    def _peek_header(self, client, uid):
+        status, raw = client.uid(
+            "fetch", uid, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])")
+        if status != "OK" or not raw:
+            return None
+        payload = _fetch_payload(raw)
+        if not payload:
+            return None
+        message = email.message_from_bytes(payload)
+        name, address = email.utils.parseaddr(_decode(message.get("From")))
+        if not address:
+            return None
+        return {"name": name or address.split("@")[0], "address": address.lower(),
+                "subject": _decode(message.get("Subject")),
+                "date": _decode(message.get("Date"))}
+
     def _select(self, client):
         status, _ = client.select(self.cfg.folder, readonly=True)
         if status != "OK":
@@ -411,6 +648,24 @@ class Mailbox:
             client.logout()
         except Exception:
             pass                       # соединение всё равно закрывается
+
+
+def _fetch_payload(raw):
+    """Тело из ответа FETCH: у imaplib это кортеж, у подмены — тоже."""
+    for item in raw:
+        if isinstance(item, tuple) and len(item) >= 2 and isinstance(item[1], (bytes, bytearray)):
+            return bytes(item[1])
+    return None
+
+
+def _imap_text(data):
+    parts = []
+    for item in data or []:
+        if isinstance(item, bytes):
+            parts.append(item.decode("utf-8", "replace"))
+        elif isinstance(item, str):
+            parts.append(item)
+    return " ".join(parts).strip()
 
 
 class EmailActionProvider(ActionProvider):

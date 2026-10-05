@@ -40,3 +40,82 @@ skills:
 # С этой сети api.telegram.org напрямую не открывается.
 telegram:
   proxy_url: http://172.20.20.231:8080
+
+# MCP на этой же машине. Hermes запускает каждый сервер сам, по stdio.
+# Отдельная ВМ только скопировала бы пароли из /etc/assistant.env и добавила
+# лишний переход. Финансовый MCP не поднимаем: приложения финансов больше нет.
+# Мост с телефоном — прежний сервер проекта, тоже stdio.
+mcp_servers:
+  yandex:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "yandex"]
+    cwd: /opt/assistant
+    timeout: 120
+    connect_timeout: 30
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      ASSISTANT_ENV_FILE: /etc/assistant.env
+      TZ_NAME: Europe/Moscow
+  gmail:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "gmail"]
+    cwd: /opt/assistant
+    timeout: 120
+    connect_timeout: 30
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      ASSISTANT_ENV_FILE: /etc/assistant.env
+      TZ_NAME: Europe/Moscow
+  calendar:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "calendar"]
+    cwd: /opt/assistant
+    timeout: 90
+    connect_timeout: 30
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      ASSISTANT_ENV_FILE: /etc/assistant.env
+      TZ_NAME: Europe/Moscow
+      HTTP_PROXY: http://172.20.20.231:8080
+      HTTPS_PROXY: http://172.20.20.231:8080
+      NO_PROXY: localhost,127.0.0.1,::1,172.20.20.0/24,10.0.0.0/8,192.168.0.0/16,.lan
+  notes:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "notes"]
+    cwd: /opt/assistant
+    timeout: 30
+    connect_timeout: 20
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      OBSIDIAN_VAULT_PATH: /opt/assistant/hermes/vault
+  telegram:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "telegram"]
+    cwd: /opt/assistant
+    timeout: 30
+    connect_timeout: 20
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      TG_USER_URL: http://127.0.0.1:8810
+  voice:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "voice"]
+    cwd: /opt/assistant
+    timeout: 60
+    connect_timeout: 20
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      EDGE_TTS_VOICE: ru-RU-DmitryNeural
+      HTTP_PROXY: http://172.20.20.231:8080
+      HTTPS_PROXY: http://172.20.20.231:8080
+      NO_PROXY: localhost,127.0.0.1,::1,172.20.20.0/24,10.0.0.0/8,192.168.0.0/16,.lan
+  phone:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "phone", "--stdio"]
+    cwd: /opt/assistant
+    timeout: 30
+    connect_timeout: 20
+    env:
+      PYTHONPATH: /opt/assistant
+      PHONE_DB: /opt/assistant/phone.db
+      TZ_NAME: Europe/Moscow

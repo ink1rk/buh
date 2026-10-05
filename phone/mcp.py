@@ -25,7 +25,10 @@ import sys
 from dataclasses import dataclass, field
 
 LATEST = "2026-07-28"
-LEGACY = ("2025-11-25", "2025-06-18")
+# 2025-11-25 — то, что сейчас присылает Hermes. 2025-03-26 и 2024-11-05
+# остаются у Cursor и Claude Desktop. Неизвестную версию не выдумываем:
+# на initialize отвечаем самой новой из этого списка.
+LEGACY = ("2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05")
 SUPPORTED = (LATEST,) + LEGACY
 
 META_VERSION = "io.modelcontextprotocol/protocolVersion"
@@ -334,9 +337,15 @@ def serve_stdio(server, stdin=None, stdout=None):
         except ValueError:
             _write(stdout, _error(None, PARSE_ERROR, "не разобрать JSON"))
             continue
-        reply = server.handle(message, transport="stdio")
-        if reply.body is not None:
-            _write(stdout, reply.body)
+        # Некоторые клиенты присылают пачку сообщений одним массивом.
+        batch = message if isinstance(message, list) else [message]
+        for item in batch:
+            if not isinstance(item, dict):
+                _write(stdout, _error(None, INVALID_REQUEST, "элемент пакета не объект"))
+                continue
+            reply = server.handle(item, transport="stdio")
+            if reply.body is not None:
+                _write(stdout, reply.body)
 
 
 def _write(stream, payload):

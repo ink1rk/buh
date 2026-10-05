@@ -1,6 +1,6 @@
 # Hermes
 
-Разговор, навыки и голос — [Hermes Agent](https://hermes-agent.nousresearch.com). Почта и календарь остаются сервисом ассистента на этой машине. Память — vault Obsidian в `vault/`.
+Разговор, навыки и голос — [Hermes Agent](https://hermes-agent.nousresearch.com). Почта, календарь, заметки, Telegram и голос отдаются Hermes как MCP на этой же машине (`mcp_servers` в `config.yaml`). Отдельный хост под MCP не нужен: секреты ящиков уже здесь. Память — vault Obsidian в `vault/`. Финансовый MCP не поднят.
 
 ## Модули
 

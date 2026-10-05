@@ -1,24 +1,21 @@
 ---
 name: calendar
-description: Расписание — встречи CalDAV.
-version: 1.0.0
+description: Расписание CalDAV через MCP — Яндекс и Google, если Google подключён.
+version: 1.1.0
 platforms: [linux, macos]
 metadata:
   hermes:
-    tags: [calendar, caldav]
+    tags: [calendar, caldav, mcp]
     category: productivity
     related_skills: [desk, mail]
-    requires_toolsets: [terminal]
 ---
 
 # Календарь
 
-```bash
-PYTHONPATH=. python3 -m desk calendar
-```
+Сервер MCP `calendar`.
 
-В `events` встречи календаря. Событие на весь день — не созвон в 00:00.
+- `calendar_status` — какие календари живы. Google отмечен отдельно: пароль IMAP Gmail его не открывает.
+- `calendar_events` — встречи на ближайшие дни.
+- `calendar_create` — записать встречу, когда владелец просит.
 
-Говори ближайшее впереди: название, день, время или «весь день». Занятое время не забивай новой встречей, пока владелец сам не попросил записать поверх.
-
-Обновить окно с сервера: `POST /api/calendar/refresh` на `ASSISTANT_URL`, если список пуст и `last.errors` не пуст. Пустой список без ошибок значит, что встреч нет.
+Событие на весь день — не созвон в 00:00. Занятое время не забивай новой встречей, пока владелец сам не попросил записать поверх. Пустой список без ошибки значит, что встреч нет.
