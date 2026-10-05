@@ -1,13 +1,13 @@
 ---
 name: calendar
-description: Расписание — встречи CalDAV и платежи из финансового календаря одним списком.
+description: Расписание — встречи CalDAV.
 version: 1.0.0
 platforms: [linux, macos]
 metadata:
   hermes:
     tags: [calendar, caldav]
     category: productivity
-    related_skills: [desk, mail, finance]
+    related_skills: [desk, mail]
     requires_toolsets: [terminal]
 ---
 
@@ -17,7 +17,7 @@ metadata:
 PYTHONPATH=. python3 -m desk calendar
 ```
 
-В `events` и встречи Яндекса, и платежи с `account: finance`. Событие на весь день — платёж, не созвон в 00:00.
+В `events` встречи календаря. Событие на весь день — не созвон в 00:00.
 
 Говори ближайшее впереди: название, день, время или «весь день». Занятое время не забивай новой встречей, пока владелец сам не попросил записать поверх.
 

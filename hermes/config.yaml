@@ -7,20 +7,12 @@ toolsets:
   - terminal
   - file
   - browser
-  - mcp
   - memory
 
 tts:
   provider: elevenlabs
   elevenlabs:
     model_id: eleven_multilingual_v2
-
-# Финансы по HTTP MCP. Токен подставляет install.sh из окружения MCP_TOKEN.
-mcp_servers:
-  finance:
-    url: http://127.0.0.1/api/v1/mcp
-    headers:
-      Authorization: "Bearer ${MCP_TOKEN}"
 
 skills:
   external_dirs:

@@ -22,7 +22,7 @@ OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b-instruct")
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://127.0.0.1:8791/v1")
 GATEWAY_KEY = os.environ.get("GATEWAY_KEY", "")
 GATEWAY_MODEL = os.environ.get("GATEWAY_MODEL", "cursor-grok-4.6-high-fast")
-FINANCE_API = os.environ.get("FINANCE_API", "http://127.0.0.1/api/v1")
+FINANCE_API = os.environ.get("FINANCE_API", "http://127.0.0.1/api/v1").strip().rstrip("/")
 TG_USER_URL = os.environ.get("TG_USER_URL", "http://127.0.0.1:8810")
 DB = os.environ.get("ASSISTANT_DB", "/opt/assistant/assistant.db")
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
@@ -351,6 +351,8 @@ def _finance_fetch():
 
 
 def finance_context():
+    if not FINANCE_API:
+        return ""
     try:
         d = finance_data()
         lines = [

@@ -1,6 +1,6 @@
 ---
 name: desk
-description: Стол владельца — какой модуль звать для почты, календаря, денег, заметок, браузера, Telegram и голоса.
+description: Стол владельца — какой модуль звать для почты, календаря, заметок, браузера, Telegram и голоса.
 version: 1.0.0
 platforms: [linux, macos]
 metadata:
@@ -24,7 +24,6 @@ PYTHONPATH=. python3 -m desk modules
 |---|---|
 | почта | `python3 -m desk mail` |
 | расписание | `python3 -m desk calendar` |
-| деньги, бюджет, выписка | `python3 -m desk finance` |
 | запомнить, заметка | `python3 -m desk note "заголовок" "текст"` |
 | найти в заметках | `python3 -m desk search "фраза"` |
 | непрочитанное в Telegram | `python3 -m desk telegram` |

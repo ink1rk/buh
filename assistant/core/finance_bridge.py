@@ -21,6 +21,8 @@ def _client():
 
 def push_mail(letter: dict) -> dict | None:
     """Отдать финансовому приложению письмо про деньги. None — нечего отдавать."""
+    if not config.finance_api:
+        return None
     blob = f"{letter.get('subject') or ''}\n{letter.get('text') or ''}"
     amount = extract_amount(blob)
     when = extract_due_date(blob)
@@ -42,6 +44,8 @@ def push_mail(letter: dict) -> dict | None:
 
 def finance_schedule(days=14) -> list[Event]:
     """Платежи из финансового календаря — тем же типом, что и встречи CalDAV."""
+    if not config.finance_api:
+        return []
     try:
         with _client() as client:
             rows = client.get(f"{config.finance_api}/calendar").json()
@@ -79,6 +83,8 @@ def finance_schedule(days=14) -> list[Event]:
 
 def finance_snapshot() -> dict:
     """То, что ассистенту нужно сказать о деньгах, одним запросом."""
+    if not config.finance_api:
+        return {}
     out = {}
     try:
         with _client() as client:

@@ -9,7 +9,7 @@ from desk import cli
 
 def test_modules_lists_the_desk():
     names = [item["name"] for item in cli.modules()["modules"]]
-    assert names == ["mail", "calendar", "finance", "obsidian", "browser", "telegram", "voice"]
+    assert names == ["mail", "calendar", "obsidian", "browser", "telegram", "voice"]
 
 
 def test_note_lands_in_the_inbox(tmp_path, monkeypatch):
@@ -31,11 +31,6 @@ def test_a_note_title_cannot_leave_the_vault(tmp_path, monkeypatch):
 def test_mail_reads_the_assistant(monkeypatch):
     monkeypatch.setattr(cli, "_assistant", lambda path: {"accounts": ["a"], "path": path})
     assert cli.mail()["path"] == "/api/mail"
-
-
-def test_finance_reads_the_review(monkeypatch):
-    monkeypatch.setattr(cli, "_finance", lambda path: {"headline": "остаётся", "path": path})
-    assert cli.finance()["path"] == "/analytics/review"
 
 
 def test_voice_without_a_key_does_not_call_the_network(monkeypatch):

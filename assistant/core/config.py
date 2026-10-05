@@ -260,7 +260,7 @@ class CalendarConfig:
 @dataclass(frozen=True)
 class Config:
     db_path: str = os.environ.get("ASSISTANT_DB", "/opt/assistant/assistant.db")
-    finance_api: str = os.environ.get("FINANCE_API", "http://127.0.0.1/api/v1")
+    finance_api: str = os.environ.get("FINANCE_API", "http://127.0.0.1/api/v1").strip().rstrip("/")
     tz: zoneinfo.ZoneInfo = zoneinfo.ZoneInfo(os.environ.get("TZ_NAME", "Europe/Moscow"))
     owner_name: str = os.environ.get("OWNER_NAME", "").strip()
     owner_gender: str = os.environ.get("OWNER_GENDER", "male")

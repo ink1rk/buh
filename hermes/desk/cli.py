@@ -33,11 +33,6 @@ def _assistant(path: str) -> dict | list:
     return _get(f"{base}{path}")
 
 
-def _finance(path: str) -> dict | list:
-    base = os.environ.get("FINANCE_API", "http://127.0.0.1/api/v1").rstrip("/")
-    return _get(f"{base}{path}")
-
-
 def _tg(path: str) -> dict | list:
     base = os.environ.get("TG_USER_URL", "http://127.0.0.1:8810").rstrip("/")
     return _get(f"{base}{path}")
@@ -48,7 +43,6 @@ def modules() -> dict:
         "modules": [
             {"name": "mail", "via": "assistant /api/mail"},
             {"name": "calendar", "via": "assistant /api/calendar"},
-            {"name": "finance", "via": "finance /analytics/review"},
             {"name": "obsidian", "via": str(vault_path())},
             {"name": "browser", "via": "hermes toolset browser"},
             {"name": "telegram", "via": "hermes gateway + tg-user"},
@@ -65,11 +59,6 @@ def mail() -> dict:
 def calendar(days: int = 14) -> dict:
     data = _assistant(f"/api/calendar?days={days}")
     return data if isinstance(data, dict) else {"events": data}
-
-
-def finance() -> dict:
-    review = _finance("/analytics/review")
-    return review if isinstance(review, dict) else {"review": review}
 
 
 def telegram_unread() -> dict:
@@ -155,8 +144,6 @@ def main(argv: list[str] | None = None) -> int:
         elif command == "calendar":
             days = int(args[1]) if len(args) > 1 else 14
             result = calendar(days)
-        elif command == "finance":
-            result = finance()
         elif command == "note":
             if len(args) < 3:
                 result = {"ok": False, "error": "нужны заголовок и текст"}

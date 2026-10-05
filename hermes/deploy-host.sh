@@ -1,6 +1,5 @@
 #!/bin/sh
-# Ставит Hermes на Ubuntu: финансы, ассистент, навыки и vault.
-# Виртуалка pfa для этого больше не нужна.
+# Ставит Hermes на Ubuntu: ассистент, навыки и vault.
 # Запуск от root: bash hermes/deploy-host.sh
 set -eu
 
@@ -16,12 +15,7 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq ca-certificates curl git openssl sudo python3 python3-venv python3-pip libatomic1 >/dev/null
-
-if ! command -v docker >/dev/null 2>&1; then
-  curl -fsSL https://get.docker.com | sh
-fi
-systemctl enable --now docker
+apt-get install -y -qq ca-certificates curl git sudo python3 python3-venv python3-pip libatomic1 >/dev/null
 
 if [ ! -d "${INSTALL_DIR}/.git" ]; then
   git clone --branch "${BRANCH}" "${REPO_URL}" "${INSTALL_DIR}"
@@ -34,28 +28,13 @@ fi
 if ! id "${HERMES_USER}" >/dev/null 2>&1; then
   useradd --create-home --shell /bin/bash "${HERMES_USER}"
 fi
-usermod -aG docker "${HERMES_USER}" || true
 chown -R "${HERMES_USER}:${HERMES_USER}" "${INSTALL_DIR}"
 
-if [ ! -f /etc/finance.env ]; then
-  MCP_TOKEN="$(openssl rand -hex 24)"
-  SECRET_KEY="$(openssl rand -hex 32)"
-  umask 077
-  cat > /etc/finance.env <<EOF
-APP_PORT=80
-SECRET_KEY=${SECRET_KEY}
-MCP_TOKEN=${MCP_TOKEN}
-OPENAI_API_KEY=
-DEFAULT_USER_NAME=Кирилл
-TIMEZONE=Europe/Moscow
-EOF
-  chmod 600 /etc/finance.env
+# Финансовое приложение на этой машине не запускаем. Если оно осталось от прошлой установки — снимаем.
+if command -v docker >/dev/null 2>&1 && [ -f "${INSTALL_DIR}/docker-compose.prod.yml" ]; then
+  docker compose -p finance -f "${INSTALL_DIR}/docker-compose.prod.yml" down -v --remove-orphans || true
 fi
-# shellcheck disable=SC1091
-. /etc/finance.env
-
-cd "${INSTALL_DIR}"
-docker compose -p finance -f docker-compose.prod.yml --env-file /etc/finance.env up -d --build
+rm -f /etc/finance.env
 
 python3 -m venv "${INSTALL_DIR}/.venv"
 "${INSTALL_DIR}/.venv/bin/pip" install -q -U pip
@@ -68,7 +47,7 @@ ASSISTANT_DB=${INSTALL_DIR}/assistant.db
 TZ_NAME=Europe/Moscow
 OWNER_NAME=Кирилл
 ASSISTANT_NAME=Джарвис
-FINANCE_API=http://127.0.0.1/api/v1
+FINANCE_API=
 TG_USER_URL=http://127.0.0.1:8810
 TG_INGEST=0
 NOTIFY=0
@@ -96,12 +75,12 @@ fi
 HERMES_HOME="/home/${HERMES_USER}/.hermes"
 mkdir -p "${HERMES_HOME}"
 chown "${HERMES_USER}:${HERMES_USER}" "${HERMES_HOME}"
-sudo -u "${HERMES_USER}" -H env HERMES_HOME="${HERMES_HOME}" MCP_TOKEN="${MCP_TOKEN}" \
+sudo -u "${HERMES_USER}" -H env HERMES_HOME="${HERMES_HOME}" \
   sh "${INSTALL_DIR}/hermes/install.sh"
+rm -f "${HERMES_HOME}/skills/finance"
 # install.sh не затирает уже созданный Hermes-ом config.yaml — кладём наш профиль.
 cp "${INSTALL_DIR}/hermes/config.yaml" "${HERMES_HOME}/config.yaml"
 sed -i "s|/opt/assistant/hermes/skills|${INSTALL_DIR}/hermes/skills|" "${HERMES_HOME}/config.yaml"
-sed -i "s|Bearer \${MCP_TOKEN}|Bearer ${MCP_TOKEN}|" "${HERMES_HOME}/config.yaml"
 umask 077
 cat > "${HERMES_HOME}/.env" <<EOF
 ELEVENLABS_API_KEY=
@@ -111,9 +90,7 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_ALLOWED_USERS=
 OBSIDIAN_VAULT_PATH=${INSTALL_DIR}/hermes/vault
 ASSISTANT_URL=http://127.0.0.1:8800
-FINANCE_API=http://127.0.0.1/api/v1
 TG_USER_URL=http://127.0.0.1:8810
-MCP_TOKEN=${MCP_TOKEN}
 EOF
 chown "${HERMES_USER}:${HERMES_USER}" "${HERMES_HOME}/config.yaml" "${HERMES_HOME}/.env"
 chmod 600 "${HERMES_HOME}/.env"
@@ -124,22 +101,21 @@ grep -q 'PYTHONPATH=/opt/assistant/hermes' "${BASHRC}" 2>/dev/null || echo "${MA
 grep -q 'OBSIDIAN_VAULT_PATH=' "${BASHRC}" 2>/dev/null || echo "export OBSIDIAN_VAULT_PATH=${INSTALL_DIR}/hermes/vault" >> "${BASHRC}"
 chown "${HERMES_USER}:${HERMES_USER}" "${BASHRC}"
 
-echo "жду финансы и ассистента"
+echo "жду ассистента"
 ok=0
 i=0
-while [ "$i" -lt 60 ]; do
-  if curl -fsS http://127.0.0.1/health >/dev/null 2>&1 && curl -fsS http://127.0.0.1:8800/health >/dev/null 2>&1; then
+while [ "$i" -lt 30 ]; do
+  if curl -fsS http://127.0.0.1:8800/health >/dev/null 2>&1; then
     ok=1
     break
   fi
   i=$((i + 1))
-  sleep 5
+  sleep 2
 done
 sudo -u "${HERMES_USER}" -H env \
   PYTHONPATH="${INSTALL_DIR}/hermes" \
   OBSIDIAN_VAULT_PATH="${INSTALL_DIR}/hermes/vault" \
   ASSISTANT_URL=http://127.0.0.1:8800 \
-  FINANCE_API=http://127.0.0.1/api/v1 \
   python3 -m desk modules
 if [ "$ok" -ne 1 ]; then
   echo "сервисы не ответили на /health" >&2
