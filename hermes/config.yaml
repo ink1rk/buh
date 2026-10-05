@@ -9,6 +9,10 @@ model:
   base_url: http://127.0.0.1:8791/v1
   key_env: OPENAI_API_KEY
 
+# Меню команд Telegram и служебные фразы Hermes.
+display:
+  language: ru
+
 toolsets:
   - hermes-cli
   - skills
