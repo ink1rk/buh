@@ -51,6 +51,13 @@ def _ask(model: str, prompt: str) -> tuple[int, str]:
 
 
 class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        path = self.path.split("?", 1)[0].rstrip("/") or "/"
+        if path == "/health":
+            self._json(200, {"status": "ok"})
+            return
+        self._json(404, {"error": {"message": "not found"}})
+
     def do_POST(self):
         path = self.path.split("?", 1)[0].rstrip("/")
         if path not in ("/v1/chat/completions", "/chat/completions"):
