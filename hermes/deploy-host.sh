@@ -59,8 +59,15 @@ chown root:"${HERMES_USER}" /etc/assistant.env
 chmod 640 /etc/assistant.env
 
 install -m 644 "${INSTALL_DIR}/hermes/assistant.service" /etc/systemd/system/assistant.service
+if [ -f /etc/cursor-gateway.env ]; then
+  install -d -o "${HERMES_USER}" -g "${HERMES_USER}" /var/lib/cursor-gateway
+  install -m 644 "${INSTALL_DIR}/hermes/cursor-gateway.service" /etc/systemd/system/cursor-gateway.service
+fi
 systemctl daemon-reload
 systemctl enable --now assistant.service
+if [ -f /etc/cursor-gateway.env ]; then
+  systemctl enable --now cursor-gateway.service
+fi
 
 # Бинарник Hermes — под пользователем, который им пользуется.
 # С этой сети Vercel часто отвечает 403, поэтому запасной адрес — скрипт в GitHub.

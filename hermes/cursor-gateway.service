@@ -1,0 +1,18 @@
+[Unit]
+Description=Cursor gateway for Hermes
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cursor
+Group=cursor
+Environment=HOME=/home/cursor
+Environment=PATH=/home/cursor/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/etc/cursor-gateway.env
+ExecStart=/usr/bin/python3 /opt/assistant/hermes/cursor_gateway.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
