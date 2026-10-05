@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: mcp-systems
+resources:
+  - namespace.yaml
+  - ad.yaml
+  - exchange.yaml
+  - onec.yaml
+images:
+  - name: mcp-ad
+    newName: mcp-ad
+    newTag: local
+  - name: mcp-exchange
+    newName: mcp-exchange
+    newTag: local
+  - name: mcp-onec
+    newName: mcp-onec
+    newTag: local

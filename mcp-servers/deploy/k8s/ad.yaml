@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-ad-config
+  namespace: mcp-systems
+data:
+  AD_SERVER: "dc.example.local"
+  AD_PORT: "636"
+  AD_USE_SSL: "true"
+  AD_STARTTLS: "false"
+  AD_TLS_VERIFY: "true"
+  AD_BASE_DN: "DC=example,DC=local"
+  AD_TIMEOUT: "15"
+  MCP_ENABLE_WRITES: "false"
+  MCP_STATELESS: "true"
+  MCP_JSON_RESPONSE: "true"
+  MCP_RESOURCE_URL: "http://mcp-ad.mcp-systems.svc.cluster.local:8080"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-ad
+  namespace: mcp-systems
+  labels:
+    app.kubernetes.io/name: mcp-ad
+    app.kubernetes.io/part-of: mcp-enterprise
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mcp-ad
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mcp-ad
+        app.kubernetes.io/part-of: mcp-enterprise
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mcp-ad
+          image: mcp-ad:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: mcp-ad-config
+            - secretRef:
+                name: mcp-ad-credentials
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-ad
+  namespace: mcp-systems
+  labels:
+    app.kubernetes.io/name: mcp-ad
+spec:
+  selector:
+    app.kubernetes.io/name: mcp-ad
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
