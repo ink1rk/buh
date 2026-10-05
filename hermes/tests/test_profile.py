@@ -17,3 +17,4 @@ def test_user_profile_fits_the_memory_budget():
     assert "ITMS" in text and "NetAtlas" in text
     assert "не соглашайся со мной автоматически" in text.lower()
     assert "велосипед" in text and "вино" in text
+    assert "delegate_task" in text and "Cursor" in text
