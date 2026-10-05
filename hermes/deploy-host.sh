@@ -134,6 +134,12 @@ Environment=NO_PROXY=${PROXY_SKIP}
 Environment=no_proxy=${PROXY_SKIP}
 EOF
 chown "${HERMES_USER}:${HERMES_USER}" "/home/${HERMES_USER}/.config/systemd/user/hermes-gateway.service.d/proxy.conf"
+# Профиль владельца. Уже заполненный USER.md не затираем: Hermes дописывает его сам.
+if [ ! -s "${HERMES_HOME}/memories/USER.md" ]; then
+  install -d -o "${HERMES_USER}" -g "${HERMES_USER}" -m 700 "${HERMES_HOME}/memories"
+  install -o "${HERMES_USER}" -g "${HERMES_USER}" -m 600 \
+    "${INSTALL_DIR}/hermes/memories/USER.md" "${HERMES_HOME}/memories/USER.md"
+fi
 chown "${HERMES_USER}:${HERMES_USER}" "${HERMES_HOME}/config.yaml" "${HERMES_HOME}/.env"
 chmod 600 "${HERMES_HOME}/.env"
 
