@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 GATEWAY_KEY = os.environ.get("GATEWAY_KEY", "").strip()
@@ -29,6 +30,42 @@ def _prompt(messages: list) -> str:
             )
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
+
+
+def _completion(model: str, text: str) -> dict:
+    return {
+        "id": "chatcmpl-local",
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": model,
+        "choices": [{
+            "index": 0,
+            "message": {"role": "assistant", "content": text},
+            "finish_reason": "stop",
+        }],
+    }
+
+
+def _sse(model: str, text: str) -> bytes:
+    """OpenAI chat stream. Hermes opens stream=True and treats a bare JSON
+    body as an empty stream with no finish_reason."""
+    created = int(time.time())
+
+    def chunk(delta: dict, finish: str | None) -> bytes:
+        payload = {
+            "id": "chatcmpl-local",
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [{"index": 0, "delta": delta, "finish_reason": finish}],
+        }
+        return b"data: " + json.dumps(payload, ensure_ascii=False).encode() + b"\n\n"
+
+    return b"".join((
+        chunk({"role": "assistant", "content": text}, None),
+        chunk({}, "stop"),
+        b"data: [DONE]\n\n",
+    ))
 
 
 def _ask(model: str, prompt: str) -> tuple[int, str]:
@@ -81,12 +118,23 @@ class Handler(BaseHTTPRequestHandler):
         if code != 0:
             self._json(502, {"error": {"message": text[:500]}})
             return
-        self._json(200, {"choices": [{"message": {"role": "assistant", "content": text}}]})
+        if body.get("stream"):
+            self._events(_sse(model, text))
+            return
+        self._json(200, _completion(model, text))
 
     def _json(self, status: int, payload: dict) -> None:
         data = json.dumps(payload, ensure_ascii=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _events(self, data: bytes) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
