@@ -19,7 +19,15 @@
 
 ## Поставить
 
-Бинарник Hermes — по инструкции Nous Research (`hermes model`, затем `hermes gateway setup` для Telegram). Профиль:
+На Ubuntu от root:
+
+```sh
+BRANCH=cursor/news-composition-and-prompt-d806 bash hermes/deploy-host.sh
+```
+
+Скрипт клонирует репозиторий в `/opt/assistant`, поднимает финансы на порту 80, ассистента на `127.0.0.1:8800` и ставит Hermes пользователю `cursor`. Чужие чаты Telegram не собираются. Ключи модели, ElevenLabs и бота дописываются в `/home/cursor/.hermes/.env`, затем `hermes model` и `hermes gateway setup`.
+
+Бинарник Hermes — по инструкции Nous Research. Профиль:
 
 ```sh
 HERMES_HOME=~/.hermes sh hermes/install.sh
