@@ -1,0 +1,1 @@
+"""MCP-сервер Active Directory."""

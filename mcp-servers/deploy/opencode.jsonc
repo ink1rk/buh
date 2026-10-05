@@ -1,0 +1,34 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "ad": {
+        "type": "remote",
+        "url": "https://mcp-gateway.example.internal/ad/mcp",
+        "oauth": false,
+        "timeout": 30000,
+        "headers": {
+          "Authorization": "Bearer {env:MCP_GATEWAY_TOKEN}"
+        }
+      },
+      "exchange": {
+        "type": "remote",
+        "url": "https://mcp-gateway.example.internal/exchange/mcp",
+        "oauth": false,
+        "timeout": 30000,
+        "headers": {
+          "Authorization": "Bearer {env:MCP_GATEWAY_TOKEN}"
+        }
+      },
+      "onec": {
+        "type": "remote",
+        "url": "https://mcp-gateway.example.internal/onec/mcp",
+        "oauth": false,
+        "timeout": 30000,
+        "headers": {
+          "Authorization": "Bearer {env:MCP_GATEWAY_TOKEN}"
+        }
+      }
+    }
+  }
+}

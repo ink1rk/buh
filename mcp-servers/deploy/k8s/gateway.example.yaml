@@ -1,0 +1,19 @@
+# Пример регистрации в уже существующем MCP-шлюзе.
+# Это не CRD конкретного продукта: перенесите URL в тот формат, который шлюз уже ест.
+# Транспорт upstream: MCP Streamable HTTP, JSON, без сессии (stateless).
+# Accept: application/json
+# Authorization: Bearer <MCP_AUTH_TOKEN>
+upstreams:
+  - name: ad
+    url: http://mcp-ad.mcp-systems.svc.cluster.local:8080/mcp
+  - name: exchange
+    url: http://mcp-exchange.mcp-systems.svc.cluster.local:8080/mcp
+  - name: onec
+    url: http://mcp-onec.mcp-systems.svc.cluster.local:8080/mcp
+
+# Агенты OpenCode ходят в шлюз, не в эти Service напрямую.
+# Публичные пути ниже — условные, поправьте под маршруты шлюза.
+public:
+  ad: https://mcp-gateway.example.internal/ad/mcp
+  exchange: https://mcp-gateway.example.internal/exchange/mcp
+  onec: https://mcp-gateway.example.internal/onec/mcp

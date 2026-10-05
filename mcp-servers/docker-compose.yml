@@ -1,0 +1,55 @@
+services:
+  ad:
+    build:
+      context: .
+      args:
+        SERVICE: ad
+    image: mcp-ad:local
+    ports:
+      - "8081:8080"
+    environment:
+      AD_SERVER: ${AD_SERVER:-dc.example.local}
+      AD_PORT: ${AD_PORT:-636}
+      AD_USE_SSL: ${AD_USE_SSL:-true}
+      AD_TLS_VERIFY: ${AD_TLS_VERIFY:-true}
+      AD_BIND_USER: ${AD_BIND_USER:-}
+      AD_BIND_PASSWORD: ${AD_BIND_PASSWORD:-}
+      AD_BASE_DN: ${AD_BASE_DN:-DC=example,DC=local}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+
+  exchange:
+    build:
+      context: .
+      args:
+        SERVICE: exchange
+    image: mcp-exchange:local
+    ports:
+      - "8082:8080"
+    environment:
+      EXCHANGE_MODE: ${EXCHANGE_MODE:-graph}
+      EXCHANGE_TENANT_ID: ${EXCHANGE_TENANT_ID:-}
+      EXCHANGE_CLIENT_ID: ${EXCHANGE_CLIENT_ID:-}
+      EXCHANGE_CLIENT_SECRET: ${EXCHANGE_CLIENT_SECRET:-}
+      EXCHANGE_EWS_URL: ${EXCHANGE_EWS_URL:-}
+      EXCHANGE_USERNAME: ${EXCHANGE_USERNAME:-}
+      EXCHANGE_PASSWORD: ${EXCHANGE_PASSWORD:-}
+      EXCHANGE_AUTH: ${EXCHANGE_AUTH:-ntlm}
+      EXCHANGE_IMPERSONATE: ${EXCHANGE_IMPERSONATE:-false}
+      EXCHANGE_VERIFY_TLS: ${EXCHANGE_VERIFY_TLS:-true}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
+
+  onec:
+    build:
+      context: .
+      args:
+        SERVICE: onec
+    image: mcp-onec:local
+    ports:
+      - "8083:8080"
+    environment:
+      ONEC_BASE_URL: ${ONEC_BASE_URL:-http://onec.example.local/acc/odata/standard.odata}
+      ONEC_USERNAME: ${ONEC_USERNAME:-}
+      ONEC_PASSWORD: ${ONEC_PASSWORD:-}
+      ONEC_HTTP_SERVICE_URL: ${ONEC_HTTP_SERVICE_URL:-}
+      ONEC_VERIFY_TLS: ${ONEC_VERIFY_TLS:-true}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:-}
