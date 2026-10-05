@@ -23,3 +23,7 @@ tts:
 skills:
   external_dirs:
     - /opt/assistant/hermes/skills
+
+# С этой сети api.telegram.org напрямую не открывается.
+telegram:
+  proxy_url: http://172.20.20.231:8080

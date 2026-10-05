@@ -88,8 +88,10 @@ rm -f "${HERMES_HOME}/skills/finance"
 # install.sh не затирает уже созданный Hermes-ом config.yaml — кладём наш профиль.
 cp "${INSTALL_DIR}/hermes/config.yaml" "${HERMES_HOME}/config.yaml"
 sed -i "s|/opt/assistant/hermes/skills|${INSTALL_DIR}/hermes/skills|" "${HERMES_HOME}/config.yaml"
-umask 077
-cat > "${HERMES_HOME}/.env" <<EOF
+# Уже заполненный .env не затираем: там ключи и токен бота.
+if [ ! -s "${HERMES_HOME}/.env" ]; then
+  umask 077
+  cat > "${HERMES_HOME}/.env" <<EOF
 ELEVENLABS_API_KEY=
 ELEVENLABS_VOICE_ID=
 ELEVENLABS_MODEL=eleven_multilingual_v2
@@ -99,6 +101,7 @@ OBSIDIAN_VAULT_PATH=${INSTALL_DIR}/hermes/vault
 ASSISTANT_URL=http://127.0.0.1:8800
 TG_USER_URL=http://127.0.0.1:8810
 EOF
+fi
 chown "${HERMES_USER}:${HERMES_USER}" "${HERMES_HOME}/config.yaml" "${HERMES_HOME}/.env"
 chmod 600 "${HERMES_HOME}/.env"
 
