@@ -10,13 +10,16 @@ import {
   LineChart,
   Trophy,
   Bot,
+  Building2,
   Settings,
   Sparkles,
   Wallet,
   GitBranch,
   Gem,
   Activity,
+  ReceiptText,
   UserRound,
+  PieChart,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store/uiStore'
@@ -24,10 +27,13 @@ import { useUIStore } from '@/store/uiStore'
 const links = [
   { to: '/', label: 'Штаб', icon: LayoutDashboard },
   { to: '/networth', label: 'Капитал', icon: Gem },
+  { to: '/operations', label: 'Операции', icon: ReceiptText },
+  { to: '/budget', label: 'Бюджет', icon: PieChart },
   { to: '/timeline', label: 'Лента', icon: Activity },
   { to: '/goals', label: 'Цели', icon: Target },
   { to: '/analytics', label: 'Аналитика', icon: ChartNoAxesCombined },
   { to: '/cashflow', label: 'Поток', icon: Wallet },
+  { to: '/connections', label: 'Банки', icon: Building2 },
   { to: '/calendar', label: 'Календарь', icon: CalendarDays },
   { to: '/debts', label: 'Долги', icon: Landmark },
   { to: '/subscriptions', label: 'Подписки', icon: Repeat },

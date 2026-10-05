@@ -5,9 +5,13 @@ from app.api.routes import (
     ai,
     analytics,
     assets,
+    budget,
     coach,
+    connections,
     dashboard,
     goals,
+    ingest,
+    mcp,
     misc,
     networth,
     profile_insights,
@@ -20,6 +24,8 @@ api_router.include_router(dashboard.router)
 api_router.include_router(accounts.router)
 api_router.include_router(transactions.router)
 api_router.include_router(goals.router)
+api_router.include_router(budget.router)
+api_router.include_router(ingest.router)
 api_router.include_router(ai.router)
 api_router.include_router(analytics.router)
 api_router.include_router(misc.router)
@@ -28,3 +34,5 @@ api_router.include_router(assets.router)
 api_router.include_router(timeline.router)
 api_router.include_router(profile_insights.router)
 api_router.include_router(coach.router)
+api_router.include_router(connections.router)
+api_router.include_router(mcp.router)

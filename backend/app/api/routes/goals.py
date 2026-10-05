@@ -1,7 +1,7 @@
 from datetime import date
 
 from dateutil.relativedelta import relativedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,3 +69,13 @@ async def update_goal(goal_id: int, payload: GoalUpdate, db: AsyncSession = Depe
         setattr(row, k, v)
     await db.flush()
     return enrich(row)
+
+
+@router.delete("/{goal_id}", status_code=204)
+async def delete_goal(goal_id: int, db: AsyncSession = Depends(get_db)):
+    row = await db.get(Goal, goal_id)
+    if not row:
+        raise HTTPException(404, "Goal not found")
+    await db.delete(row)
+    await db.flush()
+    return Response(status_code=204)

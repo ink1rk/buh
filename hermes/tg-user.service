@@ -1,0 +1,18 @@
+[Unit]
+Description=Личный Telegram владельца Hermes
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cursor
+Group=cursor
+WorkingDirectory=/opt/assistant/assistant
+Environment=PYTHONPATH=/opt/assistant/assistant
+EnvironmentFile=/etc/tg-user.env
+ExecStart=/opt/assistant/.venv/bin/python -m uvicorn tg_user_service:app --host 127.0.0.1 --port 8810
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

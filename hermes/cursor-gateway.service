@@ -1,0 +1,20 @@
+[Unit]
+Description=Cursor gateway for Hermes
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=cursor
+Group=cursor
+Environment=HOME=/home/cursor
+Environment=PATH=/home/cursor/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Если Cursor отвечает 403 «not available in your region», CLI показывает это
+# как недействительный ключ. Тогда в env-файле задайте HTTPS_PROXY и HTTP_PROXY.
+EnvironmentFile=/etc/cursor-gateway.env
+ExecStart=/usr/bin/python3 /opt/assistant/hermes/cursor_gateway.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

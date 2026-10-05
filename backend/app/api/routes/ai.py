@@ -18,14 +18,14 @@ from app.schemas.ai import (
     PostponePurchaseRequest,
     PurchaseAnalyzeRequest,
 )
+from app.services.categories import category_name
 from app.services.dashboard_service import compute_balances, get_or_create_profile
+from app.services.review_engine import build_review
 from app.services.fraud_engine import detect_anomalies
+from app.services.ledger import spending
 from app.services.purchase_analyzer import analyze_purchase
 
 router = APIRouter(prefix="/ai", tags=["ai"])
-
-
-_SPEND_TYPES = {"expense", ""}
 
 
 async def _context(db: AsyncSession) -> dict:
@@ -33,22 +33,32 @@ async def _context(db: AsyncSession) -> dict:
     txs = list((await db.execute(select(Transaction))).scalars())
     month_start = date.today().replace(day=1)
     # Top category = lifestyle spending only (never investments/savings/debt)
-    expenses = [
-        t for t in txs
-        if t.occurred_on >= month_start and t.amount < 0 and t.transaction_type in _SPEND_TYPES
-    ]
+    expenses = [t for t in spending(txs) if t.occurred_on >= month_start]
     by_cat: dict[str, float] = {}
     for t in expenses:
         by_cat[t.category] = by_cat.get(t.category, 0) + abs(t.amount)
     top = max(by_cat.items(), key=lambda x: x[1]) if by_cat else ("other", 0)
     subs = list((await db.execute(select(Subscription).where(Subscription.is_active.is_(True)))).scalars())
+    review = build_review(txs)
+    income = review.earned_month if review.ready else balances.income_month
+    expense = review.spent_month if review.ready else balances.expense_month
+    if review.ready and review.categories:
+        top_name = review.categories[0].name
+        top_sum = review.categories[0].per_month
+    else:
+        top_name = category_name(top[0])
+        top_sum = top[1]
     return {
         "balance": balances.total,
-        "income_month": balances.income_month,
-        "expense_month": balances.expense_month,
-        "top_category": top[0],
-        "top_category_sum": top[1],
+        "income_month": income,
+        "expense_month": expense,
+        # Советчик пересказывает контекст пользователю, поэтому категория
+        # приходит к нему словом, а не кодом из базы.
+        "top_category": top_name,
+        "top_category_sum": top_sum,
         "subscriptions_total": sum(s.amount for s in subs),
+        "review": review.headline if review.ready else "",
+        "advice": [note.body for note in review.advice[:4]],
     }
 
 

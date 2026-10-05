@@ -31,13 +31,18 @@ def _local_reply(message: str, context: dict[str, Any], memories: list[str]) -> 
     top_cat_sum = context.get("top_category_sum", 0)
     subs = context.get("subscriptions_total", 0)
 
-    if "куда ушли" in lower or "куда уходят" in lower:
+    review = context.get("review") or ""
+    advice = context.get("advice") or []
+    if "куда ушли" in lower or "куда уходят" in lower or "разбор" in lower or "совет" in lower:
+        extra = (" " + " ".join(advice[:2])) if advice else ""
+        lead = review or (
+            f"В среднем основной поток уходит в «{top_cat}» — ≈ {top_cat_sum:,.0f} ₽ в месяц."
+        )
         reply = (
-            f"В этом месяце основной поток ушёл в «{top_cat}» — ≈ {top_cat_sum:,.0f} ₽. "
-            f"Всего расходов: {expense:,.0f} ₽ при доходе {income:,.0f} ₽. "
-            f"Свободный остаток: {income - expense:,.0f} ₽."
+            f"{lead} Расходы ≈ {expense:,.0f} ₽ при доходе {income:,.0f} ₽. "
+            f"Свободный остаток ≈ {income - expense:,.0f} ₽.{extra}"
         ).replace(",", " ")
-        suggestions = ["Показать категории", "Что оптимизировать?", "Сравнить с прошлым месяцем"]
+        suggestions = ["Что сократить в первую очередь?", "Показать категории", "Сравнить с обычным месяцем"]
     elif "перерасход" in lower or "почему" in lower and "расход" in lower:
         gap = expense - income * 0.7
         reply = (

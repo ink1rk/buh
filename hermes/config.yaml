@@ -1,0 +1,42 @@
+# Профиль Hermes. Секреты — в env, не здесь.
+# Скопировать в $HERMES_HOME/config.yaml, если своего ещё нет.
+
+model:
+  # Обычная работа — Qwen на Xavier (xavier.lan). Точность важнее скорости.
+  # Плата 32 ГБ: Qwen3-32B, квант Q4_K_M. Плата 16 ГБ сюда не влезает:
+  # тогда default меняется на qwen3-14b и квант Q6_K.
+  # key_env нужен, чтобы ключ шлюза унаследовал delegate_task. Сам Qwen ключ не проверяет.
+  default: qwen3-32b
+  provider: custom
+  base_url: http://xavier.lan:8080/v1
+  key_env: OPENAI_API_KEY
+
+# Сложное уходит в Cursor отдельным подагентом. Обычный ход сюда не ходит.
+delegation:
+  model: cursor-grok-4.6-high-fast
+  base_url: http://127.0.0.1:8791/v1
+
+# Меню команд Telegram и служебные фразы Hermes.
+display:
+  language: ru
+
+toolsets:
+  - hermes-cli
+  - skills
+  - terminal
+  - file
+  - browser
+  - memory
+
+tts:
+  provider: edge
+  edge:
+    voice: ru-RU-DmitryNeural
+
+skills:
+  external_dirs:
+    - /opt/assistant/hermes/skills
+
+# С этой сети api.telegram.org напрямую не открывается.
+telegram:
+  proxy_url: http://172.20.20.231:8080

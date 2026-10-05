@@ -20,12 +20,19 @@ class Settings(BaseSettings):
     # Security
     secret_key: str = "change-me-in-production-use-openssl-rand"
     encryption_key: str = ""
+    # Пустой токен выключает точку MCP целиком: среди её инструментов есть
+    # пишущие, а другой защиты у этого приложения нет.
+    mcp_token: str = ""
 
     # AI
     openai_api_key: str = ""
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o-mini"
     vision_model: str = "gpt-4o-mini"
+
+    # Показательный набор данных на пустой базе. По умолчанию выключен:
+    # приложение о собственных деньгах не должно начинаться с чужих.
+    seed_demo: bool = False
 
     # User defaults
     default_user_name: str = "Кирилл"

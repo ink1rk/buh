@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.happiness import PurchaseRating
 from app.schemas.happiness import HappinessInsight
+from app.services.categories import category_name
 
 
 async def create_rating(
@@ -66,11 +67,12 @@ def build_category_insights(ratings: list[PurchaseRating]) -> list[HappinessInsi
     out: list[HappinessInsight] = []
     for cat, scores in by_cat.items():
         avg = sum(scores) / len(scores)
+        named = category_name(cat)
         if avg >= 4:
-            verdict = f"«{cat}» — обычно удачные покупки. Смело инвестируйте туда время на выбор."
+            verdict = f"«{named}» — обычно удачные покупки. Смело инвестируйте туда время на выбор."
         elif avg <= 2.5:
-            verdict = f"«{cat}» — часто разочаровывает. Прежде чем покупать снова — подождите 48 часов."
+            verdict = f"«{named}» — часто разочаровывает. Прежде чем покупать снова — подождите 48 часов."
         else:
-            verdict = f"«{cat}» — неоднозначно. Оценивайте каждую покупку отдельно."
+            verdict = f"«{named}» — неоднозначно. Оценивайте каждую покупку отдельно."
         out.append(HappinessInsight(category=cat, avg_rating=round(avg, 1), count=len(scores), verdict=verdict))
     return sorted(out, key=lambda x: x.avg_rating)

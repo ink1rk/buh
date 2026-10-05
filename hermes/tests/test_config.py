@@ -1,0 +1,16 @@
+"""Профиль Hermes говорит с владельцем по-русски, в том числе в меню Telegram."""
+from pathlib import Path
+
+
+def test_menu_language_is_russian():
+    text = Path(__file__).resolve().parents[1].joinpath("config.yaml").read_text(encoding="utf-8")
+    assert "\ndisplay:\n  language: ru\n" in text
+
+
+def test_everyday_model_is_local_and_cursor_is_only_delegated():
+    text = Path(__file__).resolve().parents[1].joinpath("config.yaml").read_text(encoding="utf-8")
+    assert "default: qwen3-32b\n" in text
+    assert "base_url: http://xavier.lan:8080/v1\n" in text
+    assert "delegation:\n" in text
+    assert "model: cursor-grok-4.6-high-fast\n" in text
+    assert "base_url: http://127.0.0.1:8791/v1\n" in text

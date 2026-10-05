@@ -82,9 +82,37 @@ cp .env.production.example .env
 docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 ```
 
+## Банки
+
+Экран «Банки» подключает источники операций. Сейчас это Ozon Банк: выгружаете
+выписку из приложения банка (XLSX, CSV или PDF), загружаете сюда — операции
+категоризируются сами, а повторная загрузка за пересекающийся период не создаёт
+дублей.
+
+У Ozon Банка нет публичного API для личных счетов, поэтому выписка — рабочий путь
+на сегодня. Клиент Открытых API Банка России уже написан и включается настройкой,
+когда банк откроет доступ.
+
+Подробности: [docs/BANKS.md](docs/BANKS.md)
+
+## MCP
+
+Приложение отдаёт финансы AI-ассистентам по Model Context Protocol: Claude Desktop
+или Cursor получают счета, операции, цели и капитал и отвечают на вопросы по
+реальным цифрам. Можно и записывать операции текстом, и загружать выписки, не
+открывая браузер.
+
+Настройка и список инструментов: [docs/MCP.md](docs/MCP.md)
+
+```bash
+cd backend
+FINANCE_API_URL=http://127.0.0.1:8000/api/v1 PYTHONPATH=. python -m app.mcp.server
+```
+
 ## Возможности
 
 - Живой dashboard: Net Worth, proactive AI, AI Coach, streak
+- Импорт выписок банков + MCP-сервер для AI-ассистентов
 - Financial Health Score + психолог паттернов
 - Spotlight быстрый ввод (`⌘K`)
 - AI Timeline, карта капитала, contribution graph
@@ -96,10 +124,12 @@ docker compose -f docker-compose.prod.yml --env-file .env up -d --build
 ## Архитектура
 
 ```
-backend/app/   — API, AI, OCR, analytics, capital, coach…
-frontend/src/  — UI screens & design system
-deploy/        — Ubuntu Server installer + nginx
-database/      — SQLite (локально) / Docker volume (prod)
+backend/app/connectors/  — коннекторы банков (выписки + Открытые API)
+backend/app/mcp/         — MCP-сервер для AI-ассистентов
+backend/app/             — API, AI, OCR, analytics, capital, coach…
+frontend/src/            — UI screens & design system
+deploy/                  — Ubuntu Server installer + nginx
+database/                — SQLite (локально) / Docker volume (prod)
 ```
 
 ## Безопасность

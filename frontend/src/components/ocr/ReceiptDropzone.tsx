@@ -51,7 +51,11 @@ export function ReceiptDropzone() {
             type="file"
             accept="image/*,application/pdf"
             className="hidden"
-            onChange={(e) => onFiles(e.target.files)}
+            onChange={(e) => {
+              onFiles(e.target.files)
+              // Same file twice fires no change event unless the value is reset.
+              e.target.value = ''
+            }}
           />
         </label>
       </div>

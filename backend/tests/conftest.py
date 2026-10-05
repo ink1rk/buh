@@ -14,12 +14,36 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.database import Base, get_db
 from app.main import create_app
 from app.models.account import Account
+from app.models.budget import BudgetEnvelope  # noqa: F401 — таблица в metadata.create_all
 from app.models.capital import Asset
 from app.models.debt import Debt
 from app.models.goal import Goal
 from app.models.subscription import Subscription
 from app.models.transaction import Transaction
 from app.models.user import UserProfile
+
+
+@pytest.fixture(autouse=True)
+def data_dir(monkeypatch, tmp_path):
+    """Тестам — свой каталог данных.
+
+    Иначе загрузка выписки в тесте кладёт её копию рядом с боевой базой, и
+    приватные файлы оказываются в рабочем дереве репозитория.
+    """
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "data_dir", tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def encryption_key(monkeypatch):
+    """В бою ключ настроен, и тесты должны жить в том же мире.
+
+    Тесты, которым нужен именно ненастроенный ключ, обнуляют его сами.
+    """
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "encryption_key", "test-encryption-key")
 
 
 @pytest.fixture(scope="session")

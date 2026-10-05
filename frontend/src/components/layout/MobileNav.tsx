@@ -1,12 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { ChartNoAxesCombined, LayoutDashboard, Sparkles, Target, Wallet } from 'lucide-react'
+import { ChartNoAxesCombined, LayoutDashboard, PieChart, Sparkles, Target } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const items = [
   { to: '/', icon: LayoutDashboard, label: 'Штаб' },
+  { to: '/budget', icon: PieChart, label: 'Бюджет' },
   { to: '/goals', icon: Target, label: 'Цели' },
   { to: '/analytics', icon: ChartNoAxesCombined, label: 'Аналитика' },
-  { to: '/cashflow', icon: Wallet, label: 'Поток' },
   { to: '/purchase', icon: Sparkles, label: 'AI' },
 ]
 

@@ -16,21 +16,7 @@ from app.schemas.analytics import (
     HeatmapCell,
     TimeSeriesPoint,
 )
-
-CATEGORY_COLORS = {
-    "groceries": "#34d399",
-    "cafe": "#fbbf24",
-    "restaurants": "#f87171",
-    "transport": "#60a5fa",
-    "housing": "#a78bfa",
-    "subscriptions": "#c084fc",
-    "health": "#2dd4bf",
-    "gadgets": "#818cf8",
-    "salary": "#4ade80",
-    "investments": "#38bdf8",
-    "savings": "#fbbf24",
-    "other": "#94a3b8",
-}
+from app.services.categories import category_color, category_name
 
 # Capital allocation types — not lifestyle consumption
 ALLOCATION_TYPES = {"investment", "savings", "debt", "transfer"}
@@ -74,7 +60,7 @@ def build_analytics(
         timeseries.append(TimeSeriesPoint(date=d.isoformat(), income=inc, expense=exp, net=inc - exp))
 
     by_category = [
-        CategorySlice(name=k, value=round(v, 2), color=CATEGORY_COLORS.get(k, "#94a3b8"))
+        CategorySlice(name=category_name(k), value=round(v, 2), color=category_color(k))
         for k, v in sorted(by_cat.items(), key=lambda x: -x[1])
     ]
 

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertTriangle,
@@ -15,6 +16,7 @@ import {
   TrendingDown,
   TrendingUp,
   Trophy,
+  Wallet,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -188,6 +190,7 @@ export function DashboardPage() {
           <HealthRing
             score={data.health.score}
             label={data.health.label}
+            known={data.health.known}
             onClick={() => setHealthOpen(true)}
           />
           <p className="mt-3 max-w-xs text-center text-sm text-[var(--text-soft)]">{data.health.summary}</p>
@@ -270,8 +273,46 @@ export function DashboardPage() {
         <StatTile label="Расход месяца" value={b.expense_month} tone="expense" subtitle="Все категории" />
       </section>
 
+      <Link to="/budget" className="block">
+        <GlassCard className="relative overflow-hidden">
+          <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-[var(--text-soft)]">
+            <Wallet className="h-4 w-4 text-[var(--color-neon)]" />
+            Бюджет месяца
+          </div>
+          {data.budget?.has_plan ? (
+            <>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className="display text-3xl font-semibold">{formatMoney(data.budget.spent)}</div>
+                  <div className="text-sm text-[var(--text-soft)]">из {formatMoney(data.budget.planned)}</div>
+                </div>
+                <div className="text-sm text-[var(--text-soft)]">
+                  осталось {formatMoney(data.budget.remaining)}
+                </div>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-[var(--color-neon)]"
+                  style={{
+                    width: `${Math.min(100, (data.budget.spent / Math.max(data.budget.planned, 1)) * 100)}%`,
+                  }}
+                />
+              </div>
+            </>
+          ) : (
+            <div>
+              <div className="display text-xl font-semibold">Плана расходов ещё нет</div>
+              <p className="mt-2 text-sm text-[var(--text-soft)]">
+                Выписка уже загружена. Распределите месяц по категориям — иначе цифры есть, а планировать нечем.
+              </p>
+              <div className="mt-3 text-sm text-[var(--color-neon)]">Составить бюджет →</div>
+            </div>
+          )}
+        </GlassCard>
+      </Link>
+
       <section>
-        <h2 className="display mb-3 text-2xl font-semibold">AI Insights</h2>
+        <h2 className="display mb-3 text-2xl font-semibold">Разбор выписки</h2>
         <div className="grid gap-3 md:grid-cols-2">
           {data.insights.map((insight, i) => (
             <GlassCard key={insight.title + i} delay={0.05 * i} className="!p-4">
@@ -299,7 +340,9 @@ export function DashboardPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="display text-xl font-semibold">Почему оценка {data.health.score}?</h3>
+                <h3 className="display text-xl font-semibold">
+                  {data.health.known ? `Почему оценка ${data.health.score}?` : 'Оценка появится позже'}
+                </h3>
                 <button type="button" onClick={() => setHealthOpen(false)} className="rounded-full p-2 hover:bg-white/10">
                   <X className="h-4 w-4" />
                 </button>
