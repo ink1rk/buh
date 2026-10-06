@@ -145,9 +145,10 @@ def test_telegram_tool_refuses_a_remote_host(monkeypatch):
 def test_repo_config_registers_the_desk_servers_and_not_finance():
     text = Path(__file__).resolve().parents[1].joinpath("config.yaml").read_text(encoding="utf-8")
     assert "\nmcp_servers:\n" in text
-    for name in ("yandex:", "gmail:", "calendar:", "notes:", "telegram:", "voice:", "phone:"):
+    for name in ("yandex:", "gmail:", "calendar:", "notes:", "telegram:", "voice:"):
         assert f"\n  {name}\n" in text
     assert '["-m", "desk_mcp", "yandex"]' in text
-    assert '["-m", "phone", "--stdio"]' in text
+    assert "\n  phone:\n" not in text
+    assert '["-m", "phone", "--stdio"]' not in text
     assert "app.mcp.server" not in text
     assert "url:" not in text.split("mcp_servers:", 1)[1]

@@ -87,7 +87,7 @@ telegram:
 # MCP на этой же машине. Hermes запускает каждый сервер сам, по stdio.
 # Отдельная ВМ только скопировала бы пароли из /etc/assistant.env и добавила
 # лишний переход. Финансовый MCP не поднимаем: приложения финансов больше нет.
-# Мост с телефоном — прежний сервер проекта, тоже stdio.
+# Телефон с бота снят: мост на порту 8820 не запущен, устройств в базе нет.
 mcp_servers:
   yandex:
     command: /opt/assistant/.venv/bin/python
@@ -152,13 +152,3 @@ mcp_servers:
       HTTP_PROXY: http://172.20.20.231:8080
       HTTPS_PROXY: http://172.20.20.231:8080
       NO_PROXY: localhost,127.0.0.1,::1,172.20.20.0/24,10.0.0.0/8,192.168.0.0/16,.lan
-  phone:
-    command: /opt/assistant/.venv/bin/python
-    args: ["-m", "phone", "--stdio"]
-    cwd: /opt/assistant
-    timeout: 30
-    connect_timeout: 20
-    env:
-      PYTHONPATH: /opt/assistant
-      PHONE_DB: /opt/assistant/phone.db
-      TZ_NAME: Europe/Moscow
