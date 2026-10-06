@@ -10,6 +10,8 @@ model:
   provider: custom
   base_url: http://xavier.lan:8080/v1
   context_length: 65536
+  # llama.cpp на Xavier отвечает 500 на инструменты в потоке, Hermes иначе повторяет запрос минутами.
+  streaming: false
   key_env: OPENAI_API_KEY
 
 # Сложное уходит в Cursor отдельным подагентом. Обычный ход сюда не ходит.
@@ -28,6 +30,46 @@ toolsets:
   - file
   - browser
   - memory
+
+# Тяжёлые схемы не едут в каждый запрос: модель подгружает их через tool_search.
+tools:
+  tool_search:
+    enabled: on
+    defer:
+      - computer_use
+      - session_search
+      - image_generate
+      - todo_list
+      - process_manage
+      - cronjob_manage
+      - drive_preview
+      - gui_tour
+      - desktop_preview
+      - annotate_preview
+      - show_tip
+      - desktop_project
+      - close_terminal
+      - apply_layout
+      - read_terminal
+      - read_window_below
+      - focus_pane
+      - terminal
+      - execute_code
+      - browser_exec
+      - browser_vault_enter_code
+      - browser_vault_fill
+      - browser_vault_list
+      - browser_vault_save_login
+      - browser_vault_unlock
+      - read_file
+      - write_file
+      - patch
+      - search_files
+      - vision_analyze
+      - web_extract
+      - web_search
+      - memory
+      - delegate_task
 
 tts:
   provider: edge
