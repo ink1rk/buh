@@ -2,12 +2,14 @@
 # Скопировать в $HERMES_HOME/config.yaml, если своего ещё нет.
 
 model:
-  # Обычная работа — Qwen3-32B Q5_K_M на Xavier (xavier.lan), контекст 4096.
-  # На плате шаблон выключает режим размышления, чтобы обычный ответ не тянулся минутами.
+  # Обычная работа — Qwen3-30B-A3B-Instruct-2507 Q5_K_M на Xavier (xavier.lan).
+  # Модель обучена без режима размышления. Сервер держит контекст 40960.
+  # Hermes не принимает окно ниже 64000, поэтому в живом конфиге context_length: 65536.
   # key_env нужен, чтобы ключ шлюза унаследовал delegate_task. Сам Qwen ключ не проверяет.
-  default: qwen3-32b
+  default: qwen3-30b-a3b
   provider: custom
   base_url: http://xavier.lan:8080/v1
+  context_length: 65536
   key_env: OPENAI_API_KEY
 
 # Сложное уходит в Cursor отдельным подагентом. Обычный ход сюда не ходит.
