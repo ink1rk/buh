@@ -2,16 +2,17 @@
 # Скопировать в $HERMES_HOME/config.yaml, если своего ещё нет.
 
 model:
-  # Обычная работа — Qwen на Xavier (xavier.lan). Точность важнее скорости.
-  # Плата 32 ГБ: Qwen3-32B, квант Q4_K_M. Плата 16 ГБ сюда не влезает:
-  # тогда default меняется на qwen3-14b и квант Q6_K.
-  # key_env нужен, чтобы ключ шлюза унаследовал delegate_task. Сам Qwen ключ не проверяет.
-  default: qwen3-32b
+  # Обычная работа — Grok 4.6 через локальный шлюз. Xavier выключен.
+  # Шлюз в режиме ask возвращает tool_calls, MCP выполняет Hermes.
+  # Hermes не принимает окно ниже 64000, поэтому context_length: 65536.
+  default: cursor-grok-4.6-high-fast
   provider: custom
-  base_url: http://xavier.lan:8080/v1
+  base_url: http://127.0.0.1:8791/v1
+  context_length: 65536
+  streaming: false
   key_env: OPENAI_API_KEY
 
-# Сложное уходит в Cursor отдельным подагентом. Обычный ход сюда не ходит.
+# Длинный разбор — тот же шлюз, отдельным подагентом.
 delegation:
   model: cursor-grok-4.6-high-fast
   base_url: http://127.0.0.1:8791/v1
@@ -28,6 +29,46 @@ toolsets:
   - browser
   - memory
 
+# Тяжёлые схемы не едут в каждый запрос: модель подгружает их через tool_search.
+tools:
+  tool_search:
+    enabled: on
+    defer:
+      - computer_use
+      - session_search
+      - image_generate
+      - todo_list
+      - process_manage
+      - cronjob_manage
+      - drive_preview
+      - gui_tour
+      - desktop_preview
+      - annotate_preview
+      - show_tip
+      - desktop_project
+      - close_terminal
+      - apply_layout
+      - read_terminal
+      - read_window_below
+      - focus_pane
+      - terminal
+      - execute_code
+      - browser_exec
+      - browser_vault_enter_code
+      - browser_vault_fill
+      - browser_vault_list
+      - browser_vault_save_login
+      - browser_vault_unlock
+      - read_file
+      - write_file
+      - patch
+      - search_files
+      - vision_analyze
+      - web_extract
+      - web_search
+      - memory
+      - delegate_task
+
 tts:
   provider: edge
   edge:
@@ -40,3 +81,72 @@ skills:
 # С этой сети api.telegram.org напрямую не открывается.
 telegram:
   proxy_url: http://172.20.20.231:8080
+
+# MCP на этой же машине. Hermes запускает каждый сервер сам, по stdio.
+# Отдельная ВМ только скопировала бы пароли из /etc/assistant.env и добавила
+# лишний переход. Финансовый MCP не поднимаем: приложения финансов больше нет.
+# Телефон с бота снят: мост на порту 8820 не запущен, устройств в базе нет.
+mcp_servers:
+  yandex:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "yandex"]
+    cwd: /opt/assistant
+    timeout: 120
+    connect_timeout: 30
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      ASSISTANT_ENV_FILE: /etc/assistant.env
+      TZ_NAME: Europe/Moscow
+  gmail:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "gmail"]
+    cwd: /opt/assistant
+    timeout: 120
+    connect_timeout: 30
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      ASSISTANT_ENV_FILE: /etc/assistant.env
+      TZ_NAME: Europe/Moscow
+  calendar:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "calendar"]
+    cwd: /opt/assistant
+    timeout: 90
+    connect_timeout: 30
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      ASSISTANT_ENV_FILE: /etc/assistant.env
+      TZ_NAME: Europe/Moscow
+      HTTP_PROXY: http://172.20.20.231:8080
+      HTTPS_PROXY: http://172.20.20.231:8080
+      NO_PROXY: localhost,127.0.0.1,::1,172.20.20.0/24,10.0.0.0/8,192.168.0.0/16,.lan
+  notes:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "notes"]
+    cwd: /opt/assistant
+    timeout: 30
+    connect_timeout: 20
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      OBSIDIAN_VAULT_PATH: /opt/assistant/hermes/vault
+  telegram:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "telegram"]
+    cwd: /opt/assistant
+    timeout: 30
+    connect_timeout: 20
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      TG_USER_URL: http://127.0.0.1:8810
+  voice:
+    command: /opt/assistant/.venv/bin/python
+    args: ["-m", "desk_mcp", "voice"]
+    cwd: /opt/assistant
+    timeout: 60
+    connect_timeout: 20
+    env:
+      PYTHONPATH: /opt/assistant/hermes:/opt/assistant/assistant:/opt/assistant
+      EDGE_TTS_VOICE: ru-RU-DmitryNeural
+      HTTP_PROXY: http://172.20.20.231:8080
+      HTTPS_PROXY: http://172.20.20.231:8080
+      NO_PROXY: localhost,127.0.0.1,::1,172.20.20.0/24,10.0.0.0/8,192.168.0.0/16,.lan

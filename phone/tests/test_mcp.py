@@ -168,13 +168,23 @@ def test_an_old_client_calls_tools_without_headers():
     assert "resultType" not in payload      # поле появилось только в 2026-07-28
 
 
+def test_desktop_clients_keep_the_version_they_asked_for():
+    """Hermes, Cursor и Claude называют версию в initialize и ждут её же в ответ."""
+    for version in ("2025-11-25", "2025-03-26", "2024-11-05"):
+        reply = tools.server.handle(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize",
+             "params": {"protocolVersion": version, "capabilities": {}}},
+            transport="http")
+        assert result(reply)["protocolVersion"] == version
+
+
 def test_an_unknown_initialize_version_falls_back_to_a_known_one():
     reply = tools.server.handle(
         {"jsonrpc": "2.0", "id": 1, "method": "initialize",
-         "params": {"protocolVersion": "2024-11-05", "capabilities": {}}},
+         "params": {"protocolVersion": "1999-01-01", "capabilities": {}}},
         transport="http")
 
-    assert result(reply)["protocolVersion"] in mcp.SUPPORTED
+    assert result(reply)["protocolVersion"] == mcp.LEGACY[0]
 
 
 def test_the_handshake_is_gone_in_the_new_version():
@@ -220,6 +230,21 @@ def test_the_same_server_answers_over_stdio():
 
     answer = json.loads(outgoing.getvalue().strip())
     assert answer["id"] == 7 and answer["result"]["tools"]
+
+
+def test_a_stdio_batch_is_answered_message_by_message():
+    incoming = io.StringIO(json.dumps([
+        {"jsonrpc": "2.0", "id": 1, "method": "ping"},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+    ]) + "\n")
+    outgoing = io.StringIO()
+
+    mcp.serve_stdio(tools.server, stdin=incoming, stdout=outgoing)
+
+    answers = [json.loads(line) for line in outgoing.getvalue().strip().splitlines()]
+    assert [item["id"] for item in answers] == [1, 2]
+    assert answers[1]["result"]["tools"]
 
 
 def test_broken_json_over_stdio_does_not_kill_the_server():
