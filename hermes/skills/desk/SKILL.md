@@ -15,8 +15,8 @@ Hermes разговаривает. Дела делаются инструмен�
 
 | Просьба | Сервер MCP | Инструмент |
 |---|---|---|
-| почта Яндекса | `yandex` | `yandex_recent`, `yandex_create_sender_folders` |
-| почта Google | `gmail` | `gmail_recent`, `gmail_create_sender_folders` |
+| почта Яндекса | `yandex` | `yandex_recent`, `yandex_move`, `yandex_delete` |
+| почта Google | `gmail` | `gmail_recent`, `gmail_move`, `gmail_delete` |
 | расписание | `calendar` | `calendar_events`, `calendar_create` |
 | заметка | `notes` | `notes_write`, `notes_search` |
 | непрочитанное в Telegram | `telegram` | `telegram_unread` |

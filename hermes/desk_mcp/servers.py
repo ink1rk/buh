@@ -16,6 +16,7 @@ from phone.mcp import Server, ToolError, no_arguments
 
 READ = {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": True}
 WRITE = {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": True}
+DESTRUCTIVE = {"readOnlyHint": False, "destructiveHint": True, "openWorldHint": True}
 LOCAL_READ = {"readOnlyHint": True, "destructiveHint": False, "openWorldHint": False}
 LOCAL_WRITE = {"readOnlyHint": False, "destructiveHint": False, "openWorldHint": False}
 
@@ -65,8 +66,11 @@ def _mail_server(account_name, mailbox_for):
         "Не говори, что почта только для чтения, и не проси пароль: его нет в "
         "этом разговоре. Папки для частых писем создаёт "
         f"{account_name}_create_sender_folders — имена берутся из подсчёта, "
-        "не из догадки. Письма этот инструмент не перекладывает и не удаляет. "
-        "Отправку письма не делай, пока владелец явно не скажет «отправь».")
+        "не из догадки и письма не трогает. Перенос и удаление — "
+        f"{account_name}_move и {account_name}_delete, только по uid из "
+        f"{account_name}_recent и только когда владелец явно попросил. "
+        "За раз не больше 20 писем. Отправку письма не делай, пока владелец "
+        "явно не скажет «отправь».")
 
     def mailbox():
         if mailbox_for is not None:
@@ -119,7 +123,10 @@ def _mail_server(account_name, mailbox_for):
             lines = [f"{title}, {payload['folder']}:"]
             for item in payload["letters"]:
                 who = item["name"] or item["address"]
-                lines.append(f"— {who} <{item['address']}>: {item['subject'] or 'без темы'}")
+                uid = item.get("uid") or ""
+                prefix = f"uid {uid}, " if uid else ""
+                lines.append(
+                    f"— {prefix}{who} <{item['address']}>: {item['subject'] or 'без темы'}")
             text = "\n".join(lines)
         return _result(text, payload)
 
@@ -181,7 +188,58 @@ def _mail_server(account_name, mailbox_for):
                 item["folder"] for item in payload["already"]) + ".")
         return _result("\n".join(lines), payload)
 
+    @server.tool(
+        f"{account_name}_move",
+        f"Перенести письма {title} в существующую папку. "
+        "uids — номера uid из recent, не тема и не порядковый номер в списке. "
+        "Вызывай только когда владелец явно просит перенести эти письма.",
+        {"type": "object",
+         "properties": {
+             "uids": {"type": "array", "items": {"type": "string"},
+                      "minItems": 1, "maxItems": 20,
+                      "description": "uid писем из recent"},
+             "destination": {"type": "string", "description": "куда положить"},
+             "folder": {"type": "string", "description": "откуда, по умолчанию INBOX"},
+         },
+         "required": ["uids", "destination"], "additionalProperties": False},
+        title=f"Перенести письма {title}", annotations=WRITE)
+    def move(uids, destination, folder=None):
+        payload = _guard(lambda: mailbox().move(uids, destination, folder or None))
+        return _result(_touched(title, "перенесено", payload, payload["destination"]), payload)
+
+    @server.tool(
+        f"{account_name}_delete",
+        f"Удалить письма {title}. uids — номера uid из recent. "
+        "Остальные письма папки не трогает. Вызывай только когда владелец "
+        "явно просит удалить эти письма.",
+        {"type": "object",
+         "properties": {
+             "uids": {"type": "array", "items": {"type": "string"},
+                      "minItems": 1, "maxItems": 20,
+                      "description": "uid писем из recent"},
+             "folder": {"type": "string", "description": "где лежат, по умолчанию INBOX"},
+         },
+         "required": ["uids"], "additionalProperties": False},
+        title=f"Удалить письма {title}", annotations=DESTRUCTIVE)
+    def delete(uids, folder=None):
+        payload = _guard(lambda: mailbox().delete(uids, folder or None))
+        return _result(_touched(title, "удалено", payload), payload)
+
     return server
+
+
+def _touched(title, verb, payload, destination=None):
+    where = f" из {payload['folder']}"
+    if destination:
+        where += f" в {destination}"
+    lines = [f"{title}: {verb} {len(payload['uids'])}{where}."]
+    for item in payload["letters"]:
+        who = item.get("name") or item.get("address") or "письмо"
+        address = item.get("address") or ""
+        subject = item.get("subject") or "без темы"
+        who = f"{who} <{address}>" if address else who
+        lines.append(f"— uid {item['uid']}, {who}: {subject}")
+    return "\n".join(lines)
 
 
 def _senders_text(title, payload):

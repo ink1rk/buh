@@ -1,6 +1,9 @@
-"""Папки IMAP: список, частые отправители и создание без перекладки писем."""
+"""Папки IMAP: список, частые отправители, перенос и удаление писем."""
 import email.utils
 
+import pytest
+
+from core.actions import ProviderError
 from core.config import EmailConfig, MailAccount
 from providers.email import (Mailbox, decode_imap_utf7, encode_imap_utf7,
                              folder_name_for)
@@ -30,6 +33,11 @@ class FakeIMAP:
         self.folders = ["INBOX"]
         self.created = []
         self.readonly = None
+        self.move_ok = True
+        self.moved = []
+        self.copied = []
+        self.stored = []
+        self.expunged = []
 
     def list(self):
         lines = [f'(\\HasNoChildren) "/" "{encode_imap_utf7(name)}"'.encode()
@@ -48,11 +56,43 @@ class FakeIMAP:
         return ("OK", [b"Completed"])
 
     def uid(self, command, *args):
-        if command == "search":
+        command = command.upper()
+        if command == "SEARCH":
             return ("OK", [b" ".join(str(uid).encode() for uid in sorted(self.by_uid))])
-        uid, spec = args
-        assert "PEEK" in spec
-        return ("OK", [(b"header", self.by_uid[int(uid)].as_bytes())])
+        if command == "FETCH":
+            uid, spec = args
+            assert "PEEK" in spec
+            return ("OK", [(b"header", self.by_uid[int(uid)].as_bytes())])
+        if command == "MOVE":
+            uidset, mailbox = args
+            if not self.move_ok:
+                return ("NO", [b"no move"])
+            dest = decode_imap_utf7(mailbox)
+            if dest not in self.folders:
+                return ("NO", [b"missing"])
+            for uid in uidset.split(","):
+                self.by_uid.pop(int(uid))
+            self.moved.append((dest, uidset))
+            return ("OK", [b"moved"])
+        if command == "COPY":
+            uidset, mailbox = args
+            dest = decode_imap_utf7(mailbox)
+            if dest not in self.folders:
+                return ("NO", [b"missing"])
+            self.copied.append((dest, uidset))
+            return ("OK", [b"copied"])
+        if command == "STORE":
+            uidset, _mode, flags = args
+            assert "Deleted" in flags
+            self.stored.append(uidset)
+            return ("OK", [b"stored"])
+        if command == "EXPUNGE":
+            uidset = args[0]
+            for uid in uidset.split(","):
+                self.by_uid.pop(int(uid), None)
+            self.expunged.append(uidset)
+            return ("OK", [b"expunged"])
+        raise AssertionError(command)
 
     def logout(self):
         return ("OK", [b"bye"])
@@ -112,6 +152,68 @@ def test_an_existing_folder_is_not_created_again():
     assert made["created"] == []
     assert made["already"][0]["folder"] == "GitHub"
     assert fake.created == []
+
+
+def test_move_takes_only_the_named_letter():
+    mailbox, fake = box([letter("Анна <anna@example.com>", "договор"),
+                         letter("Пётр <petr@example.com>", "счёт")])
+    fake.folders.append("GitHub")
+
+    moved = mailbox.move(["100"], "GitHub")
+
+    assert moved["uids"] == ["100"]
+    assert moved["destination"] == "GitHub"
+    assert moved["letters"][0]["address"] == "anna@example.com"
+    assert fake.moved == [("GitHub", "100")]
+    assert sorted(fake.by_uid) == [101]
+    assert fake.readonly is False
+    assert "secret" not in str(moved)
+
+
+def test_move_without_move_copies_and_deletes_the_source():
+    mailbox, fake = box([letter("Анна <anna@example.com>")])
+    fake.folders.append("Архив")
+    fake.move_ok = False
+
+    moved = mailbox.move([100], "Архив")
+
+    assert moved["destination"] == "Архив"
+    assert fake.copied == [( "Архив", "100")]
+    assert fake.expunged == ["100"]
+    assert fake.by_uid == {}
+
+
+def test_move_refuses_a_missing_letter_or_folder():
+    mailbox, fake = box([letter("Анна <anna@example.com>")])
+    fake.folders.append("GitHub")
+
+    with pytest.raises(ProviderError, match="нет писем"):
+        mailbox.move(["999"], "GitHub")
+    assert 100 in fake.by_uid
+
+    with pytest.raises(ProviderError, match="нет папки"):
+        mailbox.move(["100"], "Нет такой")
+    assert fake.moved == []
+
+
+def test_move_refuses_more_than_twenty():
+    mailbox, _fake = box([letter("Анна <anna@example.com>")])
+    with pytest.raises(ProviderError, match="20"):
+        mailbox.move([str(uid) for uid in range(1, 22)], "INBOX")
+
+
+def test_delete_removes_only_the_named_letter():
+    mailbox, fake = box([letter("Анна <anna@example.com>", "договор"),
+                         letter("Пётр <petr@example.com>", "счёт")])
+
+    deleted = mailbox.delete(["101"])
+
+    assert deleted["deleted"] == 1
+    assert deleted["uids"] == ["101"]
+    assert fake.stored == ["101"]
+    assert fake.expunged == ["101"]
+    assert sorted(fake.by_uid) == [100]
+    assert fake.moved == []
 
 
 def test_inbox_cannot_be_created():

@@ -22,8 +22,20 @@ class Box:
 
     def recent(self, folder=None, limit=15):
         return {"account": self.account.name, "folder": folder or "INBOX", "letters": [
-            {"name": "Анна", "address": "anna@example.com", "subject": "договор",
-             "date": "Mon, 5 Oct 2026 10:00:00 +0300"}]}
+            {"uid": "100", "name": "Анна", "address": "anna@example.com",
+             "subject": "договор", "date": "Mon, 5 Oct 2026 10:00:00 +0300"}]}
+
+    def move(self, uids, destination, folder=None):
+        return {"account": self.account.name, "folder": folder or "INBOX",
+                "destination": destination, "uids": ["100"],
+                "letters": [{"uid": "100", "name": "Анна", "address": "anna@example.com",
+                             "subject": "договор"}]}
+
+    def delete(self, uids, folder=None):
+        return {"account": self.account.name, "folder": folder or "INBOX",
+                "uids": ["100"], "deleted": 1,
+                "letters": [{"uid": "100", "name": "Анна", "address": "anna@example.com",
+                             "subject": "договор"}]}
 
     def frequent_senders(self, folder=None, sample=200):
         return {"account": self.account.name, "folder": folder or "INBOX", "sampled": 2,
@@ -62,6 +74,8 @@ def test_hermes_initialize_is_answered_in_its_version():
     names = [item["name"] for item in ask(server, "tools/list")["tools"]]
     assert "yandex_create_sender_folders" in names
     assert "yandex_folders" in names
+    assert "yandex_move" in names
+    assert "yandex_delete" in names
 
 
 def test_create_sender_folders_is_a_write_and_hides_the_password():
@@ -76,6 +90,25 @@ def test_create_sender_folders_is_a_write_and_hides_the_password():
     assert "github.com" in blob
     assert "secret" not in blob
     assert result["isError"] is False
+
+
+def test_move_and_delete_name_the_letter_and_hide_the_password():
+    server = build("yandex", mailbox_for=lambda name: Box(name))
+    tools = {item["name"]: item for item in ask(server, "tools/list")["tools"]}
+    assert tools["yandex_delete"]["annotations"]["destructiveHint"] is True
+    assert tools["yandex_move"]["annotations"]["destructiveHint"] is False
+
+    recent = ask(server, "tools/call", {"name": "yandex_recent", "arguments": {}})
+    assert "uid 100" in recent["content"][0]["text"]
+
+    moved = ask(server, "tools/call", {"name": "yandex_move", "arguments": {
+        "uids": ["100"], "destination": "GitHub"}})
+    deleted = ask(server, "tools/call", {"name": "yandex_delete", "arguments": {
+        "uids": ["100"]}})
+    blob = json.dumps({"moved": moved, "deleted": deleted}, ensure_ascii=False)
+    assert "перенесено" in blob and "удалено" in blob
+    assert "anna@example.com" in blob
+    assert "secret" not in blob
 
 
 def test_missing_mailbox_is_an_error_the_model_can_read():

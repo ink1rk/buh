@@ -559,6 +559,110 @@ class Mailbox:
                 "created": created, "already": already,
                 "senders": ranking["senders"][:30]}
 
+    def move(self, uids, destination, folder=None):
+        """Перенести указанные письма в уже существующую папку.
+
+        Берутся только uid из списка, не вся папка. Если сервер не умеет
+        MOVE, письмо копируется и затем удаляется из исходной папки.
+        """
+        folder = folder or self.cfg.folder
+        ids = self._uid_list(uids)
+        dest = self._destination(destination)
+        if dest.casefold() == folder.casefold():
+            raise ProviderError("папка назначения совпадает с исходной", retryable=False)
+        if dest.casefold() not in {name.casefold() for name in self.list_folders()}:
+            raise ProviderError(f"нет папки {dest}", retryable=False)
+        client = self._connect()
+        try:
+            self._select_folder(client, folder, readonly=False)
+            self._require_present(client, folder, ids)
+            letters = self._headers(client, ids)
+            self._move_uids(client, ids, dest)
+            return {"account": self.account.name, "folder": folder,
+                    "destination": dest, "uids": ids, "letters": letters}
+        finally:
+            self._logout(client)
+
+    def delete(self, uids, folder=None):
+        """Удалить указанные письма. Остальные в папке не трогает."""
+        folder = folder or self.cfg.folder
+        ids = self._uid_list(uids)
+        client = self._connect()
+        try:
+            self._select_folder(client, folder, readonly=False)
+            self._require_present(client, folder, ids)
+            letters = self._headers(client, ids)
+            self._expunge(client, ids)
+            return {"account": self.account.name, "folder": folder,
+                    "uids": ids, "letters": letters, "deleted": len(ids)}
+        finally:
+            self._logout(client)
+
+    def _destination(self, name):
+        clean = re.sub(r"[\r\n\x00]+", " ", (name or "")).strip()
+        if not clean or clean in (".", "..") or len(clean) > 80:
+            raise ProviderError("некорректная папка", retryable=False)
+        return clean
+
+    def _uid_list(self, raw):
+        if isinstance(raw, int):
+            raw = [raw]
+        elif isinstance(raw, str):
+            raw = [part for part in raw.split(",") if part.strip()]
+        if not isinstance(raw, (list, tuple)):
+            raise ProviderError("нужен список uid писем", retryable=False)
+        cleaned = []
+        for item in raw:
+            text = str(item).strip()
+            if not text.isdigit():
+                raise ProviderError("uid письма должен быть числом", retryable=False)
+            if text not in cleaned:
+                cleaned.append(text)
+        if not cleaned:
+            raise ProviderError("не указано ни одного письма", retryable=False)
+        if len(cleaned) > 20:
+            raise ProviderError("за раз не больше 20 писем", retryable=False)
+        return cleaned
+
+    def _require_present(self, client, folder, ids):
+        present = set()
+        for uid in self._uids(client):
+            present.add(uid.decode() if isinstance(uid, bytes) else str(uid))
+        missing = [uid for uid in ids if uid not in present]
+        if missing:
+            raise ProviderError(f"в {folder} нет писем {', '.join(missing)}", retryable=False)
+
+    def _headers(self, client, ids):
+        letters = []
+        for uid in ids:
+            header = self._peek_header(client, uid) or {}
+            header["uid"] = uid
+            letters.append(header)
+        return letters
+
+    def _move_uids(self, client, ids, dest):
+        target = encode_imap_utf7(dest)
+        status, data = client.uid("MOVE", ",".join(ids), target)
+        if status == "OK":
+            return
+        status, data = client.uid("COPY", ",".join(ids), target)
+        if status != "OK":
+            raise ProviderError(
+                f"письмо не перенесено ({_imap_text(data) or status})", retryable=False)
+        self._expunge(client, ids)
+
+    def _expunge(self, client, ids):
+        listed = ",".join(ids)
+        status, data = client.uid("STORE", listed, "+FLAGS", "(\\Deleted)")
+        if status != "OK":
+            raise ProviderError(
+                f"письмо не помечено к удалению ({_imap_text(data) or status})",
+                retryable=False)
+        status, data = client.uid("EXPUNGE", listed)
+        if status != "OK":
+            raise ProviderError(
+                f"письмо не удалено ({_imap_text(data) or status})", retryable=False)
+
     def _folder_name(self, name):
         clean = re.sub(r"[\r\n\x00]+", " ", (name or "")).strip()
         if not clean or clean in (".", ".."):
