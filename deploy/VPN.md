@@ -1,13 +1,21 @@
-# WireGuard lite + Telegram MTProto
+# wg-easy + Telegram MTProto
 
-Скрипт `deploy/install-stack.sh` поднимает на Ubuntu **только**:
+Скрипт `deploy/install-stack.sh` поднимает на Ubuntu:
 
 | Сервис | Порт | Назначение |
 |--------|------|------------|
-| WireGuard (native `wg-quick`, без панели) | `51820/udp` | VPN |
+| **wg-easy** (Emile Nijssen) | UI `51821/tcp`, WG `51820/udp` | панель и VPN |
 | mtg (FakeTLS MTProto) | `443/tcp` | прокси для Telegram |
 
-Ни HTTP/SOCKS, ни приложение из этого репозитория на сервер не ставятся. Обычная прокся — отдельно, позже.
+Ни HTTP/SOCKS, ни приложение из этого репозитория не ставятся.
+
+## Панель
+
+Открой `http://IP:51821` → создай админа → Host = публичный IP, Port = `51820`.
+
+Клиенты: **New Client** → QR на телефон или скачать `.conf` на ноут.
+
+Старые native `wg-quick` конфиги после перехода на панель не работают — ключи сервера новые.
 
 ## Установка
 
@@ -15,10 +23,8 @@
 sudo bash deploy/install-stack.sh
 ```
 
-Клиенты WireGuard: `/root/vpn-clients/` (`laptop-full`, `phone-full`, split-варианты).
-
 Ссылки Telegram: `/root/mtproto.txt`
 
 ## Firewall
 
-Открыто только: `22/tcp`, `51820/udp`, `443/tcp`.
+`22/tcp`, `51820/udp`, `51821/tcp`, `443/tcp`.

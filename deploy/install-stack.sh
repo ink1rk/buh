@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Lite VPS: native WireGuard + Telegram MTProto (mtg).
+# Lite VPS: wg-easy panel (Emile Nijssen) + Telegram MTProto (mtg).
 # Does NOT deploy the Personal Finance AI app and does not install HTTP/SOCKS proxies.
 #
 # Usage (as root):
@@ -62,82 +62,18 @@ apt-get install -y -qq \
   ufw fail2ban iptables iproute2 \
   unattended-upgrades >/dev/null
 
-# --- WireGuard lite (native wg-quick, no panel) ---
-log "WireGuard lite..."
-umask 077
-mkdir -p /etc/wireguard /root/vpn-clients
-if [[ ! -f /etc/wireguard/server.key ]]; then
-  wg genkey | tee /etc/wireguard/server.key | wg pubkey > /etc/wireguard/server.pub
+# --- WireGuard Easy panel (Emile Nijssen) ---
+log "Ставлю Docker + wg-easy..."
+if ! command -v docker >/dev/null 2>&1; then
+  curl -fsSL https://get.docker.com | sh
 fi
-SERVER_PRIV="$(cat /etc/wireguard/server.key)"
-SERVER_PUB="$(cat /etc/wireguard/server.pub)"
-
-make_peer() {
-  local name="$1" addr="$2"
-  if [[ ! -f "/etc/wireguard/${name}.key" ]]; then
-    wg genkey | tee "/etc/wireguard/${name}.key" | wg pubkey > "/etc/wireguard/${name}.pub"
-    wg genpsk > "/etc/wireguard/${name}.psk"
-  fi
-  local cpriv cpub cpsk
-  cpriv="$(cat "/etc/wireguard/${name}.key")"
-  cpub="$(cat "/etc/wireguard/${name}.pub")"
-  cpsk="$(cat "/etc/wireguard/${name}.psk")"
-  cat > "/root/vpn-clients/${name}-full.conf" <<EOF
-[Interface]
-PrivateKey = ${cpriv}
-Address = ${addr}/24
-DNS = 1.1.1.1, 8.8.8.8
-
-[Peer]
-PublicKey = ${SERVER_PUB}
-PresharedKey = ${cpsk}
-Endpoint = ${PUBLIC_IP}:${WG_PORT}
-AllowedIPs = 0.0.0.0/0, ::/0
-PersistentKeepalive = 25
-EOF
-  cat > "/root/vpn-clients/${name}-split.conf" <<EOF
-[Interface]
-PrivateKey = ${cpriv}
-Address = ${addr}/24
-DNS = 1.1.1.1
-
-[Peer]
-PublicKey = ${SERVER_PUB}
-PresharedKey = ${cpsk}
-Endpoint = ${PUBLIC_IP}:${WG_PORT}
-AllowedIPs = 10.8.0.0/24
-PersistentKeepalive = 25
-EOF
-  echo "${cpub} ${cpsk}"
-}
-
-laptop_meta="$(make_peer laptop 10.8.0.2)"
-phone_meta="$(make_peer phone 10.8.0.3)"
-laptop_pub="$(echo "${laptop_meta}" | awk '{print $1}')"
-laptop_psk="$(echo "${laptop_meta}" | awk '{print $2}')"
-phone_pub="$(echo "${phone_meta}" | awk '{print $1}')"
-phone_psk="$(echo "${phone_meta}" | awk '{print $2}')"
-
-cat > /etc/wireguard/wg0.conf <<EOF
-[Interface]
-Address = ${WG_SERVER_ADDR}
-ListenPort = ${WG_PORT}
-PrivateKey = ${SERVER_PRIV}
-SaveConfig = false
-PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -A FORWARD -o wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -s ${WG_NET} -o ${WAN_IF} -j MASQUERADE
-PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -s ${WG_NET} -o ${WAN_IF} -j MASQUERADE
-
-[Peer]
-PublicKey = ${laptop_pub}
-PresharedKey = ${laptop_psk}
-AllowedIPs = 10.8.0.2/32
-
-[Peer]
-PublicKey = ${phone_pub}
-PresharedKey = ${phone_psk}
-AllowedIPs = 10.8.0.3/32
-EOF
-chmod 600 /etc/wireguard/wg0.conf
+systemctl enable --now docker
+if [[ -d /etc/wireguard ]]; then
+  mkdir -p /root/wg-native-backup
+  cp -a /etc/wireguard /root/wg-native-backup/ 2>/dev/null || true
+fi
+systemctl disable --now wg-quick@wg0 2>/dev/null || true
+ip link delete wg0 2>/dev/null || true
 
 cat > /etc/sysctl.d/99-vpn-lite.conf <<EOF
 net.ipv4.ip_forward=1
@@ -147,9 +83,49 @@ net.core.rmem_max=2500000
 net.core.wmem_max=2500000
 EOF
 sysctl --system >/dev/null 2>&1 || sysctl -p /etc/sysctl.d/99-vpn-lite.conf >/dev/null
-systemctl enable --now wg-quick@wg0
-systemctl restart wg-quick@wg0
-ok "WireGuard ${PUBLIC_IP}:${WG_PORT}/udp"
+
+WG_DIR=/opt/wg-easy
+mkdir -p "${WG_DIR}"
+if [[ -f "${SCRIPT_DIR}/stack/wg-easy-compose.yml" ]]; then
+  install -m 0644 "${SCRIPT_DIR}/stack/wg-easy-compose.yml" "${WG_DIR}/docker-compose.yml"
+else
+  cat > "${WG_DIR}/docker-compose.yml" <<'YAML'
+volumes:
+  etc_wireguard:
+services:
+  wg-easy:
+    environment:
+      - LANG=ru
+      - INSECURE=true
+      - PORT=51821
+      - HOST=0.0.0.0
+    image: ghcr.io/wg-easy/wg-easy:15
+    container_name: wg-easy
+    volumes:
+      - etc_wireguard:/etc/wireguard
+      - /lib/modules:/lib/modules:ro
+    ports:
+      - "51820:51820/udp"
+      - "51821:51821/tcp"
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+YAML
+fi
+cd "${WG_DIR}"
+docker compose pull
+docker compose up -d
+for i in $(seq 1 40); do
+  if curl -fsS "http://127.0.0.1:51821/" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+ok "Панель wg-easy http://${PUBLIC_IP}:51821"
 
 # --- Telegram MTProto (mtg FakeTLS) ---
 log "Ставлю mtg ${MTG_VERSION}..."
@@ -244,18 +220,19 @@ ufw default allow outgoing >/dev/null
 ufw default allow routed >/dev/null || true
 ufw allow OpenSSH >/dev/null
 ufw allow "${WG_PORT}/udp" >/dev/null
+ufw allow 51821/tcp >/dev/null
 ufw allow "${MTG_PORT}/tcp" >/dev/null
 ufw route allow in on wg0 out on "${WAN_IF}" >/dev/null || true
 ufw route allow in on "${WAN_IF}" out on wg0 >/dev/null || true
 ufw --force enable >/dev/null
-systemctl restart wg-quick@wg0
 systemctl enable --now fail2ban >/dev/null 2>&1 || true
-ok "Открыто: 22/tcp, ${WG_PORT}/udp, ${MTG_PORT}/tcp"
+ok "Открыто: 22/tcp, ${WG_PORT}/udp, 51821/tcp, ${MTG_PORT}/tcp"
 
 echo
-ok "Готово — только WG lite + Telegram MTProto"
-echo "  WireGuard:     ${PUBLIC_IP}:${WG_PORT}/udp"
-echo "  Клиенты WG:    /root/vpn-clients/"
+ok "Готово — wg-easy + Telegram MTProto"
+echo "  Панель WG:     http://${PUBLIC_IP}:51821"
+echo "  Первый вход:   создай логин/пароль в мастере, Host=${PUBLIC_IP}, Port=${WG_PORT}"
+echo "  Клиенты:       New Client → QR или скачать .conf"
 echo "  MTProto:       порт ${MTG_PORT}, ссылки в /root/mtproto.txt"
 echo
 cat /root/mtproto.txt 2>/dev/null || true
