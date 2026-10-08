@@ -1,11 +1,12 @@
 [Unit]
 Description=SOCKS5 proxy for WireGuard clients
 After=wg-quick@wg0.service network-online.target
+Requires=wg-quick@wg0.service
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/microsocks -i 0.0.0.0 -p 1080
+ExecStart=/usr/bin/microsocks -i 10.8.0.1 -p 1080
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true

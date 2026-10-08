@@ -270,7 +270,7 @@ if [[ "${SOCKS_BIN}" == "/usr/bin/microsocks" ]]; then
   systemctl daemon-reload
   systemctl enable --now microsocks
   systemctl restart microsocks
-  ok "SOCKS5 0.0.0.0:${SOCKS_PORT} (UFW пускает только 10.8.0.0/24)"
+  ok "SOCKS5 10.8.0.1:${SOCKS_PORT} (UFW пускает только 10.8.0.0/24)"
 else
   cat > /etc/3proxy.cfg <<EOF
 nscache 65536
@@ -346,16 +346,56 @@ systemctl reload nginx
 
 # --- firewall ---
 log "Включаю UFW..."
+sed -i 's/^DEFAULT_FORWARD_POLICY=.*/DEFAULT_FORWARD_POLICY="ACCEPT"/' /etc/default/ufw
+if [[ -f /etc/ufw/sysctl.conf ]]; then
+  sed -i 's|^#\?net/ipv4/ip_forward=.*|net/ipv4/ip_forward=1|' /etc/ufw/sysctl.conf
+fi
+if ! grep -q 'PFA-WG-NAT' /etc/ufw/before.rules; then
+  python3 - <<PY
+from pathlib import Path
+p = Path("/etc/ufw/before.rules")
+text = p.read_text()
+block = """
+# PFA-WG-NAT
+*nat
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s ${WG_NET} -o ${WAN_IF} -j MASQUERADE
+COMMIT
+"""
+p.write_text(block + "\n" + text)
+PY
+fi
 ufw --force reset >/dev/null
+# reset restores DEFAULT_FORWARD_POLICY — set again
+sed -i 's/^DEFAULT_FORWARD_POLICY=.*/DEFAULT_FORWARD_POLICY="ACCEPT"/' /etc/default/ufw
+if ! grep -q 'PFA-WG-NAT' /etc/ufw/before.rules; then
+  python3 - <<PY
+from pathlib import Path
+p = Path("/etc/ufw/before.rules")
+text = p.read_text()
+block = """
+# PFA-WG-NAT
+*nat
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -s ${WG_NET} -o ${WAN_IF} -j MASQUERADE
+COMMIT
+"""
+p.write_text(block + "\n" + text)
+PY
+fi
 ufw default deny incoming >/dev/null
 ufw default allow outgoing >/dev/null
+ufw default allow routed >/dev/null || true
 ufw allow OpenSSH >/dev/null
 ufw allow "${WG_PORT}/udp" >/dev/null
 ufw allow "${APP_PORT}/tcp" >/dev/null
 ufw allow from 10.8.0.0/24 to any port "${HTTP_PROXY_PORT}" proto tcp >/dev/null
 ufw allow from 10.8.0.0/24 to any port "${SOCKS_PORT}" proto tcp >/dev/null
+ufw route allow in on wg0 out on "${WAN_IF}" >/dev/null || true
+ufw route allow in on "${WAN_IF}" out on wg0 >/dev/null || true
 ufw --force enable >/dev/null
-ok "UFW: 22/tcp, ${WG_PORT}/udp, ${APP_PORT}/tcp; proxy только из 10.8.0.0/24"
+systemctl restart wg-quick@wg0
+ok "UFW: 22/tcp, ${WG_PORT}/udp, ${APP_PORT}/tcp; proxy только из 10.8.0.0/24; WG forward+NAT"
 
 systemctl enable --now fail2ban >/dev/null 2>&1 || true
 
