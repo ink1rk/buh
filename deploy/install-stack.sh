@@ -77,6 +77,7 @@ ip link delete wg0 2>/dev/null || true
 
 cat > /etc/sysctl.d/99-vpn-lite.conf <<EOF
 net.ipv4.ip_forward=1
+net.ipv4.conf.all.src_valid_mark=1
 net.core.default_qdisc=fq
 net.ipv4.tcp_congestion_control=bbr
 net.core.rmem_max=2500000
@@ -101,19 +102,16 @@ services:
       - HOST=0.0.0.0
     image: ghcr.io/wg-easy/wg-easy:15
     container_name: wg-easy
+    network_mode: host
     volumes:
       - etc_wireguard:/etc/wireguard
       - /lib/modules:/lib/modules:ro
-    ports:
-      - "51820:51820/udp"
-      - "51821:51821/tcp"
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
-    sysctls:
-      - net.ipv4.ip_forward=1
-      - net.ipv4.conf.all.src_valid_mark=1
+    devices:
+      - /dev/net/tun
 YAML
 fi
 cd "${WG_DIR}"
