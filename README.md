@@ -17,7 +17,7 @@ sudo bash deploy/install-ubuntu.sh
 
 После установки откройте `http://IP_СЕРВЕРА` в браузере.
 
-Подробности: [deploy/UBUNTU.md](deploy/UBUNTU.md)
+Отдельный VPS под VPN (wg-easy панель + Telegram MTProto, без этого приложения): [deploy/VPN.md](deploy/VPN.md).
 
 ```bash
 # другой порт

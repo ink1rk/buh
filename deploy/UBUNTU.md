@@ -64,6 +64,10 @@ sudo bash /opt/personal-finance-ai/deploy/update.sh
 sudo docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
+## VPN-сервер (не это приложение)
+
+wg-easy (панель Emile Nijssen) + MTProto для Telegram, без деплоя Personal Finance AI: [VPN.md](VPN.md).
+
 ## Если порт 80 занят
 
 ```bash
