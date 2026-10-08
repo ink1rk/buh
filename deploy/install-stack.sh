@@ -157,7 +157,9 @@ tmp="$(mktemp -d)"
 curl -fsSL "https://github.com/9seconds/mtg/releases/download/v${MTG_VERSION}/mtg-${MTG_VERSION}-linux-amd64.tar.gz" \
   -o "${tmp}/mtg.tgz"
 tar -xzf "${tmp}/mtg.tgz" -C "${tmp}"
-install -m 0755 "${tmp}/mtg" /usr/local/bin/mtg || install -m 0755 "${tmp}/mtg-${MTG_VERSION}-linux-amd64/mtg" /usr/local/bin/mtg
+MTG_BIN="$(find "${tmp}" -type f -name mtg | head -n1)"
+[[ -n "${MTG_BIN}" ]] || die "В архиве mtg нет бинарника"
+install -m 0755 "${MTG_BIN}" /usr/local/bin/mtg
 rm -rf "${tmp}"
 id mtg >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin mtg
 setcap cap_net_bind_service=+ep /usr/local/bin/mtg || true
