@@ -17,13 +17,7 @@ sudo bash deploy/install-ubuntu.sh
 
 После установки откройте `http://IP_СЕРВЕРА` в браузере.
 
-Полный стек на маленькой VPS (WireGuard + HTTP/SOCKS прокси + приложение, без Docker):
-
-```bash
-sudo bash deploy/install-stack.sh
-```
-
-Клиенты VPN: `/root/vpn-clients/`. Подробности: [deploy/UBUNTU.md](deploy/UBUNTU.md), [deploy/VPN.md](deploy/VPN.md)
+Отдельный VPS под VPN (WireGuard lite + Telegram MTProto, без этого приложения): [deploy/VPN.md](deploy/VPN.md).
 
 ```bash
 # другой порт

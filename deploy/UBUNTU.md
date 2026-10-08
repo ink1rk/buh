@@ -64,15 +64,9 @@ sudo bash /opt/personal-finance-ai/deploy/update.sh
 sudo docker compose -f docker-compose.prod.yml --env-file .env up -d
 ```
 
-## Полный стек: WireGuard + прокси + приложение
+## VPN-сервер (не это приложение)
 
-Для VPS с ~1 GB RAM Docker-сборка тяжёлая. Нативный стек:
-
-```bash
-sudo bash deploy/install-stack.sh
-```
-
-Поднимает WireGuard (`51820/udp`), HTTP-прокси `:3128` и SOCKS5 `:1080` (только из `10.8.0.0/24`), nginx на `:80` и FastAPI на localhost. Клиенты: `/root/vpn-clients/`. См. [VPN.md](VPN.md).
+WireGuard lite + MTProto для Telegram, без деплоя Personal Finance AI: [VPN.md](VPN.md).
 
 ## Если порт 80 занят
 
