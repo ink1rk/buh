@@ -66,7 +66,7 @@ sudo docker compose -f docker-compose.prod.yml --env-file .env up -d
 
 ## VPN-сервер (не это приложение)
 
-WireGuard lite + MTProto для Telegram, без деплоя Personal Finance AI: [VPN.md](VPN.md).
+wg-easy (панель Emile Nijssen) + MTProto для Telegram, без деплоя Personal Finance AI: [VPN.md](VPN.md).
 
 ## Если порт 80 занят
 
