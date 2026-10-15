@@ -1,0 +1,8 @@
+{
+  "app": "localhost/ai-office@sha256:8950cfd8510184052a571a997373946499a3ded2527c26a0fd55e5444fe0ec59",
+  "postgres": "docker.io/library/postgres@sha256:64e98f9c11056f336f116e8231b2f37a98406a1768503c531e4ec143057ce8b5",
+  "python": "docker.io/library/python@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258",
+  "previous_app": "localhost/ai-office@sha256:8358f5c119b88504ee529ab51aab2f05a41fed199d71f51582d6aa176571ddc0",
+  "cursor": "localhost/ai-office-cursor@sha256:dd228852f1fcaeca18e8719835b2fa7d8c4ac155994f6fa32c5786ff0e9b8fb7",
+  "litellm": "docker.io/litellm/litellm@sha256:f8ecc9f4f951e6f5424c00250745e5c5f4264016a810c9b07bcbcd3f6578cfe0"
+}

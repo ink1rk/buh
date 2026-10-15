@@ -57,3 +57,5 @@ jobs:
           pip install -r requirements.txt
       - name: Run pytest
         run: pytest -q --tb=short
+      - name: Run office policy tests
+        run: python -m unittest tests.test_policy tests.test_features

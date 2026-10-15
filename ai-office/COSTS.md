@@ -10,3 +10,5 @@
 
 Новые платные аккаунты/подписки, покупки, платежи или другой LLM-провайдер не подключались. Ресурсы — существующая VM 115; новые PVE VM/storage не создавались.
 
+Сверка в коде: `actual_confirmed` истинен только при `usage_api_status=dashboard_confirmed` и заданной сумме Dashboard. `/budget` каждый раз пишет `cost_checks` с `actual_confirmed=false` и статусом `feature_unavailable`. LiteLLM в кластере отвечает на `/health/liveliness`, но `/global/spend` возвращает `No db connected`. Такой ответ в текст бюджета попадает как «Журнал LiteLLM: недоступен» и не превращается в ноль или в счёт. Единственный источник фактического списания — Cursor Dashboard.
+

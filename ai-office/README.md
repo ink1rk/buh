@@ -4,13 +4,14 @@
 
 ## Стек
 
-Python 3.12, FastAPI, Pydantic, SQLAlchemy, Alembic, PostgreSQL. Контейнер gateway запускается от непривилегированного пользователя и слушает только localhost внутри образа; наружу его выводит уже сеть кластера.
+Рабочий контур на VM — пакет `aioffice`: FastAPI, SQLAlchemy, PostgreSQL, Telegram polling, Cursor/Grok через отдельный bridge, launcher заданий и пустой LiteLLM без ключей провайдеров. Ранний каркас в `apps/` и `packages/` остаётся для прежних 15 pytest. Секреты, LAN-адреса и список владельцев в git не входят. Что уже проверено на VM: `STATUS.md`.
 
 ## Проверки
 
 ```bash
 python3 -m pip install -r requirements.txt
 python3 -m pytest
+python3 -m unittest tests.test_policy tests.test_features
 ```
 
 ## Конфигурация

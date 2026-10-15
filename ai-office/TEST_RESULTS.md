@@ -50,5 +50,22 @@ SHA-256: `ef56b48f0825651e251dfed54d07de1646ab04d972a3f66d577850b942e7781d`.
 | T14 | BLOCKED | Concurrent DB tests проходят; живой rollout двух worker replicas и внешние операции не проверены |
 | T15 | BLOCKED | Изоляция ключей и tools=[] настроены; полный end-to-end prompt injection сценарий не выполнялся |
 
-G1 BLOCKED полным VM backup/restore и постоянной независимой копией. G2 BLOCKED календарём/approvals и живыми сценариями. G3 BLOCKED LiteLLM/virtual keys, точным биллингом и fallback. G4 BLOCKED trusted launcher, реальным исследованием и failure/recovery. Готовность 100% не заявляется.
+G1 BLOCKED полным VM backup/restore и постоянной независимой копией. G2 BLOCKED календарём и живой записью: кнопки подтверждения есть, writer нет. G3 BLOCKED точным биллингом: LiteLLM процесс Ready, но без базы и без virtual keys; usage API остаётся `feature_unavailable`. G4 BLOCKED живым исследованием: launcher Running, specialist Job в этом прогоне не создавался. Готовность 100% не заявляется.
+
+## Продолжение, без нового платного вызова
+
+| Проверка | Результат | Доказательство |
+|---|---|---|
+| Локальные policy/feature | PASS локально | `python -m unittest tests.test_policy tests.test_features` и прежние `pytest` каркаса |
+| Схема 3 | PASS | `schema_migrations` = 1, 2, 3 |
+| Launcher и gateway | PASS по Ready | `job-launcher` и `gateway` 1/1 Running; роль только `ai-jobs` jobs/secrets |
+| LiteLLM процесс | PASS по health | `/health/liveliness` 200, `/health/readiness` 200, `/v1/models` 200 |
+| Журнал LiteLLM | FAIL как ledger | `/global/spend` HTTP 500 `No db connected`; в бюджете это «недоступен» |
+| Гости и сайт после выкладки | PASS по доступности | 100/101/102/103/115 running; HTTPS HTTP/2 200, nginx/1.22.1 |
+| Живой specialist | НЕ ЗАПУСКАЛСЯ | Команда потратила бы резерв Cursor |
+
+| ID | Статус после этого шага |
+|---|---|
+| T05 | PARTIAL: inline-кнопки и одноразовый hash есть; внешней записи нет |
+| T08 | PARTIAL: резерв и отказ подтверждать оценку есть; фактический cap Dashboard не сверен |
 
