@@ -1,16 +1,19 @@
 import hashlib
 import json
+import os
+import urllib.request
 import uuid
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import text
 
+from .calendars import LABELS, CalendarError, credential_flags, deliver_event, status_lines
 from .costs import budget_text, fetch_litellm_spend, reconcile
 from .db import audit
 from .files import VOICE_REPLY, accept_file, describe_incoming, local_runner, transcribe
 from .integrations import approval_effect, registry
 from .job import PROFILES
-from .policy import callback_actor, external_write_allowed, parse_due, payload_hash, private_owner
+from .policy import callback_actor, external_write_allowed, normalize_timezone, parse_due, payload_hash, private_owner
 
 HELP = ('AI Office — задачи и заметки.\n'
         '/task текст — поручение\n/note текст — заметка\n/tasks — последние записи\n'
@@ -18,12 +21,13 @@ HELP = ('AI Office — задачи и заметки.\n'
         '/remind 2026-10-20T14:00 текст — напоминание\n'
         '/job researcher текст — специалист (researcher, planner, developer, technical_expert)\n'
         '/files — сохранённые файлы и голосовые\n'
-        '/calendar create 2030-01-01T12:00 текст — черновик, без записи в календарь\n'
+        '/calendar — Google и Яндекс\n'
+        '/calendar create google|yandex 2030-01-01T12:00 текст — черновик, запись после кнопки\n'
         '/email draft адрес | тема | текст — черновик, без отправки\n'
-        '/timezone [Europe/Moscow] — проверить или задать часовой пояс\n/pause /resume /stopall\n'
+        '/timezone [Europe/Moscow|+3] — проверить или задать часовой пояс\n/pause /resume /stopall\n'
         '/agents /models /budget /calendar /privacy\n'
         '/ask текст — вопрос ассистенту\n'
-        'Календарь и почта не вызываются наружу. Свободный текст обрабатывается ассистентом, когда LLM включён.')
+        'Почта наружу не уходит. Календарь пишет только ваше событие без участников и только после «Разрешить».')
 
 
 def enqueue(conn, owner, message, dedupe, category='reply', task_id=None, reply_markup=None):
@@ -47,6 +51,22 @@ def _keyboard(token):
                                   {'text': 'Отклонить', 'callback_data': 'r:' + token}]]}
 
 
+def _public_env():
+    keys = ('GOOGLE_CALENDAR_TOKEN', 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN',
+            'YANDEX_CALDAV_USER', 'YANDEX_CALDAV_PASSWORD', 'YANDEX_CALDAV_HREF')
+    return {key: os.environ.get(key, '') for key in keys}
+
+
+def _calendar_create_args(rest):
+    provider, _, tail = rest.strip().partition(' ')
+    if provider not in ('google', 'yandex'):
+        return None
+    when, _, title = tail.partition(' ')
+    if not when or not title.strip():
+        return ()
+    return provider, when, title.strip()
+
+
 def request_approval(conn, owner, kind, title, payload):
     tid = create_task(conn, owner, title, kind=kind, state='waiting_approval')
     token = str(uuid.uuid4())
@@ -54,8 +74,9 @@ def request_approval(conn, owner, kind, title, payload):
                  {'id': uuid.uuid4(), 'o': owner, 't': tid, 'h': hashlib.sha256(token.encode()).hexdigest(),
                   'p': payload_hash(payload), 'j': json.dumps(payload, ensure_ascii=False),
                   'e': datetime.now(UTC) + timedelta(minutes=15)})
+    where = LABELS.get(payload.get('provider'), kind)
     enqueue(conn, owner,
-            f'{tid} [waiting_approval] Черновик {kind}. Внешний вызов не выполняется, пока нет провайдера и одноразового подтверждения.',
+            f'{tid} [waiting_approval] Черновик {where}. Почта не отправляется. Календарь без участников запишется только после «Разрешить».',
             'approval:' + str(tid), task_id=tid, reply_markup=_keyboard(token))
     return f'{tid} [waiting_approval] Подтверждение отправлено кнопками. Срок 15 минут.'
 
@@ -82,15 +103,13 @@ def command(conn, owner, message, settings):
     if name in ('/start', '/help'):
         return HELP
     if name == '/privacy':
-        return 'Текст, файлы и голосовые хранятся в вашей PostgreSQL. Голос не отправляется в платный сервис распознавания. При включённом ассистенте вопрос и последние 3 диалога передаются Cursor/Grok. Почта и календарь наружу не вызываются. Для выгрузки или удаления данных пока обратитесь к оператору.'
+        return 'Текст, файлы и голосовые хранятся в вашей PostgreSQL. Голос не отправляется в платный сервис распознавания. При включённом ассистенте вопрос и последние 3 диалога передаются Cursor/Grok. Почта наружу не уходит. Календарь Google или Яндекс получает только подтверждённое событие без участников. Для выгрузки или удаления данных пока обратитесь к оператору.'
     if name == '/timezone':
         if arg.strip():
-            zone = arg.strip()
             try:
-                from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-                ZoneInfo(zone)
-            except (ValueError, ZoneInfoNotFoundError):
-                return 'Укажите существующий IANA часовой пояс, например Europe/Moscow.'
+                zone = normalize_timezone(arg.strip())
+            except Exception:
+                return 'Укажите существующий IANA часовой пояс, например Europe/Moscow или +3.'
             conn.execute(text('UPDATE users SET timezone=:z WHERE id=:o'), {'z': zone, 'o': owner})
             audit(conn, owner, 'timezone.updated')
             return 'Часовой пояс сохранён: ' + zone
@@ -133,20 +152,27 @@ def command(conn, owner, message, settings):
     if name == '/budget':
         return budget_reply(conn, owner, settings)
     if name == '/calendar' and not arg.startswith('create '):
-        providers = registry(calendar_provider=getattr(settings, 'calendar_provider', ''), email_provider=getattr(settings, 'email_provider', ''))
-        return 'Календарь не подключён.' if not providers['calendar'] else 'Провайдер календаря назван, но запись наружу не реализована.'
+        providers = getattr(settings, 'calendar_providers', ('google', 'yandex'))
+        return status_lines(user['timezone'] or settings.timezone, providers, _public_env())
     if user['paused']:
         return 'Приём заданий приостановлен. /resume — продолжить.'
     if name == '/calendar' and arg.startswith('create '):
-        rest = arg[len('create '):]
-        when, _, title = rest.partition(' ')
-        if not title.strip():
-            return 'Формат: /calendar create 2030-01-01T12:00 текст'
+        parsed = _calendar_create_args(arg[len('create '):])
+        if parsed is None:
+            return 'Укажите календарь: /calendar create google 2030-01-01T12:00 текст или yandex вместо google.'
+        if parsed == ():
+            return 'Формат: /calendar create google 2030-01-01T12:00 текст'
+        provider, when, title = parsed
+        if provider not in getattr(settings, 'calendar_providers', ('google', 'yandex')):
+            return 'Доступны только google и yandex.'
+        zone = user['timezone'] or settings.timezone
         try:
-            parse_due(when, user['timezone'])
+            parse_due(when, zone)
         except (ValueError, TypeError) as exc:
             return str(exc) if str(exc).startswith(('Сначала', 'Неоднозначное', 'Указанное', 'Время')) else 'Некорректная дата. Используйте ISO 8601.'
-        return request_approval(conn, owner, 'calendar', title.strip(), {'kind': 'calendar', 'starts': when, 'title': title.strip()})
+        return request_approval(conn, owner, 'calendar', title, {
+            'kind': 'calendar', 'provider': provider, 'starts': when, 'title': title, 'timezone': zone,
+        })
     if name == '/email':
         if not arg.startswith('draft '):
             return 'Почта не подключена. Черновик: /email draft адрес | тема | текст. Отправка выключена.'
@@ -190,36 +216,51 @@ def command(conn, owner, message, settings):
 
 
 def apply_callback(conn, owner, query, settings):
+    """Consume the approval inside the open transaction. The network call happens after commit."""
     data = query.get('data') or ''
     decision = 'approve' if data.startswith('a:') else 'reject'
     token = data[2:]
     digest = hashlib.sha256(token.encode()).hexdigest()
     approval = conn.execute(text('SELECT * FROM approvals WHERE token_hash=:h AND owner_id=:o FOR UPDATE'), {'h': digest, 'o': owner}).mappings().first()
     if not approval:
-        return 'Запрос подтверждения не найден.'
+        return 'Запрос подтверждения не найден.', None
     if approval['consumed_at'] is not None:
-        return 'Решение уже принято. Повтор ничего не вызывает.'
+        return 'Решение уже принято. Повтор ничего не вызывает.', None
     payload = approval['payload']
     if isinstance(payload, str):
         payload = json.loads(payload)
+    if not isinstance(payload, dict):
+        payload = {}
     allowed = external_write_allowed(capability=True, approval=approval, owner=owner, payload=payload)
     providers = registry(calendar_provider=getattr(settings, 'calendar_provider', ''), email_provider=getattr(settings, 'email_provider', ''))
     kind = payload.get('kind')
-    effect = approval_effect(allowed=allowed, decision=decision, provider=providers.get(kind, ''), kind=kind)
-    if effect['outbound']:
-        raise RuntimeError('External write blocked')
+    provider = payload.get('provider') or ''
+    flags = credential_flags(_public_env())
+    chosen = provider if kind == 'calendar' else providers.get(kind, '')
+    effect = approval_effect(allowed=allowed, decision=decision, provider=chosen, kind=kind, credentials=flags.get(provider, False))
     if effect['reason'] == 'denied':
-        return 'Подтверждение недействительно или истекло. Внешний вызов не выполняется.'
-    conn.execute(text('UPDATE approvals SET consumed_at=now(), decision=:d WHERE id=:id AND consumed_at IS NULL'), {'d': decision, 'id': approval['id']})
+        return 'Подтверждение недействительно или истекло. Внешний вызов не выполняется.', None
+    consumed = conn.execute(text('UPDATE approvals SET consumed_at=now(), decision=:d WHERE id=:id AND consumed_at IS NULL RETURNING id'), {'d': decision, 'id': approval['id']}).first()
+    if not consumed:
+        return 'Решение уже принято. Повтор ничего не вызывает.', None
     if effect['task_state']:
         conn.execute(text('UPDATE tasks SET state=:s,version=version+1,updated_at=now() WHERE id=:t AND owner_id=:o'),
                      {'s': effect['task_state'], 't': approval['task_id'], 'o': owner})
     audit(conn, owner, 'approval.' + effect['reason'], str(approval['task_id']))
+    if effect['outbound']:
+        call = {'task_id': approval['task_id'], 'approval_id': str(approval['id']), 'provider': provider,
+                'title': payload.get('title') or '', 'starts': payload.get('starts') or '',
+                'timezone': payload.get('timezone') or settings.timezone}
+        enqueue(conn, owner, f"{approval['task_id']} [running] Подтверждено. Записываю событие в {LABELS.get(provider, provider)} без участников.",
+                'calendar-start:' + str(approval['id']), task_id=approval['task_id'])
+        return None, call
     if effect['reason'] == 'rejected':
-        return f"{approval['task_id']} [cancelled] Отклонено. Внешний сервис не вызывался."
+        return f"{approval['task_id']} [cancelled] Отклонено. Внешний сервис не вызывался.", None
+    if effect['reason'] == 'credentials_missing':
+        return f"{approval['task_id']} [waiting_external] Подтверждено локально. Данных {LABELS.get(provider, provider)} нет, исходящий вызов не выполнялся.", None
     if effect['reason'] == 'provider_not_configured':
-        return f"{approval['task_id']} [waiting_external] Подтверждено локально. Провайдер не выбран, исходящий вызов не выполнялся."
-    return f"{approval['task_id']} [waiting_external] Подтверждено локально. Запись во внешний сервис не реализована и не выполнялась."
+        return f"{approval['task_id']} [waiting_external] Подтверждено локально. Провайдер не выбран, исходящий вызов не выполнялся.", None
+    return f"{approval['task_id']} [waiting_external] Подтверждено локально. Запись во внешний сервис не реализована и не выполнялась.", None
 
 
 def store_incoming(conn, owner, message, data, settings):
@@ -242,12 +283,13 @@ def store_incoming(conn, owner, message, data, settings):
     return f'Файл сохранён: {kind}, {len(data)} байт, sha256 {digest[:12]}. Список: /files'
 
 
-def process_callback(engine, update, settings):
+def process_callback(engine, update, settings, opener=None):
     update_id = update.get('update_id')
     query = update.get('callback_query') or {}
     if not isinstance(update_id, int):
         return 'Нет доступа'
     owner = callback_actor(update, settings.owners)
+    call = None
     with engine.begin() as conn:
         inserted = conn.execute(text('INSERT INTO telegram_updates(update_id,owner_id) VALUES (:id,:o) ON CONFLICT DO NOTHING RETURNING update_id'), {'id': update_id, 'o': owner}).first()
         if not inserted:
@@ -256,8 +298,23 @@ def process_callback(engine, update, settings):
         if not owner:
             return 'Нет доступа'
         conn.execute(text('INSERT INTO users(id,timezone) VALUES (:o,:z) ON CONFLICT DO NOTHING'), {'o': owner, 'z': settings.timezone})
-        reply = apply_callback(conn, owner, query, settings)
-        enqueue(conn, owner, reply, 'callback:' + str(update_id))
+        reply, call = apply_callback(conn, owner, query, settings)
+        if reply:
+            enqueue(conn, owner, reply, 'callback:' + str(update_id))
+    if not call:
+        return 'Принято'
+    try:
+        created = deliver_event(call['provider'], call['title'], call['starts'], call['timezone'], call['approval_id'], _public_env(), opener or urllib.request.urlopen)
+        reply = f"{call['task_id']} [succeeded] Событие записано в {LABELS.get(call['provider'], call['provider'])}: {created['id']}"
+        state, action = 'succeeded', 'calendar.written'
+    except CalendarError:
+        reply = f"{call['task_id']} [waiting_external] Подтверждение уже принято. Запись в календарь не выполнена, повтор кнопкой не создаёт второе событие."
+        state, action = 'waiting_external', 'calendar.write_failed'
+    with engine.begin() as conn:
+        conn.execute(text('UPDATE tasks SET state=:s,version=version+1,updated_at=now() WHERE id=:t AND owner_id=:o'),
+                     {'s': state, 't': call['task_id'], 'o': owner})
+        audit(conn, owner, action, str(call['task_id']))
+        enqueue(conn, owner, reply, 'calendar-result:' + call['approval_id'], task_id=call['task_id'])
     return 'Принято'
 
 

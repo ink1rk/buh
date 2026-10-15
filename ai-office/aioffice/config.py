@@ -1,6 +1,7 @@
 import os
 from dataclasses import dataclass
-from zoneinfo import ZoneInfo
+
+from .policy import normalize_timezone
 
 
 @dataclass(frozen=True)
@@ -16,6 +17,7 @@ class Settings:
     litellm_url: str = ''
     litellm_key: str = ''
     calendar_provider: str = ''
+    calendar_providers: tuple = ('google', 'yandex')
     email_provider: str = ''
     launcher_enabled: bool = False
     app_image: str = ''
@@ -23,9 +25,10 @@ class Settings:
 
     @classmethod
     def from_env(cls):
-        timezone = os.getenv('OWNER_TIMEZONE', '')
-        if timezone:
-            ZoneInfo(timezone)
+        timezone = normalize_timezone(os.getenv('OWNER_TIMEZONE', ''))
+        selected = tuple(item.strip() for item in os.getenv('CALENDAR_PROVIDERS', 'google,yandex').split(',') if item.strip())
+        if any(item not in ('google', 'yandex') for item in selected):
+            raise ValueError('CALENDAR_PROVIDERS must be google and/or yandex')
         owners = frozenset(int(x) for x in os.getenv('ALLOWED_USER_IDS', '').split(',') if x.strip())
         if not owners:
             raise ValueError('ALLOWED_USER_IDS must not be empty')
@@ -44,6 +47,6 @@ class Settings:
             raise ValueError('Launcher requires a pinned APP_IMAGE')
         return cls(os.environ['DATABASE_URL'], token, owners, timezone, polling, llm, bridge_url, bridge_token,
                    os.getenv('LITELLM_URL', ''), os.getenv('LITELLM_MASTER_KEY', ''),
-                   os.getenv('CALENDAR_PROVIDER', ''), os.getenv('EMAIL_PROVIDER', ''),
+                   os.getenv('CALENDAR_PROVIDER', ''), selected or ('google', 'yandex'), os.getenv('EMAIL_PROVIDER', ''),
                    launcher, app_image, os.getenv('LOCAL_TRANSCRIBER', ''))
 

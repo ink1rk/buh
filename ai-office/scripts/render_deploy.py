@@ -15,7 +15,8 @@ images = json.loads(pathlib.Path(sys.argv[2]).read_text())
 PROXY = os.environ.get('AI_OFFICE_HTTP_PROXY', '').strip()
 NO_PROXY = os.environ.get('AI_OFFICE_NO_PROXY', 'localhost,127.0.0.1,::1,10.0.0.0/8,.svc,.cluster.local')
 ALLOWED = os.environ.get('AI_OFFICE_ALLOWED_USER_IDS', '').strip()
-OWNER_TZ = os.environ.get('AI_OFFICE_OWNER_TIMEZONE', '')
+raw_tz = os.environ.get('AI_OFFICE_OWNER_TIMEZONE', '').strip()
+OWNER_TZ = 'Europe/Moscow' if raw_tz.lower() in {'', '+3', '+03', '+03:00', 'utc+3', 'gmt+3', 'msk'} else raw_tz
 API_CIDR = os.environ.get('AI_OFFICE_KUBE_API', '10.43.0.1/32')
 
 
@@ -75,6 +76,8 @@ gateway = resource('Deployment', 'gateway', 'ai-core', {
                         'readinessProbe': {'httpGet': {'path': '/health/ready', 'port': 8080}, 'initialDelaySeconds': 10, 'periodSeconds': 5},
                         'livenessProbe': {'httpGet': {'path': '/health/live', 'port': 8080}, 'initialDelaySeconds': 20, 'periodSeconds': 10}}],
         'volumes': [{'name': 'tmp', 'emptyDir': {'sizeLimit': '64Mi'}}]}}})
+gateway['spec']['template']['spec']['containers'][0]['env'].append({'name': 'CALENDAR_PROVIDERS', 'value': 'google,yandex'})
+gateway['spec']['template']['spec']['containers'][0]['envFrom'].append({'secretRef': {'name': 'calendar-secrets', 'optional': True}})
 if 'cursor' in images:
     gateway['spec']['template']['spec']['containers'][0]['env'].extend([
         {'name': 'LLM_ENABLED', 'value': 'true'}, {'name': 'CURSOR_BRIDGE_URL', 'value': 'http://cursor-bridge.ai-integrations.svc.cluster.local:8081'}])

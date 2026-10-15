@@ -2,11 +2,12 @@ import unittest
 import uuid
 from decimal import Decimal
 
+from aioffice.calendars import credential_flags, deliver_event, google_body, status_lines, yandex_collection, yandex_ics
 from aioffice.costs import budget_blocks, budget_text, reconcile
 from aioffice.files import VOICE_REPLY, accept_file, describe_incoming, file_allowed, transcribe
 from aioffice.integrations import approval_effect, plan_external
 from aioffice.job import job_template, should_submit, specialist_job, specialist_prompt
-from aioffice.policy import callback_actor, payload_hash
+from aioffice.policy import callback_actor, normalize_timezone, payload_hash
 
 
 class FeatureTests(unittest.TestCase):
@@ -114,6 +115,71 @@ class FeatureTests(unittest.TestCase):
 
     def test_payload_hash_stable_for_approval(self):
         self.assertEqual(payload_hash({'kind': 'email', 'to': 'a'}), payload_hash({'to': 'a', 'kind': 'email'}))
+
+    def test_plus_three_is_moscow(self):
+        self.assertEqual(normalize_timezone('+3'), 'Europe/Moscow')
+        self.assertEqual(normalize_timezone(''), 'Europe/Moscow')
+        self.assertEqual(normalize_timezone('Europe/Moscow'), 'Europe/Moscow')
+
+    def test_calendar_without_credentials_does_not_call_out(self):
+        effect = approval_effect(allowed=True, decision='approve', provider='google', kind='calendar', credentials=False)
+        self.assertFalse(effect['outbound'])
+        self.assertEqual(effect['reason'], 'credentials_missing')
+        yandex = approval_effect(allowed=True, decision='approve', provider='yandex', kind='calendar', credentials=False)
+        self.assertFalse(yandex['outbound'])
+        ready = approval_effect(allowed=True, decision='approve', provider='google', kind='calendar', credentials=True)
+        self.assertTrue(ready['outbound'])
+        self.assertEqual(ready['reason'], 'ready')
+        self.assertFalse(credential_flags({})['google'])
+        self.assertFalse(credential_flags({})['yandex'])
+
+    def test_calendar_event_has_no_attendees(self):
+        body = google_body('Встреча', '2030-01-01T12:00', 'Europe/Moscow', 'abc')
+        self.assertNotIn('attendees', body)
+        self.assertEqual(body['start']['timeZone'], 'Europe/Moscow')
+        self.assertEqual(body['start']['dateTime'], '2030-01-01T12:00:00')
+        ics = yandex_ics('Встреча', '2030-01-01T12:00', 'Europe/Moscow', 'abc')
+        self.assertNotIn('ATTENDEE', ics)
+        self.assertIn('TZID:Europe/Moscow', ics)
+        self.assertIn('SUMMARY:Встреча', ics)
+        text = status_lines('Europe/Moscow', ('google', 'yandex'), {})
+        self.assertIn('UTC+3', text)
+        self.assertIn('Google', text)
+        self.assertIn('Яндекс', text)
+
+    def test_yandex_href_rejects_embedded_password(self):
+        with self.assertRaises(Exception):
+            yandex_collection({'YANDEX_CALDAV_HREF': 'https://user:secret@caldav.yandex.ru/calendars/a/'})
+        self.assertTrue(yandex_collection({'YANDEX_CALDAV_USER': 'owner@yandex.ru'}).startswith('https://caldav.yandex.ru/calendars/'))
+
+    def test_google_write_is_idempotent_and_stays_on_google(self):
+        seen = []
+
+        class Response:
+            def __init__(self, body):
+                self._body = body
+
+            def read(self):
+                return self._body
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        def opener(request, timeout):
+            seen.append((request.full_url, request.get_method(), request.data))
+            if request.full_url.startswith('https://www.googleapis.com/calendar/v3/calendars/primary/events?'):
+                return Response(b'{"items":[{"id":"existing"}]}')
+            raise AssertionError('second call')
+
+        result = deliver_event('google', 'Встреча', '2030-01-01T12:00', 'Europe/Moscow', 'abc',
+                                {'GOOGLE_CALENDAR_TOKEN': 'token-value'}, opener)
+        self.assertEqual(result['id'], 'existing')
+        self.assertEqual(len(seen), 1)
+        self.assertTrue(seen[0][0].startswith('https://www.googleapis.com/'))
+        self.assertNotIn('token-value', seen[0][0])
 
 
 if __name__ == '__main__':

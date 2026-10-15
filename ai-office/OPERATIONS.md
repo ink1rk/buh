@@ -48,7 +48,7 @@ cd /home/aioffice/ai-office
 
 `images.lock.json` содержит app, previous_app, cursor, postgres, python и litellm. Копии OCI — `/home/aioffice/.local/state/ai-office/images/`. При восстановлении импортировать их в `sudo k3s ctr -n k8s.io images import --platform linux/amd64 ARCHIVE` и повесить имя repo@digest через `k3s ctr images tag`, иначе `imagePullPolicy: Never` даст ErrImageNeverPull. Собственные образы не опубликованы в registry.
 
-Манифесты на VM собирает `scripts/render_deploy.py` из `/home/aioffice/.render-env`. Этот файл в git не входит. Повторный рендер без него уберёт proxy egress. LiteLLM: ConfigMap без `database_url`, секрет только `LITELLM_MASTER_KEY`. Память пода — request 1Gi, limit 2Gi. Launcher не масштабировать вместе с gateway: у них разные ServiceAccount.
+Манифесты на VM собирает `scripts/render_deploy.py` из `/home/aioffice/.render-env`. Этот файл в git не входит. Повторный рендер без него уберёт proxy egress. Пустой часовой пояс в генераторе становится `Europe/Moscow`. LiteLLM: ConfigMap без `database_url`, секрет только `LITELLM_MASTER_KEY`. Память пода — request 1Gi, limit 2Gi. Launcher не масштабировать вместе с gateway: у них разные ServiceAccount. Секрет `calendar-secrets` в `ai-core` необязательный: в нём только учётные данные Яндекс CalDAV. Google туда не записан, токена нет.
 
 Откат gateway к предыдущему текстовому режиму: использовать сохранённый `/home/aioffice/.local/state/ai-office/gateway-before-020.yaml`. Он возвращает прежний образ и выключает LLM, сохраняя данные/дополнительную схему 2. Cursor adapter при необходимости отдельно масштабировать в 0. Proxy/guard при откате приложения сохранять.
 

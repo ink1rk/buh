@@ -39,6 +39,17 @@ def callback_actor(update, owners):
     return uid
 
 
+def normalize_timezone(value: str) -> str:
+    """+3 is Europe/Moscow. The zone has been UTC+3 all year since 2014."""
+    raw = (value or '').strip()
+    if raw.lower() in {'+3', '+03', '+03:00', 'utc+3', 'gmt+3', 'msk'}:
+        return 'Europe/Moscow'
+    if not raw:
+        return 'Europe/Moscow'
+    ZoneInfo(raw)
+    return raw
+
+
 def parse_due(value: str, timezone: str, now=None):
     if not timezone:
         raise ValueError('Сначала подтвердите часовой пояс владельца.')
@@ -63,7 +74,7 @@ def payload_hash(payload):
 
 
 def external_write_allowed(*, capability=False, approval=None, owner=None, payload=None, now=None):
-    """No configured calendar/email/payment writer exists in this release."""
+    """Approval is single-use. The caller decides whether a writer exists."""
     if not capability or not approval:
         return False
     now = now or datetime.now(UTC)
