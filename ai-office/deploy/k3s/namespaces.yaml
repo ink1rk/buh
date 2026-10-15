@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-core
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    app.kubernetes.io/part-of: ai-office
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-agents
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    app.kubernetes.io/part-of: ai-office
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-jobs
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    app.kubernetes.io/part-of: ai-office
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-data
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    app.kubernetes.io/part-of: ai-office
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-integrations
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    app.kubernetes.io/part-of: ai-office
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-observability
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    app.kubernetes.io/part-of: ai-office

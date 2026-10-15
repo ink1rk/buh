@@ -1,0 +1,8 @@
+replicaCount: 1
+gateway:
+  mode: polling
+budget:
+  weeklyUsd: 20
+  monthlyUsd: 100
+jobs:
+  maxParallel: 2
