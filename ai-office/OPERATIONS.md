@@ -1,33 +1,56 @@
-# OPERATIONS
+# Эксплуатация
 
-## Доступ
+Только VM 115. Не менять другие гости, proxy CT 101, PVE firewall, reverse proxy или DNS существующего сайта.
 
-Администратор гостя: `aioffice`. SSH принимает только ключ. В `/etc/ssh/sshd_config.d/99-aioffice.conf` выключены `PasswordAuthentication`, `KbdInteractiveAuthentication` и `PermitRootLogin`.
+## Состояние и остановка
 
-Первый закрытый ключ лежит на госте: `/home/aioffice/bootstrap-key`, режим `600`, владелец `aioffice`. Его нужно скопировать к себе и удалить с диска VM. Отпечаток: `SHA256:Ek2Jx+GfhQ4/o+QedtihKawsC4OoQ+AnN6VGbVpJPhU`.
-
-Пароль консоли в git не хранится. В конфиге Proxmox поле `cipassword` отсутствует. `qemu-guest-agent` в состоянии active, ping через API ответил.
-
-Kubernetes API наружу не пробрасывается. Kubeconfig k3s создан с режимом `600`. В репозиторий его не копировать.
-
-## k3s
-
-Версия: `v1.36.5+k3s1`. SHA-256 `/usr/local/bin/k3s`: `d73847bcd3c5fccef0115b372e2f9a91f3032dc84bbf71518a4617565294d313`.
-
-Параметры сервера: `--write-kubeconfig-mode 600 --disable traefik --disable servicelb` плюс адрес этого узла в `--node-ip` и `--tls-san`.
-
-Остановка: `systemctl stop k3s`. Запуск: `systemctl start k3s`. Обновление только на явно выбранную версию, не `latest`. Второй узел к встроенному datastore не добавлять.
-
-Firewall гостя: по умолчанию входящие запрещены. Снаружи открыт только SSH из сети моста. Сети подов и сервисов k3s разрешены внутри гостя. Правила датацентра Proxmox не менялись.
-
-## Бэкап
-
-Отдельного backup storage нет. Задание, которое копирует media, proxy, ausra и wg-hub, не расширялось на VM 115: каталог `local` не вмещает диск 512 GiB.
-
-Когда появится PostgreSQL и место для дампа:
-
-```bash
-pg_dump --format=custom --file=ai-office.dump "$DATABASE_URL"
+```sh
+sudo k3s kubectl get nodes
+sudo k3s kubectl get pods -A
+sudo k3s kubectl logs -n ai-core deployment/gateway --tail=30
+sudo systemctl status ai-office-proxy.service ai-office-proxy-guard.service ai-office-backup.timer
 ```
 
-Восстановление проверять на отдельной базе, не поверх рабочей. Откат VM описан в `docs/runbooks/rollback.md`.
+Для приостановки работы пользователя: `/pause`, `/stopall`; для продолжения `/resume`. Уже отправленный провайдеру запрос может тарифицироваться до завершения. Операторская остановка только бота: `sudo k3s kubectl scale deployment/gateway -n ai-core --replicas=0`; запуск — replicas=1. PostgreSQL/PVC при этом сохраняются.
+
+## Прокси
+
+Конфигурация `/etc/ai-office-proxy/`, службы `ai-office-proxy` и `ai-office-proxy-guard`. sing-box 1.14.3, SHA-256 релизного архива: `e2bdf179c15a3652955dc44867e33ca0965c9c9b91b34267dcc5a5d639a5feee`.
+
+Весь внешний маршрут — SOCKS5 SOCKS5 на CT proxy, порт 1080; DNS через DoH в том же proxy. HTTP HTTP на CT proxy, порт 8080 дополнительно задан в environment/APT/k3s drop-in. TUN без direct outbound. nft table `inet ai_office_proxy_guard` сохраняет запрет внешнего eth0 egress при остановке TUN. Для внутренних соединений TUN в UFW есть только узкие правила на его собственный /30 и /126.
+
+Не выполнять `nft flush ruleset`, `iptables -F`, `ufw disable`. Для исправления прокси перезапускать только `ai-office-proxy.service`; SSH из LAN остаётся доступен. Полный откат описан в docs/operations/PROXY_PLAN.md и автоматически не выполняется, поскольку разрешил бы прямой интернет.
+
+## Бэкапы
+
+```sh
+sudo systemctl start ai-office-backup.service
+sudo journalctl -u ai-office-backup.service -n 10 --no-pager
+cat /home/aioffice/.local/state/ai-office/last-backup.txt
+```
+
+Зашифрованные файлы и SHA-256: `/home/aioffice/.local/state/ai-office/backups/`. Daily 01:10 UTC + до 5 минут jitter, Persistent=true, retention 7 дней только для файлов ai-office. Эти ежедневные копии находятся на том же диске VM. Независимая автоматическая репликация пока не настроена.
+
+Ключ age: `/home/aioffice/.local/state/ai-office/backup-age.key`, 0600. Вторая копия на Windows: `%LOCALAPPDATA%\AI-Office-Recovery\backup-age.key`, ACL владельца; в git её нет. Локальный зашифрованный дамп — в игнорируемом `artifacts/backups` рядом с проектом.
+
+Проверка копии в отдельном временном PostgreSQL:
+
+```sh
+cd /home/aioffice/ai-office
+.venv/bin/python scripts/restore_probe.py /path/to/aioffice-20261015T214444Z.dump.age
+```
+
+Это проверка существующего контрольного дампа с ожидаемой версией схемы 2 и известным smoke artifact; при будущих миграциях ожидаемую проверку надо обновить. Скрипт **не восстанавливает поверх рабочей БД**, создаёт временный Pod с emptyDir и удаляет его после проверки. Для реальной аварии сначала разворачивать отдельную цель, проверять данные, затем согласовывать переключение. Пароль роли приложения и Kubernetes Secrets не входят в логический дамп: их восстанавливает оператор отдельно.
+
+## Обновление и откат
+
+Перед миграцией — новый дамп. Локальный buildah, только digest-pinned base и hashed requirements. Миграции 1/2 повторяемы и применяются под PostgreSQL advisory lock. Нельзя считать это автоматической системой downgrade: удаления схемы нет.
+
+`images.lock.json` содержит app, cursor и previous_app. Копии OCI — `/home/aioffice/.local/state/ai-office/images/`. При восстановлении импортировать их в `sudo k3s ctr -n k8s.io images import --platform linux/amd64 ARCHIVE`; перед запуском проверить наличие нужных repo@digest. Собственные образы не опубликованы в registry, поэтому новые узлы требуют импорта.
+
+Откат gateway к предыдущему текстовому режиму: использовать сохранённый `/home/aioffice/.local/state/ai-office/gateway-before-020.yaml`. Он возвращает прежний образ и выключает LLM, сохраняя данные/дополнительную схему 2. Cursor adapter при необходимости отдельно масштабировать в 0. Proxy/guard при откате приложения сохранять.
+
+## Ошибки доставки и расходов
+
+Не повторять `uncertain` Telegram события или LLM-вызовы автоматически. Сначала сверить доставку/задачу и Cursor Dashboard. Метрики не содержат текста сообщений; uvicorn access log отключён. Логи фиксируют тип ошибки, без ключей и пользовательского prompt. Full user export/delete UI, внешние оповещения и мониторинг RPO/RTO ещё не внедрены.
+
