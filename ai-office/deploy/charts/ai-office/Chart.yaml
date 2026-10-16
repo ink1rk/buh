@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ai-office
+description: Umbrella chart for the AI Office MVP core.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

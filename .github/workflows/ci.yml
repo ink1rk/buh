@@ -40,3 +40,22 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  ai-office-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-office
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run pytest
+        run: pytest -q --tb=short
+      - name: Run office policy tests
+        run: python -m unittest tests.test_policy tests.test_features
