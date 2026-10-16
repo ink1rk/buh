@@ -4,7 +4,8 @@ from decimal import Decimal
 
 from aioffice.calendars import credential_flags, deliver_event, google_body, status_lines, yandex_collection, yandex_ics
 from aioffice.costs import budget_blocks, budget_text, reconcile
-from aioffice.files import VOICE_REPLY, accept_file, describe_incoming, file_allowed, transcribe
+from aioffice.files import UNSUPPORTED, VOICE_REPLY, accept_file, describe_incoming, file_allowed, transcribe
+from aioffice.llm import llm_failure_text
 from aioffice.integrations import approval_effect, plan_external
 from aioffice.job import job_template, should_submit, specialist_job, specialist_prompt
 from aioffice.policy import callback_actor, normalize_timezone, payload_hash
@@ -78,6 +79,10 @@ class FeatureTests(unittest.TestCase):
             raise AssertionError('transcriber was called')
 
         self.assertIsNone(transcribe('voice', b'abcd', '', boom))
+        self.assertTrue(file_allowed('voice', 'audio/ogg;codecs=opus', 4))
+        self.assertIn('сохраняются локально', UNSUPPORTED)
+        self.assertIn('внутреннюю ошибку', llm_failure_text('abc', 'internal'))
+        self.assertIn('не выполняется', llm_failure_text('abc', 'unavailable'))
 
     def test_smoke_job_still_accepts_zero_digest(self):
         job = job_template(uuid.uuid4(), image='example@sha256:' + '0' * 64, secret_name='worker')

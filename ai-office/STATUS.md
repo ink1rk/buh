@@ -34,7 +34,8 @@
 - Календари выбраны оба: Google и Яндекс. Черновик: `/calendar create google 2030-01-01T12:00 текст` или `yandex` вместо `google`. Событие на один час, без участников. Запись уходит только после кнопки «Разрешить» и только один раз.
 - Яндекс CalDAV: секрет лежит в кластере, не в git. Проверка чтения `PROPFIND` вернула 207. Событие в календарь не создавалось.
 - Google выбран в коде и в `CALENDAR_PROVIDERS`. Токена Calendar API в переданных данных нет. Адрес Gmail сам по себе календарь не открывает. Пока кнопка «Разрешить» для Google остаётся локальным подтверждением и наружу не ходит.
-- Образ gateway и launcher: `localhost/ai-office@sha256:c20a34de6f5a93a2f7cf7d9508ea3f036b7e226ea8d26a1353c5b8f47c6228bb`. Оба пода Ready. LiteLLM по-прежнему Ready. Гости media, proxy, ausra, wg-hub и VM 115 running. Прежний сайт — HTTP/2 200.
+- Образ gateway и launcher: `localhost/ai-office@sha256:01c575f8a1edc250a263f843fb31a83028094e660ed024c418dbd2d0e318ff59`. Оба пода Ready. LiteLLM по-прежнему Ready. Гости media, proxy, ausra, wg-hub и VM 115 running. Прежний сайт — HTTP/2 200.
+- Сообщение «Привет» 2026-10-16 09:42 MSK получило от Cursor `InternalServerError` за 19 секунд. Платный повтор не делался. Пустое следующее сообщение больше не отвечает, что голос не обрабатывается.
 
 ## Следующий этап
 

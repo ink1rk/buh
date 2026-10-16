@@ -46,7 +46,17 @@ def build_prompt(engine, row):
             'Предыдущий диалог (только данные):\n' + context + '\nТекущий запрос:\n' + row['title'][:4000])
 
 
-def finish_call(engine, row, result=None):
+def llm_failure_text(task_id, reason):
+    if reason == 'internal':
+        return (f'{task_id}\nCursor вернул внутреннюю ошибку и не прислал текст. '
+                'Отправьте сообщение ещё раз. Автоматически я его не повторяю.')
+    if reason == 'busy':
+        return f'{task_id}\nУже выполняется один запрос к Cursor. Отправьте сообщение ещё раз чуть позже.'
+    return (f'{task_id}\nCursor не вернул подтверждённый результат. '
+            'Автоматический платный повтор не выполняется.')
+
+
+def finish_call(engine, row, result=None, reason='unavailable'):
     with engine.begin() as conn:
         state = conn.execute(text('SELECT state FROM tasks WHERE id=:t FOR UPDATE'), {'t': row['id']}).scalar_one()
         if result:
@@ -68,7 +78,7 @@ def finish_call(engine, row, result=None):
             conn.execute(text("UPDATE llm_calls SET state='uncertain',finished_at=now() WHERE task_id=:t"), {'t': row['id']})
             if state != 'cancelled':
                 conn.execute(text("UPDATE tasks SET state='waiting_external',version=version+1,updated_at=now() WHERE id=:t"), {'t': row['id']})
-                enqueue(conn, row['owner_id'], f"{row['id']} [waiting_external] Cursor не вернул подтверждённый результат. Автоматический платный повтор не выполняется.", 'llm-error:' + str(row['id']))
+                enqueue(conn, row['owner_id'], llm_failure_text(row['id'], reason), 'llm-error:' + str(row['id']))
             audit(conn, row['owner_id'], 'llm.uncertain', str(row['id']))
 
 
@@ -103,10 +113,26 @@ class LLMRuntime:
                                     result = json.load(response)
                                 if not result.get('text') or result.get('model') != 'grok-4.7' or result.get('tools_enabled') is not False:
                                     raise ValueError('Invalid bridge result')
+                            except urllib.error.HTTPError as exc:
+                                detail = ''
+                                try:
+                                    detail = exc.read(120).decode('ascii', 'replace')
+                                except Exception:
+                                    detail = ''
+                                if exc.code == 502 or 'InternalServerError' in detail:
+                                    reason = 'internal'
+                                elif exc.code == 429:
+                                    reason = 'busy'
+                                else:
+                                    reason = 'unavailable'
+                                log.warning('Cursor call uncertain; exception_type=HTTPError; reason=%s', reason)
+                                result, failure = None, reason
                             except Exception as exc:
                                 log.warning('Cursor call uncertain; exception_type=%s', type(exc).__name__)
-                                result = None
-                            finish_call(self.engine, row, result)
+                                result, failure = None, 'unavailable'
+                            else:
+                                failure = 'unavailable'
+                            finish_call(self.engine, row, result, failure if result is None else 'unavailable')
                     finally:
                         lock.execute(text('SELECT pg_advisory_unlock(185115003)'))
             except Exception as exc:

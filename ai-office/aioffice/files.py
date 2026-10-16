@@ -11,8 +11,12 @@ ALLOW = {
 }
 
 
+def mime_base(value):
+    return (value or '').split(';', 1)[0].strip().lower()
+
+
 def file_allowed(kind, mime, size):
-    return isinstance(size, int) and 0 < size <= MAX_BYTES and mime in ALLOW.get(kind, ())
+    return isinstance(size, int) and 0 < size <= MAX_BYTES and mime_base(mime) in ALLOW.get(kind, ())
 
 
 def accept_file(kind, mime, size, data):
@@ -26,18 +30,24 @@ def describe_incoming(message):
         return None
     if message.get('voice'):
         item = message['voice']
-        return 'voice', item.get('mime_type') or 'audio/ogg', item.get('file_size'), item.get('file_id'), item.get('file_unique_id')
+        return 'voice', mime_base(item.get('mime_type') or 'audio/ogg'), item.get('file_size'), item.get('file_id'), item.get('file_unique_id')
     if message.get('audio'):
         item = message['audio']
-        return 'audio', item.get('mime_type') or '', item.get('file_size'), item.get('file_id'), item.get('file_unique_id')
+        return 'audio', mime_base(item.get('mime_type') or ''), item.get('file_size'), item.get('file_id'), item.get('file_unique_id')
     if message.get('document'):
         item = message['document']
-        return 'document', item.get('mime_type') or '', item.get('file_size'), item.get('file_id'), item.get('file_unique_id')
+        return 'document', mime_base(item.get('mime_type') or ''), item.get('file_size'), item.get('file_id'), item.get('file_unique_id')
     photos = message.get('photo')
     if isinstance(photos, list) and photos:
         item = max(photos, key=lambda row: row.get('file_size') or 0)
         return 'photo', 'image/jpeg', item.get('file_size'), item.get('file_id'), item.get('file_unique_id')
     return None
+
+
+UNSUPPORTED = (
+    'Это сообщение без текста. Фото, документ и голосовое сохраняются локально. '
+    'Голос не уходит в платное распознавание. Стикеры, видео и видеосообщения не сохраняются.'
+)
 
 
 def local_runner(command, data):

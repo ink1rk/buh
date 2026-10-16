@@ -10,7 +10,7 @@ from sqlalchemy import text
 from .calendars import LABELS, CalendarError, credential_flags, deliver_event, status_lines
 from .costs import budget_text, fetch_litellm_spend, reconcile
 from .db import audit
-from .files import VOICE_REPLY, accept_file, describe_incoming, local_runner, transcribe
+from .files import UNSUPPORTED, VOICE_REPLY, accept_file, describe_incoming, local_runner, transcribe
 from .integrations import approval_effect, registry
 from .job import PROFILES
 from .policy import callback_actor, external_write_allowed, normalize_timezone, parse_due, payload_hash, private_owner
@@ -96,7 +96,7 @@ def budget_reply(conn, owner, settings):
 def command(conn, owner, message, settings):
     raw = message.get('text', '').strip()
     if not raw:
-        return 'Вложения и голос пока не обрабатываются. Пришлите текст.'
+        return UNSUPPORTED
     name, _, arg = raw.partition(' ')
     name = name.split('@')[0].lower()
     user = conn.execute(text('SELECT * FROM users WHERE id=:o FOR UPDATE'), {'o': owner}).mappings().one()
@@ -266,7 +266,7 @@ def apply_callback(conn, owner, query, settings):
 def store_incoming(conn, owner, message, data, settings):
     described = describe_incoming(message)
     if not described:
-        return 'Вложения и голос пока не обрабатываются. Пришлите текст.'
+        return UNSUPPORTED
     kind, mime, size, _file_id, unique_id = described
     if not unique_id:
         return 'Файл без идентификатора отклонён.'

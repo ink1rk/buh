@@ -87,8 +87,11 @@ def answer(body: Prompt, authorization: str = Header(default='')):
         return complete(body.text)
     except Exception as exc:
         # SDK exceptions can embed credentials, prompts or internal URLs.
-        print('Cursor adapter failure_type=' + type(exc).__name__, flush=True)
-        raise HTTPException(502, 'Cursor execution unavailable') from None
+        name = type(exc).__name__
+        if not name.isalpha():
+            name = 'Error'
+        print('Cursor adapter failure_type=' + name, flush=True)
+        raise HTTPException(502, name) from None
     finally:
         slots.release()
 
