@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Заявка — ТСН «Ландыши»</title>
+  <meta name="description" content="Заявка в правление ТСН «Ландыши»: поломка, двор, документы. Для срочного вопроса звоните охране или председателю.">
+  <meta name="theme-color" content="#14312a">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/site.css">
+</head>
+<body class="has-dock">
+  <a class="skip" href="#main">К содержанию</a>
+  <header class="nav">
+    <a class="brand" href="/">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#14312a"/><path d="M32 50c1-10 1-16 0-24" fill="none" stroke="#f4efe4" stroke-width="1.7" stroke-linecap="round"/><path d="M32 30c-2-8 4-16 12-16-2 8-6 14-12 16z" fill="#f4efe4"/><path d="M30 36c-8-1-14-7-14-14 8 1 13 7 14 14z" fill="#e4d3bc"/><path d="M34 40c7 2 14-2 16-9-8 0-14 4-16 9z" fill="#c6a36a"/></svg>
+      <span><strong>Ландыши</strong><em>товарищество</em></span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="menu">Меню</button>
+    <nav class="menu" id="menu">
+      <a href="/">Главная</a>
+      <a href="/novosti.html">Новости</a>
+      <a href="/dokumenty.html">Документы</a>
+      <a href="/oplata.html">Оплата</a>
+      <a href="/zayavka.html">Заявка</a>
+      <a href="/kontakty.html">Контакты</a>
+    </nav>
+    <a class="nav-call" href="tel:+79777823268">Охрана</a>
+  </header>
+  <main id="main">
+    <header class="page-hero">
+      <div class="wrap">
+        <p class="kicker">Правлению</p>
+        <h1>Коротко, что случилось</h1>
+        <p class="sub">Форма собирает текст и хранит его в этом браузере. На прежнем сайте почта для обращений не была указана, поэтому сообщение само никуда не уходит. Для аварии звоните.</p>
+      </div>
+    </header>
+    <section class="section">
+      <div class="wrap split">
+        <div>
+          <form class="form" data-request-form novalidate>
+            <div class="form-row">
+              <label>Имя
+                <input name="name" autocomplete="name" required maxlength="80" placeholder="Как к вам обращаться">
+              </label>
+              <label>Телефон
+                <input name="phone" autocomplete="tel" inputmode="tel" required placeholder="+7">
+              </label>
+            </div>
+            <div class="form-row">
+              <label>Помещение
+                <input name="place" required maxlength="40" placeholder="Секция и номер">
+              </label>
+              <label>Тема
+                <select name="topic">
+                  <option>Электрика</option>
+                  <option>Вода и отопление</option>
+                  <option>Лифт</option>
+                  <option>Уборка и двор</option>
+                  <option>Охрана и проход</option>
+                  <option>Документы и оплата</option>
+                  <option>Другое</option>
+                </select>
+              </label>
+            </div>
+            <label>Что случилось
+              <textarea name="message" required maxlength="2000" placeholder="Где именно и с какого момента"></textarea>
+            </label>
+            <p class="error" hidden>Нужны имя, телефон, помещение и хотя бы пара слов о проблеме.</p>
+            <button class="btn btn-solid" type="submit">Сохранить заявку</button>
+          </form>
+          <div class="receipt" data-receipt hidden>
+            <p class="status">Сохранено на этом устройстве</p>
+            <strong data-receipt-id>ЛД-</strong>
+            <p>Покажите номер администратору или председателю. Если вопрос горит, не ждите — позвоните охране.</p>
+            <p><a class="btn btn-solid" href="tel:+79777823268">Позвонить охране</a></p>
+          </div>
+          <div class="saved">
+            <h2 style="font-size:40px">На этом устройстве</h2>
+            <div data-request-list></div>
+            <p><button class="btn btn-line" type="button" data-clear-requests>Очистить список</button></p>
+          </div>
+        </div>
+        <aside>
+          <div class="quote">
+            <p>Авария не ждёт, пока кто-то откроет сайт.</p>
+            <footer>Охрана отвечает по телефону +7 977 782-32-68</footer>
+          </div>
+          <ul class="directory">
+            <li>
+              <div>
+                <p class="role">Электрик</p>
+                <h3 style="font-size:28px">Свет и щиты</h3>
+              </div>
+              <a class="phone" href="tel:+79775004502">+7 977 500-45-02</a>
+            </li>
+            <li>
+              <div>
+                <p class="role">Председатель</p>
+                <h3 style="font-size:28px">Козина О. О.</h3>
+              </div>
+              <a class="phone" href="tel:+79262575160">+7 926 257-51-60</a>
+            </li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap legal">Заявка не отправляется на сервер · <a href="/kontakty.html">Все телефоны</a></div>
+  </footer>
+  <nav class="dock" aria-label="Быстрые действия">
+    <a href="tel:+79777823268">Охрана</a>
+    <a href="/zayavka.html">Заявка</a>
+    <a href="/oplata.html">Оплата</a>
+  </nav>
+  <div class="toast" role="status"></div>
+  <script src="/assets/js/site.js"></script>
+</body>
+</html>
