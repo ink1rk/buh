@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 880" fill="none" role="img" aria-label="Графический знак жилого комплекса Ландыши">
+  <rect width="760" height="880" rx="40" fill="#14312a"/>
+  <rect x="22" y="22" width="716" height="836" rx="28" stroke="#e4d3bc" stroke-opacity=".28"/>
+  <g opacity=".45" stroke="#e4d3bc" stroke-width="1">
+    <path d="M40 70h80M40 82h48"/>
+  </g>
+  <text x="40" y="78" fill="#e4d3bc" font-family="Georgia, serif" font-size="18" letter-spacing="3">САМОРЫ МАШЕЛА</text>
+  <text x="40" y="104" fill="#e4d3bc" fill-opacity=".7" font-family="Georgia, serif" font-size="13" letter-spacing="2.4">ДОМ 2А</text>
+
+  <path d="M48 760c90-70 180-90 280-70 110 22 190 8 300-40 40-18 70-28 84-30v150H48V760z" fill="#0e241f"/>
+
+  <!-- side wings -->
+  <g>
+    <rect x="70" y="250" width="150" height="470" fill="#1a3b32" stroke="#e4d3bc" stroke-opacity=".8"/>
+    <path d="M70 250h150" stroke="#e4d3bc"/>
+    <rect x="86" y="274" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="132" y="274" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="178" y="274" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="86" y="332" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="132" y="332" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="178" y="332" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="86" y="390" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="132" y="390" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="178" y="390" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="86" y="448" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="132" y="448" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="178" y="448" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="86" y="506" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="132" y="506" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="178" y="506" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="86" y="564" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="132" y="564" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="178" y="564" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="86" y="622" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="132" y="622" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="178" y="622" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+    <rect x="118" y="640" width="54" height="80" fill="#0e241f" stroke="#e4d3bc" stroke-opacity=".7"/>
+  </g>
+  <g>
+    <rect x="540" y="250" width="150" height="470" fill="#1a3b32" stroke="#e4d3bc" stroke-opacity=".8"/>
+    <path d="M540 250h150" stroke="#e4d3bc"/>
+    <rect x="556" y="274" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="602" y="274" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="648" y="274" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="556" y="332" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="602" y="332" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="648" y="332" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="556" y="390" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="602" y="390" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="648" y="390" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="556" y="448" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="602" y="448" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="648" y="448" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="556" y="506" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="602" y="506" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="648" y="506" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="556" y="564" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="602" y="564" width="32" height="36" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="648" y="564" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="556" y="622" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="602" y="622" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="648" y="622" width="32" height="36" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+    <rect x="588" y="640" width="54" height="80" fill="#0e241f" stroke="#e4d3bc" stroke-opacity=".7"/>
+  </g>
+
+  <!-- center -->
+  <g>
+    <rect x="210" y="150" width="340" height="570" fill="#21483d" stroke="#f3eadc" stroke-width="1.4"/>
+    <path d="M210 150h340" stroke="#f3eadc" stroke-width="1.4"/>
+    <path d="M250 150v-28h260v28" stroke="#f3eadc" stroke-opacity=".7"/>
+    <rect x="232" y="178" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="282" y="178" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="332" y="178" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="382" y="178" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="432" y="178" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="482" y="178" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="232" y="230" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="282" y="230" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="332" y="230" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="382" y="230" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="432" y="230" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="482" y="230" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="232" y="282" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="282" y="282" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="332" y="282" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="382" y="282" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="432" y="282" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="482" y="282" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="232" y="334" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="282" y="334" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="332" y="334" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="382" y="334" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="432" y="334" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="482" y="334" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="232" y="386" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="282" y="386" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="332" y="386" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="382" y="386" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="432" y="386" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="482" y="386" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="232" y="438" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="282" y="438" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="332" y="438" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="382" y="438" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="432" y="438" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="482" y="438" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="232" y="490" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="282" y="490" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="332" y="490" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="382" y="490" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="432" y="490" width="34" height="32" rx="1.5" fill="#f4efe4" fill-opacity="1"/>
+<rect x="482" y="490" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="232" y="542" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="282" y="542" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="332" y="542" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="382" y="542" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="432" y="542" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+<rect x="482" y="542" width="34" height="32" rx="1.5" fill="#0e1c18" fill-opacity=".9"/>
+    <path d="M330 620h100v100H330z" fill="#10241e" stroke="#f3eadc"/>
+    <path d="M380 620v100" stroke="#f3eadc" stroke-opacity=".6"/>
+    <circle cx="368" cy="672" r="2" fill="#e4d3bc"/>
+  </g>
+
+  <!-- courtyard trees -->
+  <g fill="#6e8f63">
+    <circle cx="168" cy="735" r="26"/>
+    <circle cx="196" cy="748" r="18"/>
+    <circle cx="560" cy="742" r="24"/>
+    <circle cx="592" cy="754" r="16"/>
+  </g>
+  <g fill="#8eae78" opacity=".85">
+    <circle cx="250" cy="770" r="14"/>
+    <circle cx="500" cy="768" r="12"/>
+  </g>
+
+  <!-- lilies -->
+  <g stroke="#f4efe4" fill="#f4efe4" stroke-linecap="round">
+    <path d="M300 820c8-40 6-70-8-108" fill="none" stroke-width="1.6"/>
+    <path d="M292 730c-16-6-22-20-14-32 12 6 20 18 14 32z"/>
+    <path d="M286 700c-18-2-26-16-16-28 12 4 22 16 16 28z"/>
+    <path d="M330 808c2-36 14-62 36-92" fill="none" stroke-width="1.6"/>
+    <path d="M366 734c14-8 26-4 30 10-12 6-24 4-30-10z"/>
+    <path d="M352 760c16-4 28 2 30 16-14 4-26 0-30-16z"/>
+    <path d="M430 824c-4-42 8-78 28-112" fill="none" stroke-width="1.6"/>
+    <path d="M458 730c18-2 28-14 22-28-12 8-22 18-22 28z"/>
+    <path d="M448 768c20 0 30-12 24-26-14 8-24 16-24 26z"/>
+  </g>
+
+  <text x="40" y="840" fill="#e4d3bc" fill-opacity=".78" font-family="Georgia, serif" font-size="15">Жилой комплекс «Ландыши»</text>
+</svg>
