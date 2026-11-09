@@ -1,0 +1,84 @@
+# ToS/robots/real HTTP availability must be checked by Cursor before enabling live poll.
+version: 1
+sources:
+  - id: github_search
+    adapter: github_rest_search
+    enabled: true
+    api_base: https://api.github.com
+    poll_minutes: 30
+    requests_per_poll_cap: 12
+    auth_secret_env: GITHUB_READ_TOKEN
+    readonly: true
+    queries:
+      - 'topic:self-hosted archived:false'
+      - 'topic:llm archived:false'
+      - 'topic:devtools archived:false'
+      - 'topic:security-tool archived:false'
+      - 'topic:docker archived:false'
+    query_time_window_days: 30
+  - id: github_releases
+    adapter: github_releases
+    enabled: true
+    api_base: https://api.github.com
+    poll_minutes: 90
+    requests_per_poll_cap: 15
+    auth_secret_env: GITHUB_READ_TOKEN
+    watched_repos: [] # approved list from UI, empty = no release requests
+  - id: huggingface
+    adapter: hf_hub
+    enabled: true
+    api_base: https://huggingface.co/api
+    poll_minutes: 60
+    requests_per_poll_cap: 6
+    auth_secret_env: HF_READ_TOKEN
+    types: [models, spaces]
+    download_model_weights: false
+  - id: hackernews
+    adapter: hackernews_firebase
+    enabled: true
+    api_base: https://hacker-news.firebaseio.com/v0
+    poll_minutes: 20
+    requests_per_poll_cap: 35
+    collections: [topstories, newstories, showstories]
+    max_items_per_collection: 10
+  - id: arxiv_ai
+    adapter: rss
+    enabled: true
+    feeds: [https://rss.arxiv.org/rss/cs.AI, https://rss.arxiv.org/rss/cs.LG]
+    poll_minutes: 1440
+    requests_per_poll_cap: 2
+    mark_preprints: true
+  - id: arxiv_science
+    adapter: rss
+    enabled: true
+    feeds: [https://rss.arxiv.org/rss/cs.RO, https://rss.arxiv.org/rss/physics]
+    poll_minutes: 1440
+    requests_per_poll_cap: 2
+    mark_preprints: true
+  - id: cisa_kev
+    adapter: cisa_kev_json
+    enabled: true
+    feed_url: https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
+    poll_minutes: 60
+    requests_per_poll_cap: 1
+    require_second_review: true
+  - id: kubernetes
+    adapter: rss
+    enabled: true
+    feeds: [https://kubernetes.io/feed.xml]
+    poll_minutes: 120
+    requests_per_poll_cap: 1
+  - id: pypi_updates
+    adapter: rss
+    enabled: true
+    feeds: [https://pypi.org/rss/updates.xml]
+    poll_minutes: 180
+    requests_per_poll_cap: 1
+    watched_projects: [] # must be filled; do not publish everything from this noisy feed
+  - id: cloudflare_changelog
+    adapter: rss
+    enabled: false
+    feed_url: null # select exact official link from available-rss-feeds, do not guess
+    docs_url: https://developers.cloudflare.com/fundamentals/new-features/available-rss-feeds/
+    poll_minutes: 120
+    requests_per_poll_cap: 1

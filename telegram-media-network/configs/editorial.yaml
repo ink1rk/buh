@@ -1,0 +1,51 @@
+version: 1
+pilot:
+  days: 14
+  all_posts_manual_approval: true
+  require_second_review_for: [security_advisory, cve_alert, extraordinary_science, sponsored]
+scoring:
+  weights:
+    verifiability: 25
+    practical_value: 20
+    novelty: 20
+    channel_relevance: 15
+    source_quality: 10
+    audience_significance: 10
+  score_thresholds: {high: 80, review: 60}
+  penalties: {clickbait: 15, missing_date: 10, dubious_license: 10, press_release_only: 10, unsupported_high_risk_claim: 25}
+  no_unverified_publish: true
+dedup:
+  global_story_cooldown_hours: 48
+  same_repo_cooldown_days: 30
+  github_release_override_days: 7
+  require_atomic_db_guards: true
+  fuzzy_similarity: {enabled: true, minimum_candidate_score: 0.85, auto_reject: false}
+llm:
+  mode: mock # options: mock/local/manual; local requires explicit endpoint permission
+  endpoint: null
+  model: null
+  temperature: 0.2
+  max_validation_attempts: 2
+  output_schema: schemas/post_draft.schema.json
+  body_target_chars: [350, 800]
+  body_max_chars: 900
+media:
+  default_template: news
+  width: 1280
+  height: 720
+  max_file_mb: 8
+  use_remote_og_images: false
+  screenshot_enabled: false
+  own_fallback_required: true
+telegram:
+  caption_hard_limit: 1024
+  caption_soft_limit: 900
+  sandbox: true
+  dry_run: true
+  default_disable_notification: false
+  allow_paid_broadcast: false
+compliance:
+  monetization_enabled: false
+  legal_review_required: true
+  require_primary_source: true
+  disable_automatic_publishing_of_security_advisories: true

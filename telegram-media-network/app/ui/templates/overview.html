@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Сеть</h1>
+<p class="muted">Глобальный рубильник: {% if policy.kill_switch %}<strong>включён</strong>{% else %}выключен{% endif %}. Меняет только владелец.</p>
+<section class="grid">
+  {% for row in cards %}
+  <article class="card">
+    <h2>{{ row.title }}</h2>
+    <p>{{ row.category }}</p>
+    <p>Сегодня в очереди: {{ row.queued }}</p>
+    <p>Ждут решения: {{ row.waiting }}</p>
+    <p>Публикация канала: {% if row.publish_enabled %}разрешена{% else %}выключена{% endif %}</p>
+    <p class="muted">Источник: {{ row.health }}</p>
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

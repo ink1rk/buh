@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} — TMN</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <a class="skip" href="#content">К содержанию</a>
+  <header class="top">
+    <div class="brand">TMN</div>
+    <nav aria-label="Разделы">
+      <a href="/" {% if nav == 'overview' %}aria-current="page"{% endif %}>Каналы</a>
+      <a href="/inbox" {% if nav == 'inbox' %}aria-current="page"{% endif %}>Лента</a>
+      <a href="/calendar" {% if nav == 'calendar' %}aria-current="page"{% endif %}>Календарь</a>
+      <a href="/sources" {% if nav == 'sources' %}aria-current="page"{% endif %}>Источники</a>
+      <a href="/posts" {% if nav == 'posts' %}aria-current="page"{% endif %}>Публикации</a>
+      <a href="/analytics" {% if nav == 'analytics' %}aria-current="page"{% endif %}>Статистика</a>
+      <a href="/system" {% if nav == 'system' %}aria-current="page"{% endif %}>Система</a>
+    </nav>
+    {% if policy.dry_run %}<div class="badge">DRY RUN</div>{% else %}<div class="badge">ЖИВОЙ РЕЖИМ</div>{% endif %}
+    {% if user is defined and user.role == "OWNER" %}
+      <div class="badge">{% if policy.kill_switch %}KILL SWITCH{% else %}KILL SWITCH ВЫКЛ{% endif %}</div>
+    {% endif %}
+  </header>
+  <main id="content" class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
