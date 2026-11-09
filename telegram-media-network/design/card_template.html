@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TMN demo card — HTML render reference</title>
+<style>
+  *{box-sizing:border-box} html,body{margin:0;padding:0;background:#0b1020;color:#fff;font-family:Inter,Arial,sans-serif}
+  .card{width:1280px;height:720px;position:relative;overflow:hidden;background:radial-gradient(ellipse at 83% 30%,#18415d 0%,transparent 48%),linear-gradient(125deg,#101b30 5%,#0a101e 90%);padding:66px 76px}
+  .watermark{position:absolute;right:-46px;bottom:-125px;font-size:510px;line-height:1;color:#ffffff08;font-weight:900;pointer-events:none}
+  .eyebrow{font-size:24px;font-weight:750;letter-spacing:3px;color:#8bd8ff;text-transform:uppercase}
+  .pill{display:inline-block;font-size:23px;background:#ffffff12;border:1px solid #ffffff25;padding:11px 20px;border-radius:25px;margin-top:44px;color:#bcd8ea}
+  h1{max-width:930px;font-size:79px;line-height:1.06;letter-spacing:-2.5px;margin:29px 0 22px;font-weight:800}
+  .sub{max-width:990px;font-size:31px;line-height:1.36;color:#b7c6d7}
+  .bottom{position:absolute;bottom:58px;left:76px;right:76px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #ffffff33;padding-top:30px}
+  .brand{font-size:27px;font-weight:800;color:white}.source{font-size:25px;color:#9fd6ff}
+  .demo{position:absolute;right:68px;top:66px;color:#ffaeb0;font-size:23px;letter-spacing:2px}
+</style>
+</head>
+<body>
+  <div class="card" role="img" aria-label="Демонстрационная технологическая карточка о вымышленном ExampleTool">
+    <span class="watermark">{ }</span>
+    <div class="eyebrow">OPEN SOURCE · ТЕХНОЛОГИИ</div>
+    <div class="demo">ДЕМО · НЕ ПУБЛИКОВАТЬ</div>
+    <div class="pill">RELEASE / GITHUB</div>
+    <h1>ExampleTool v2.4</h1>
+    <div class="sub">Учебный пример карточки — короткая суть, кому полезно и ссылка на проверенный первоисточник.</div>
+    <div class="bottom"><span class="brand">GitHub Находки</span><span class="source">github.com/example/exampletool</span></div>
+  </div>
+</body>
+</html>

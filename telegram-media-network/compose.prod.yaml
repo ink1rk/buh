@@ -1,0 +1,13 @@
+# NOT APPROVED. This file is a blocked template.
+# ENVIRONMENT=production is refused by the application.
+# Do not point it at Proxmox, VM 104, VM 106, or an existing bot.
+name: tmn-prod-not-approved
+services:
+  api:
+    image: tmn:unreleased
+    environment:
+      ENVIRONMENT: production
+      DRY_RUN: "true"
+      PUBLISH_ENABLED: "false"
+      GLOBAL_KILL_SWITCH: "true"
+    profiles: ["blocked"]

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/tmn/schemas/post_draft.schema.json",
+  "title": "TelegramPostDraft",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["channel_id", "post_type", "title", "body", "claim_ids", "source_links", "flags", "warnings", "requires_review"],
+  "properties": {
+    "channel_id": {"enum": ["ai_news", "ai_tools", "github", "cyber", "infra", "homelab", "dev", "future"]},
+    "post_type": {"enum": ["news", "tool", "security"]},
+    "title": {"type": "string", "minLength": 10, "maxLength": 100},
+    "body": {"type": "string", "minLength": 80, "maxLength": 900},
+    "claim_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "source_links": {"type": "array", "minItems": 1, "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "format": "uri", "pattern": "^https://"}},
+    "flags": {"type": "array", "uniqueItems": true, "items": {"enum": ["preprint", "beta", "security_advisory", "license_unknown", "sponsored", "not_verified"]}},
+    "warnings": {"type": "array", "items": {"type": "string", "maxLength": 300}},
+    "requires_review": {"type": "boolean"},
+    "suggested_hashtags": {"type": "array", "maxItems": 3, "uniqueItems": true, "items": {"type": "string", "pattern": "^#[a-zA-Z0-9_а-яА-ЯёЁ]{2,40}$"}},
+    "alt_text": {"type": "string", "maxLength": 300}
+  }
+}

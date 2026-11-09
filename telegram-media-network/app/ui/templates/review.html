@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Редакция</h1>
+{% if notice %}<p class="warn">{{ notice }}</p>{% endif %}
+<section class="review">
+  <article class="panel">
+    <h2>Оригинал</h2>
+    <p>{{ story.title }}</p>
+    <p class="muted">Источник: <a href="{{ story.canonical_url }}">{{ story.canonical_url }}</a></p>
+    <p>Дата источника (UTC): {{ story.published_utc or "не указана" }}</p>
+    <p>Лицензия: {{ story.license_state }}</p>
+    <p>Счёт {{ story.score_total }} / {{ story.score_band }}</p>
+    {% if scores %}
+      <ul>
+      {% for key, value in scores.per_axis_scores.items() %}
+        <li>{{ key }}: {{ value }}</li>
+      {% endfor %}
+      </ul>
+    {% endif %}
+    <h3>Факты</h3>
+    <ul>
+    {% for fact in facts %}
+      <li><strong>{{ fact.claim_id }}</strong> {{ fact.statement }}<br><span class="muted">{{ fact.evidence_excerpt }} — {{ fact.evidence_url }}</span></li>
+    {% endfor %}
+    </ul>
+    {% if story.hard_block_reason %}<p class="warn">Блок: {{ story.hard_block_reason }}</p>{% endif %}
+  </article>
+  <article class="panel">
+    <h2>Текст</h2>
+    <form method="post" action="/review/{{ post.id }}/save">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <input type="hidden" name="version" value="{{ post.draft_version }}">
+      <label>Заголовок <input name="title" value="{{ post.title }}" required></label>
+      <label>Канал
+        <select name="channel_id">
+          {% for channel in channels %}
+          <option value="{{ channel.id }}" {% if channel.id == post.channel_id %}selected{% endif %}>{{ channel.title }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Текст <textarea name="body">{{ post.body }}</textarea></label>
+      <button type="submit">Сохранить</button>
+    </form>
+    {% for warning in post.warnings_json %}<p class="warn">{{ warning }}</p>{% endfor %}
+    <p>Статус: {{ post.review_status }}. Подтверждений: {{ post.approver_ids_json|length }} / {{ post.approvals_required }}</p>
+    <form method="post" action="/review/{{ post.id }}/reject">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <label>Причина отклонения <input name="reason" required></label>
+      <label><input type="checkbox" name="confirm" value="yes" required> Подтверждаю отклонение</label>
+      <button class="danger" type="submit">Отклонить</button>
+    </form>
+    <form method="post" action="/review/{{ post.id }}/approve">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <label><input type="checkbox" name="confirm" value="yes" required> Подтверждаю решение</label>
+      <button type="submit">Подтвердить</button>
+    </form>
+    <form method="post" action="/review/{{ post.id }}/schedule">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <label>Слот UTC <input name="due_utc" placeholder="2026-11-10T06:10:00+00:00" required></label>
+      <label><input type="checkbox" name="confirm" value="yes" required> Подтверждаю постановку в слот</label>
+      <button type="submit">Запланировать</button>
+    </form>
+  </article>
+  <article class="panel">
+    <h2>Предпросмотр Telegram</h2>
+    {% if image %}<img class="preview" alt="{{ post.alt_text }}" src="/media/{{ image }}">{% endif %}
+    <pre>{{ post.caption }}</pre>
+    <p class="muted">ALT: {{ post.alt_text }}</p>
+    <form method="post" action="/review/{{ post.id }}/publish">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <label><input type="checkbox" name="confirm" value="yes" required> Подтверждаю предпросмотр публикации</label>
+      <button type="submit">{% if policy.dry_run %}Предпросмотр отправки{% else %}Опубликовать{% endif %}</button>
+    </form>
+    {% if policy.dry_run %}<p class="muted">Кнопка не вызывает Telegram, пока включён DRY RUN.</p>{% endif %}
+  </article>
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+{
+  "channel_id": "homelab",
+  "post_type": "tool",
+  "title": "ExampleTool v2.4: учебный пример для HomeLab",
+  "body": "Это синтетический пример, не настоящая новость. Demo-проект ExampleTool в тестовых данных сравнивает Docker Compose-конфигурации и показывает изменения. Использовать этот материал только для проверки рендера и очереди модерации; публиковать в реальный канал запрещено. Для реальной новости понадобятся действующий репозиторий, проверенная лицензия, подтверждённые release notes и дата.",
+  "claim_ids": ["f1", "f2"],
+  "source_links": ["https://github.com/example/exampletool/releases/tag/v2.4"],
+  "flags": [],
+  "warnings": ["SYNTHETIC_TEST_FIXTURE: NEVER PUBLISH"],
+  "requires_review": true,
+  "suggested_hashtags": ["#homelab", "#docker"],
+  "alt_text": "Демонстрационная карточка ExampleTool, запрещена к публикации"
+}

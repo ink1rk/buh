@@ -1,0 +1,113 @@
+# REFERENCE ONLY — all publishing disabled. Timezone for target Russian-speaking audience.
+version: 1
+network:
+  name: telegram_media_network
+  timezone: Europe/Moscow
+  dry_run: true
+  publish_enabled: false
+  auto_approve_enabled: false
+  sponsored_enabled: false
+  global_kill_switch: true
+  default_daily_cap: 2
+  default_min_gap_minutes: 240
+  quiet_hours: {start: '22:00', end: '08:00'}
+  start_with_human_approval_days: 14
+  min_caption_safety_chars: 124
+channels:
+  - id: ai_news
+    title: НейроПульс
+    category: Новости AI
+    username: null
+    chat_id: null
+    publish_enabled: false
+    daily_cap: 2
+    schedule: ['09:10', '18:10']
+    theme: {primary: '#6750A4', accent: '#00CDB6', template: news}
+    tags: [llm, models, research, ai-news]
+    voice: 'Технологично, спокойно, с явным отделением факта от прогноза.'
+    source_ids: [github_search, github_releases, huggingface, hackernews, arxiv_ai]
+  - id: ai_tools
+    title: AI Инструменты
+    category: Полезные нейросети
+    username: null
+    chat_id: null
+    publish_enabled: false
+    daily_cap: 2
+    schedule: ['10:10', '19:10']
+    theme: {primary: '#185ADB', accent: '#4DE1C1', template: tool}
+    tags: [ai-tools, agents, inference, local-ai]
+    voice: 'Практично: что делает, кому нужно, как попробовать безопасно.'
+    source_ids: [github_search, github_releases, huggingface, hackernews]
+  - id: github
+    title: GitHub Находки
+    category: Бесплатный Open Source
+    username: null
+    chat_id: null
+    publish_enabled: false
+    daily_cap: 2
+    schedule: ['11:10', '20:10']
+    theme: {primary: '#0F172A', accent: '#70E1F5', template: tool}
+    tags: [opensource, github, scripts, utilities]
+    voice: 'Конкретные факты проекта; лицензию и ограничения проверять отдельно.'
+    source_ids: [github_search, github_releases, hackernews]
+  - id: cyber
+    title: КиберРадар
+    category: Информационная безопасность
+    username: null
+    chat_id: null
+    publish_enabled: false
+    daily_cap: 2
+    schedule: ['08:40', '17:40']
+    theme: {primary: '#7F1D1D', accent: '#FF9A62', template: security}
+    tags: [cve, kev, vendor-advisory, patch]
+    voice: 'Без паники. CVE, затронутый продукт, факты, защитные действия, ссылки.'
+    require_second_human_approval: true
+    source_ids: [cisa_kev, github_releases, hackernews, cloudflare_changelog]
+  - id: infra
+    title: ИнфраХаб
+    category: Системное администрирование
+    username: null
+    chat_id: null
+    publish_enabled: false
+    daily_cap: 2
+    schedule: ['09:40', '18:40']
+    theme: {primary: '#174E6E', accent: '#79D5FF', template: news}
+    tags: [linux, windows, networking, kubernetes, monitoring]
+    voice: 'Инженерно, применимость, риски внедрения, без неподтверждённых инструкций.'
+    source_ids: [github_search, github_releases, kubernetes, cloudflare_changelog, hackernews]
+  - id: homelab
+    title: HomeLab
+    category: Домашние серверы
+    username: null
+    chat_id: null
+    publish_enabled: false
+    daily_cap: 2
+    schedule: ['12:10', '21:10']
+    theme: {primary: '#165A4A', accent: '#AEF492', template: tool}
+    tags: [proxmox, docker, nas, selfhosted, home-assistant]
+    voice: 'Для домашнего пользователя: требования к железу, установка, реальные ограничения.'
+    source_ids: [github_search, github_releases, hackernews]
+  - id: dev
+    title: DevPulse
+    category: Разработка
+    username: null
+    chat_id: null
+    publish_enabled: false
+    daily_cap: 2
+    schedule: ['10:40', '19:40']
+    theme: {primary: '#4C1D95', accent: '#FFD166', template: tool}
+    tags: [python, cicd, devtools, programming, automation]
+    voice: 'Сценарий использования, совместимость, версия, changelog.'
+    source_ids: [github_search, github_releases, hackernews, pypi_updates]
+  - id: future
+    title: ТехноЗавтра
+    category: Наука и технологии
+    username: null
+    chat_id: null
+    publish_enabled: false
+    daily_cap: 2
+    schedule: ['13:10', '20:40']
+    theme: {primary: '#253B65', accent: '#FF8AA4', template: news}
+    tags: [science, robotics, chip, research, hardware]
+    voice: 'Популярная наука, осторожные выводы, preprint явно помечать.'
+    source_ids: [arxiv_science, hackernews, github_search]

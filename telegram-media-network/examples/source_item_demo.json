@@ -1,0 +1,19 @@
+{
+  "source_id": "github_releases",
+  "source_external_id": "release:example/exampletool:v2.4",
+  "source_url": "https://github.com/example/exampletool/releases/tag/v2.4",
+  "canonical_url": "https://github.com/example/exampletool/releases/tag/v2.4",
+  "title": "ExampleTool v2.4 — учебная фикстура, не реальная новость",
+  "discovered_at": "2026-11-10T00:00:00Z",
+  "published_at": "2026-11-09T22:00:00Z",
+  "raw_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "content_kind": "release",
+  "language": "en",
+  "license_state": "explicit_open_source",
+  "license_spdx": "Apache-2.0",
+  "is_preprint": false,
+  "facts": [
+    {"id": "f1", "statement": "ExampleTool — демонстрационная утилита для сравнения Docker Compose файлов", "evidence_url": "https://github.com/example/exampletool/releases/tag/v2.4", "evidence_excerpt": "DEMO FIXTURE: Compare Compose files."},
+    {"id": "f2", "statement": "В демонстрационной версии 2.4 есть отчёт об изменениях", "evidence_url": "https://github.com/example/exampletool/releases/tag/v2.4", "evidence_excerpt": "DEMO FIXTURE: Change report added."}
+  ]
+}

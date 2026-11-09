@@ -1,0 +1,52 @@
+:root {
+  color-scheme: dark;
+  --bg: #14181f;
+  --panel: #1d242e;
+  --ink: #f3efe4;
+  --muted: #b7c0c8;
+  --line: #33404d;
+  --accent: #e1a04a;
+  --accent-ink: #1b1408;
+  --danger: #e15b4a;
+  --ok: #7dcea0;
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); }
+a { color: inherit; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 12px; top: 12px; background: var(--accent); color: var(--accent-ink); padding: 8px; }
+.top {
+  display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: center;
+  padding: 14px 18px; border-bottom: 1px solid var(--line); background: #10141a;
+}
+.brand { font-weight: 700; letter-spacing: 0.08em; }
+nav { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+nav a { text-decoration: none; color: var(--muted); }
+nav a[aria-current="page"] { color: var(--ink); border-bottom: 2px solid var(--accent); }
+.badge { margin-left: auto; background: var(--accent); color: var(--accent-ink); padding: 6px 10px; font-family: ui-sans-serif, sans-serif; font-size: 12px; letter-spacing: 0.08em; }
+.wrap { padding: 18px; max-width: 1240px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.card, .panel { background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 14px; }
+.muted { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.review { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.panel, .card { min-width: 0; }
+pre, a, p { overflow-wrap: anywhere; }
+pre { white-space: pre-wrap; }
+img.preview { width: 100%; max-width: 100%; height: auto; background: #000; }
+label { display: block; margin: 8px 0; font-family: ui-sans-serif, sans-serif; font-size: 14px; }
+input, textarea, select, button {
+  font: inherit; color: var(--ink); background: #12171e; border: 1px solid var(--line); padding: 8px;
+}
+textarea { width: 100%; min-height: 180px; }
+button, .button { background: var(--accent); color: var(--accent-ink); border: 0; cursor: pointer; text-decoration: none; display: inline-block; }
+button.danger { background: var(--danger); color: white; }
+.warn { color: #ffd0c8; }
+.ok { color: var(--ok); }
+@media (max-width: 900px) {
+  .review { grid-template-columns: 1fr; }
+  .badge { margin-left: 0; }
+}
