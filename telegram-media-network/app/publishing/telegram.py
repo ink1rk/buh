@@ -56,6 +56,28 @@ class ScriptedTransport:
         return event
 
 
+MAX_RETRY_AFTER = 3600
+
+
+def parse_retry_after(value: object) -> int | None:
+    """Turn a Telegram delay into 1..3600 seconds. Malformed values do not raise."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        number = int(value)
+    else:
+        text = str(value).strip()
+        if not text:
+            return None
+        try:
+            number = int(text)
+        except ValueError:
+            return None
+    if number < 1:
+        return 1
+    return min(number, MAX_RETRY_AFTER)
+
+
 class HttpxTelegramTransport:
     """Live Bot API client. Constructed only when a real send is authorized."""
 
@@ -89,12 +111,10 @@ class HttpxTelegramTransport:
             description = str(body.get("description") or "")
             params = body.get("parameters") or {}
             if isinstance(params, dict) and params.get("retry_after") is not None:
-                retry_after = int(params["retry_after"])
+                retry_after = parse_retry_after(params.get("retry_after"))
             result = body.get("result") or {}
             if isinstance(result, dict) and result.get("message_id") is not None:
                 message_id = str(result["message_id"])
         if response.status_code == 429 and retry_after is None:
-            header = response.headers.get("retry-after")
-            if header:
-                retry_after = int(header)
+            retry_after = parse_retry_after(response.headers.get("retry-after"))
         return TgResult(response.status_code, message_id=message_id, retry_after=retry_after, description=description)

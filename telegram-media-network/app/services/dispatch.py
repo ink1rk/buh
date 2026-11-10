@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.core.audit import add_audit
@@ -15,7 +15,7 @@ from app.core.timeutil import ensure_utc, msk_day_bounds, utcnow
 from app.ops.metrics import COUNTERS
 from app.publishing.photo import CardError, load_card
 from app.publishing.schedule import DueItem, select_sendable, slot_due
-from app.publishing.telegram import AmbiguousTimeout, DeliveryRejected
+from app.publishing.telegram import MAX_RETRY_AFTER, AmbiguousTimeout, DeliveryRejected
 from app.services.accounts import AuthError
 from app.services.moderation import ACTIVE_OUTBOX, _sponsored_blocked
 
@@ -60,33 +60,67 @@ def raise_alert(
     return alert
 
 
-def claim_outbox(session: Session, outbox_id: int) -> int | None:
-    row = session.execute(
-        select(PublishingOutbox)
-        .where(PublishingOutbox.id == outbox_id, PublishingOutbox.state == "scheduled")
-        .with_for_update(skip_locked=True)
+def claim_outbox(session: Session, outbox_id: int, now: datetime | None = None, *, atomic: bool = False) -> int | None:
+    """One worker moves a due row to sending. The caller commits before any network call."""
+    moment = ensure_utc(now or utcnow())
+    if not atomic:
+        row = session.execute(
+            select(PublishingOutbox)
+            .where(PublishingOutbox.id == outbox_id, PublishingOutbox.state == "scheduled")
+            .with_for_update(skip_locked=True)
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        row.state = "sending"
+        row.lease_until = moment + timedelta(seconds=60)
+        session.flush()
+        return row.id
+    claimed = session.execute(
+        update(PublishingOutbox)
+        .where(
+            PublishingOutbox.id == outbox_id,
+            or_(
+                PublishingOutbox.state == "scheduled",
+                and_(
+                    PublishingOutbox.state == "retryable_failed",
+                    or_(PublishingOutbox.due_utc.is_(None), PublishingOutbox.due_utc <= moment),
+                    or_(PublishingOutbox.next_attempt_at.is_(None), PublishingOutbox.next_attempt_at <= moment),
+                ),
+            ),
+        )
+        .values(state="sending", lease_until=moment + timedelta(seconds=60), request_sent=False)
+        .returning(PublishingOutbox.id)
     ).scalar_one_or_none()
-    if row is None:
+    if claimed is None:
         return None
-    row.state = "sending"
-    row.lease_until = utcnow() + timedelta(seconds=60)
-    session.flush()
-    return row.id
+    return int(claimed)
 
 
 def recover_inflight(session: Session, now: datetime | None = None) -> int:
+    """Expired leases become manual reconciliation. A second pass changes nothing."""
     moment = ensure_utc(now or utcnow())
-    rows = (
-        session.query(PublishingOutbox)
-        .filter(PublishingOutbox.state == "sending", PublishingOutbox.lease_until.is_not(None), PublishingOutbox.lease_until < moment)
-        .all()
-    )
+    rows = session.execute(
+        update(PublishingOutbox)
+        .where(
+            PublishingOutbox.state == "sending",
+            PublishingOutbox.lease_until.is_not(None),
+            PublishingOutbox.lease_until < moment,
+        )
+        .values(state="needs_reconciliation", last_error="lease_expired_without_ack")
+        .returning(PublishingOutbox.id, PublishingOutbox.post_id, PublishingOutbox.channel_id)
+    ).all()
     for row in rows:
-        row.state = "needs_reconciliation"
-        row.last_error = "lease_expired_without_ack"
         post = session.get(Post, row.post_id)
         if post is not None and post.review_status == "SENDING":
             post.review_status = "NEEDS_RECONCILIATION"
+        raise_alert(
+            session,
+            "lease_expired",
+            "Срок отправки истёк без подтверждения. Нужна ручная сверка, повтор сам не уйдёт.",
+            channel_id=row.channel_id or "",
+            now=moment,
+        )
+        add_audit(session, actor="publisher", action="recover", entity="outbox", entity_id=row.id, result="needs_reconciliation")
         COUNTERS.inc("publish_ambiguous_total")
     session.commit()
     return len(rows)
@@ -106,6 +140,8 @@ def dispatch_outbox(
     if outbox.state not in {"scheduled", "retryable_failed"}:
         return {"state": outbox.state, "calls": 0}
     if outbox.state == "retryable_failed" and outbox.due_utc and ensure_utc(outbox.due_utc) > moment:
+        return {"state": outbox.state, "calls": 0, "waiting": True}
+    if outbox.next_attempt_at and ensure_utc(outbox.next_attempt_at) > moment:
         return {"state": outbox.state, "calls": 0, "waiting": True}
     channel = session.get(Channel, outbox.channel_id)
     post = session.get(Post, outbox.post_id)
@@ -136,9 +172,19 @@ def dispatch_outbox(
         add_audit(session, actor="publisher", action="publish", entity="outbox", entity_id=outbox.id, result="foreign_chat")
         session.commit()
         return {"state": "dlq", "reason": "foreign_chat", "calls": 0}
-    outbox.state = "sending"
-    outbox.lease_until = moment + timedelta(seconds=60)
-    outbox.request_sent = False
+    if outbox.caption_hash and post.caption_hash and outbox.caption_hash != post.caption_hash:
+        outbox.state = "dlq"
+        outbox.last_error = "stale_caption"
+        post.review_status = "NEEDS_REVIEW"
+        session.commit()
+        return {"state": "dlq", "reason": "stale_caption", "calls": 0}
+    claimed = claim_outbox(session, outbox.id, moment, atomic=True)
+    if claimed is None:
+        session.rollback()
+        session.refresh(outbox)
+        return {"state": "already_claimed", "calls": 0}
+    session.refresh(outbox)
+    session.refresh(post)
     post.review_status = "SENDING"
     session.commit()
     payload = {
@@ -164,6 +210,7 @@ def dispatch_outbox(
         outbox.attempts += 1
         outbox.state = "dlq" if outbox.attempts >= 4 else "retryable_failed"
         outbox.due_utc = moment + timedelta(seconds=min(300, 2 ** max(1, outbox.attempts)))
+        outbox.next_attempt_at = outbox.due_utc
         outbox.last_error = str(exc)[:200]
         post.review_status = "SCHEDULED"
         session.commit()
@@ -178,10 +225,23 @@ def dispatch_outbox(
         add_audit(session, actor="publisher", action="publish", entity="channel", entity_id=channel.id, result="paused")
         session.commit()
         return {"state": "paused", "status": result.status}
+    if result.status in {400, 404, 422}:
+        outbox.state = "dlq"
+        outbox.last_error = f"permanent_{result.status}"
+        post.review_status = "NEEDS_REVIEW"
+        raise_alert(
+            session,
+            f"telegram_{result.status}",
+            "Telegram отверг отправку. Автоматического повтора не будет.",
+            channel_id=channel.id,
+            now=moment,
+        )
+        add_audit(session, actor="publisher", action="publish", entity="outbox", entity_id=outbox.id, result="permanent")
+        session.commit()
+        return {"state": "dlq", "status": result.status, "calls": 1}
     if result.status == 429:
         delay = 1 if result.retry_after is None else int(result.retry_after)
-        if delay < 1:
-            delay = 1
+        delay = min(MAX_RETRY_AFTER, max(1, delay))
         outbox.attempts += 1
         outbox.state = "dlq" if outbox.attempts >= 4 else "retryable_failed"
         outbox.due_utc = moment + timedelta(seconds=delay)
@@ -232,7 +292,10 @@ def dispatch_outbox(
         )
         session.commit()
         return {"state": "published", "message_id": str(result.message_id), "caption_hash": post.caption_hash}
-    outbox.state = "retryable_failed"
+    outbox.attempts += 1
+    outbox.state = "dlq" if outbox.attempts >= 4 else "retryable_failed"
+    outbox.due_utc = moment + timedelta(seconds=min(300, 2 ** max(1, outbox.attempts)))
+    outbox.next_attempt_at = outbox.due_utc
     outbox.last_error = f"status_{result.status}"
     post.review_status = "SCHEDULED"
     session.commit()
@@ -296,6 +359,7 @@ def publish_preview_or_send(
     *,
     confirmed: bool,
     now: datetime | None = None,
+    media_dir: Path | None = None,
 ) -> dict:
     if actor.role != "OWNER":
         add_audit(session, actor=actor.username, action="publish", entity="post", entity_id=post.id, result="denied")
@@ -353,7 +417,7 @@ def publish_preview_or_send(
         outbox = schedule_post(session, post, actor, due=now or utcnow(), confirmed=True, now=now)
     if transport is None:
         raise AuthError(409, "no transport configured")
-    return dispatch_outbox(session, outbox, transport, now=now)
+    return dispatch_outbox(session, outbox, transport, now=now, media_dir=media_dir)
 
 
 def _count_today(session: Session, channel_id: str, now: datetime) -> int:
@@ -392,6 +456,7 @@ def scheduler_tick(
 ) -> TickResult:
     if not leader:
         return TickResult(False, 0, 0)
+    recover_inflight(session, now)
     if policy.kill_switch:
         return TickResult(True, 0, 0, blocked="kill_switch")
     scheduled = 0

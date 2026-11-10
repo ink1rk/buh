@@ -152,6 +152,10 @@ def _body(item: SourceItemIn, facts: list[Fact], channel_id: str) -> str:
         limits.append(f"GitHub указывает лицензию {item.license_spdx}. Это не обещание отсутствия ограничений.")
     if item.content_kind == "advisory" or item.cve_id:
         limits.append("Здесь только защитная формулировка источника, без инструкций по эксплуатации.")
+    if item.cve_id and not item.is_new:
+        limits.append("Дата каталога старше окна новостей, поэтому запись не подаётся как событие дня.")
+    if item.cve_id:
+        limits.append("Наличие записи не означает, что затронут каждый экземпляр продукта.")
     if EXTRAORDINARY_RE.search(item.untrusted_text or ""):
         limits.append("Громкая формулировка источника в текст не перенесена.")
     if not limits:

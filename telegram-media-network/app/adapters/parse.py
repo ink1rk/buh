@@ -215,6 +215,52 @@ def parse_hf_spaces(payload: list[dict], now: datetime | None = None) -> list[So
     return items
 
 
+CISA_NEWS_DAYS = 14
+
+
+def _cisa_ord(value: str | None) -> int:
+    digits = str(value or "").replace("-", "")
+    return int(digits) if digits.isdigit() else 0
+
+
+def order_cisa(items: list[SourceItemIn]) -> list[SourceItemIn]:
+    """Newest catalog date first. The CVE id breaks ties and does not depend on feed order."""
+    return sorted(items, key=lambda item: (-_cisa_ord(item.date_added), item.cve_id or ""))
+
+
+def plan_cisa(
+    items: list[SourceItemIn],
+    now: datetime,
+    known: set[str],
+    *,
+    limit: int = 25,
+    news_days: int = CISA_NEWS_DAYS,
+) -> dict:
+    """Pick unseen rows without dropping the rest of the catalog forever."""
+    ordered = order_cisa(items)
+    fresh: list[SourceItemIn] = []
+    old: list[SourceItemIn] = []
+    cutoff = ensure_utc(now) - timedelta(days=news_days)
+    for item in ordered:
+        if item.source_external_id in known:
+            continue
+        added = item.published_at
+        recent = added is not None and ensure_utc(added) >= cutoff
+        item.is_new = recent
+        item.archived = not recent
+        (fresh if recent else old).append(item)
+    return {
+        "ordered": ordered,
+        "news": fresh[:limit],
+        "archived": old[:limit],
+        "total": len(ordered),
+        "new": len(fresh),
+        "queued": min(len(fresh), limit),
+        "archived_count": min(len(old), limit),
+        "truncated": max(0, len(fresh) - limit) + max(0, len(old) - limit),
+    }
+
+
 def parse_cisa_kev(payload: dict, now: datetime | None = None) -> list[SourceItemIn]:
     moment = now or utcnow()
     items: list[SourceItemIn] = []
@@ -259,7 +305,7 @@ def parse_cisa_kev(payload: dict, now: datetime | None = None) -> list[SourceIte
                 audience=0.9,
             )
         )
-    return items
+    return order_cisa(items)
 
 
 def parse_feed(xml_text: str, source_id: str, *, mark_preprints: bool, now: datetime | None = None) -> list[SourceItemIn]:
