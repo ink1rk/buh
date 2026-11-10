@@ -3,7 +3,9 @@ from __future__ import annotations
 import csv
 import io
 import json
+import socket
 from datetime import datetime
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
@@ -128,8 +130,57 @@ def health_live() -> dict:
 
 @router.get("/health/ready")
 def health_ready(db: Session = Depends(get_db)) -> dict:
+    """Database readiness only. It does not claim that workers or external sites are healthy."""
     db.query(Channel).count()
-    return {"status": "ready"}
+    return {"status": "ready", "scope": "database"}
+
+
+@router.get("/health/components")
+def health_components(
+    user: User = Depends(require_roles("OWNER")),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    del user
+    from app.ops.heartbeat import component_view
+
+    try:
+        db.query(Channel).count()
+        database = "ok"
+    except Exception:
+        database = "error"
+    collector = component_view(db, "collector")
+    scheduler = component_view(db, "scheduler")
+    pieces = {
+        "database": {"status": database},
+        "collector": collector,
+        "scheduler": scheduler,
+        "media": {"status": "ok" if settings.media_dir.is_dir() else "missing"},
+        "redis": {"status": _redis_probe(settings.redis_url)},
+    }
+    problems = [
+        database != "ok",
+        collector["status"] != "ok",
+        scheduler["status"] != "ok",
+        pieces["media"]["status"] == "missing",
+        pieces["redis"]["status"] == "unreachable",
+    ]
+    return {"status": "ok" if not any(problems) else "degraded", "scope": "components", "components": pieces}
+
+
+def _redis_probe(url: str) -> str:
+    if not url:
+        return "not_configured"
+    parts = urlsplit(url)
+    host = parts.hostname
+    port = parts.port or 6379
+    if not host:
+        return "unreachable"
+    try:
+        with socket.create_connection((host, port), 0.3):
+            return "reachable"
+    except OSError:
+        return "unreachable"
 
 
 @router.post("/api/v1/auth/login")

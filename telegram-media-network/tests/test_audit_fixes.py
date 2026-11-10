@@ -280,7 +280,7 @@ def test_local_llm_accepts_valid_draft_only():
     thread.start()
     try:
         port = server.server_address[1]
-        client = LocalLLMClient(f"http://127.0.0.1:{port}/draft", model="local-test", timeout=3)
+        client = LocalLLMClient(f"http://127.0.0.1:{port}/api/chat", model="local-test", timeout=3)
         result = compose_draft(item(), "github", mode="local", client=client)
         assert result.blocked is False
         assert result.draft["title"] == "Локальная модель пересказала карточку"

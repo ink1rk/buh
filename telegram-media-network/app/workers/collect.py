@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
@@ -24,7 +24,7 @@ from app.adapters.parse import (
     parse_hn_item,
 )
 from app.core.config import Settings
-from app.core.models import Source
+from app.core.models import Source, SourceEndpointState
 from app.core.timeutil import ensure_utc, utcnow
 from app.pipeline.types import SourceItemIn
 from app.pipeline.urlsec import DEFAULT_ALLOWLIST, DefaultResolver
@@ -81,11 +81,16 @@ def source_urls(source: Source) -> list[str]:
         return [f"https://api.github.com/search/repositories?q={quote(query)}&sort=updated&per_page=5" for query in chosen]
     if adapter == "github_releases":
         repos = [str(repo) for repo in (policy.get("watched_repos") or []) if repo]
-        urls: list[str] = []
+        paired: list[str] = []
         for repo in repos:
-            urls.append(f"https://api.github.com/repos/{repo}")
-            urls.append(f"https://api.github.com/repos/{repo}/releases?per_page=3")
-        return urls[:limit]
+            pair = [
+                f"https://api.github.com/repos/{repo}",
+                f"https://api.github.com/repos/{repo}/releases?per_page=3",
+            ]
+            if len(paired) + len(pair) > limit:
+                break
+            paired.extend(pair)
+        return paired
     if adapter == "hf_hub":
         kinds = [str(kind) for kind in (policy.get("types") or ["models"])]
         urls = []
@@ -225,12 +230,9 @@ def collect_once(
             _mark(source, moment, "not_configured", "no requests configured")
             report.skipped += 1
             continue
-        headers = conditional_headers(source.etag, source.last_modified)
-        if source.adapter.startswith("github") and settings.github_read_token:
-            headers["Authorization"] = f"Bearer {settings.github_read_token}"
         before = len(report.urls)
         try:
-            fetched = _fetch_all(source, urls, transport, resolver, headers, report, moment)
+            fetched = _fetch_all(session, source, urls, transport, resolver, settings, report, moment)
         except FeedError as exc:
             _mark(source, moment, "error", str(exc), failures=source.consecutive_failures + 1)
             report.errors += 1
@@ -282,10 +284,6 @@ def collect_once(
                 report.duplicates += 1
             elif result.post_id or result.story_id:
                 report.ingested += 1
-        if isinstance(primary, FetchOutcome) and primary.headers.get("etag"):
-            source.etag = primary.headers["etag"][:300]
-        if isinstance(primary, FetchOutcome) and primary.headers.get("last-modified"):
-            source.last_modified = primary.headers["last-modified"][:300]
         if status_name == "partial" or note:
             _mark(source, moment, "partial", note or "partial")
         else:
@@ -296,6 +294,45 @@ def collect_once(
 
 
 _BLOCKED = {"scheme", "host", "denied_host", "forbidden_ip", "ip_literal", "not_allowlisted", "dns_failed"}
+_GITHUB_HOSTS = {"api.github.com", "github.com"}
+_HF_HOSTS = {"huggingface.co", "cdn-lfs.huggingface.co"}
+
+
+class _Budget:
+    def __init__(self, cap: int) -> None:
+        self.cap = cap
+        self.used = 0
+
+    @property
+    def remaining(self) -> int:
+        return max(0, self.cap - self.used)
+
+
+def _request_headers(session: Session, source: Source, url: str, settings: Settings) -> dict[str, str]:
+    row = session.query(SourceEndpointState).filter_by(source_id=source.id, request_url=url).one_or_none()
+    headers = conditional_headers(row.etag if row else "", row.last_modified if row else "")
+    host = (urlsplit(url).hostname or "").lower()
+    if host in _GITHUB_HOSTS and settings.github_read_token:
+        headers["Authorization"] = f"Bearer {settings.github_read_token}"
+    elif host in _HF_HOSTS and settings.hf_read_token:
+        headers["Authorization"] = f"Bearer {settings.hf_read_token}"
+    return headers
+
+
+def _save_endpoint(session: Session, source: Source, url: str, outcome: FetchOutcome, now: datetime) -> None:
+    key = outcome.final_url or url
+    if key != url:
+        return
+    row = session.query(SourceEndpointState).filter_by(source_id=source.id, request_url=url).one_or_none()
+    if row is None:
+        row = SourceEndpointState(source_id=source.id, request_url=url)
+        session.add(row)
+    if outcome.headers.get("etag"):
+        row.etag = outcome.headers["etag"][:300]
+    if outcome.headers.get("last-modified"):
+        row.last_modified = outcome.headers["last-modified"][:300]
+    row.last_status = int(outcome.status or 0)
+    row.last_checked_at = now
 
 
 def _classify(outcome: FetchOutcome) -> str:
@@ -315,52 +352,112 @@ def _classify(outcome: FetchOutcome) -> str:
     return "ok"
 
 
-def _fetch_all(source, urls, transport, resolver, headers, report: CollectReport, now: datetime):
+def _fetch_all(session, source, urls, transport, resolver, settings: Settings, report: CollectReport, now: datetime):
     primary: FetchOutcome | None = None
     items: list[SourceItemIn] = []
     notes: list[str] = []
-    repo_doc: dict | None = None
-    cap = _cap(source)
-    for url in urls[:cap]:
+    statuses: list[str] = []
+    repo_docs: dict[str, dict] = {}
+    budget = _Budget(_cap(source))
+    seen_hn: set[int] = set()
+    hn_slots = _hn_slots(urls, budget.cap) if source.adapter == "hackernews_firebase" else {}
+    for url in urls:
+        if budget.remaining <= 0:
+            notes.append("budget")
+            break
+        headers = _request_headers(session, source, url, settings)
         try:
-            outcome = safe_get(url, transport, resolver, DEFAULT_ALLOWLIST, headers=headers)
+            outcome = safe_get(
+                url,
+                transport,
+                resolver,
+                DEFAULT_ALLOWLIST,
+                headers=headers,
+                max_requests=budget.remaining,
+            )
         except TransportError as exc:
-            if items:
-                notes.append(exc.reason)
-                continue
-            return "error", [], exc.reason, ""
+            notes.append(exc.reason)
+            statuses.append("error")
+            continue
+        budget.used += outcome.requests
         report.requests += outcome.requests
         report.urls.append(url)
-        primary = outcome
+        _save_endpoint(session, source, url, outcome, now)
+        if outcome.ok and outcome.status == 200:
+            primary = outcome
         kind = _classify(outcome)
-        if kind in {"auth_error", "rate_limited", "blocked"}:
-            return kind, [], outcome.reason or str(outcome.status), ""
+        statuses.append(kind)
         if kind != "ok":
-            if items or repo_doc is not None:
+            if kind != "not_modified":
                 notes.append(kind if kind != "error" else str(outcome.status or outcome.reason))
-                continue
-            if kind == "not_modified":
-                return "not_modified", [], outcome, ""
-            return kind, [], outcome.reason or str(outcome.status), ""
+            continue
         try:
             if source.adapter == "github_releases" and "/releases" not in url.split("?", 1)[0]:
                 payload = json.loads(outcome.body.decode("utf-8"))
-                if isinstance(payload, dict):
-                    repo_doc = payload
+                key = _release_key(url)
+                if isinstance(payload, dict) and payload.get("full_name") == key:
+                    repo_docs[key] = payload
                 continue
             if source.adapter == "github_releases":
-                items.extend(_release_items(url, outcome.body, repo_doc, now))
+                key = _release_key(url)
+                items.extend(_release_items(url, outcome.body, repo_docs.get(key), now))
             elif source.adapter == "hackernews_firebase":
-                budget = max(0, cap - report.requests)
-                items.extend(_hn_items(outcome.body, transport, resolver, headers, report, budget, now))
+                name = url.rsplit("/", 1)[-1].removesuffix(".json")
+                found, truncated = _hn_items(
+                    session,
+                    source,
+                    outcome.body,
+                    transport,
+                    resolver,
+                    settings,
+                    report,
+                    budget,
+                    hn_slots.get(name, 0),
+                    seen_hn,
+                    now,
+                )
+                items.extend(found)
+                if truncated:
+                    notes.append("budget")
             else:
                 items.extend(_parse(source, url, outcome.body, now))
         except (json.JSONDecodeError, FeedError, TransportError) as exc:
             notes.append(getattr(exc, "reason", "") or str(exc)[:80])
-    if not items and notes and repo_doc is None:
-        return "error", [], notes[0], ""
-    status = "partial" if notes else "ok"
-    return status, items, primary, "; ".join(notes)
+            statuses.append("error")
+    return _finish(items, notes, statuses, primary)
+
+
+def _finish(items, notes: list[str], statuses: list[str], primary):
+    unique_notes = list(dict.fromkeys(notes))
+    if not items and statuses and set(statuses) <= {"not_modified"} and not unique_notes:
+        return "not_modified", [], primary, ""
+    if not items:
+        if "blocked" in statuses:
+            return "blocked", [], unique_notes[0] if unique_notes else "blocked", ""
+        if "auth_error" in statuses:
+            return "auth_error", [], unique_notes[0] if unique_notes else "auth_error", ""
+        if "rate_limited" in statuses:
+            return "rate_limited", [], unique_notes[0] if unique_notes else "rate_limited", ""
+        if "outage" in statuses:
+            return "outage", [], unique_notes[0] if unique_notes else "outage", ""
+        return "error", [], unique_notes[0] if unique_notes else "error", ""
+    incomplete = [status for status in statuses if status not in {"ok", "not_modified"}]
+    if unique_notes or incomplete:
+        return "partial", items, primary, "; ".join(unique_notes) or ",".join(incomplete)
+    return "ok", items, primary, ""
+
+
+def _hn_slots(urls: list[str], cap: int) -> dict[str, int]:
+    names = [url.rsplit("/", 1)[-1].removesuffix(".json") for url in urls]
+    if not names:
+        return {}
+    pool = max(0, cap - len(names))
+    base, extra = divmod(pool, len(names))
+    return {name: base + (1 if index < extra else 0) for index, name in enumerate(names)}
+
+
+def _release_key(url: str) -> str:
+    return str(_repo_from_release_url(url)["full_name"])
 
 
 def _release_items(url: str, body: bytes, repo_doc: dict | None, now: datetime) -> list[SourceItemIn]:
@@ -377,19 +474,51 @@ def _release_items(url: str, body: bytes, repo_doc: dict | None, now: datetime) 
     return found
 
 
-def _hn_items(body: bytes, transport, resolver, headers, report: CollectReport, cap: int, now: datetime) -> list[SourceItemIn]:
+def _hn_items(
+    session: Session,
+    source: Source,
+    body: bytes,
+    transport,
+    resolver,
+    settings: Settings,
+    report: CollectReport,
+    budget: _Budget,
+    slots: int,
+    seen: set[int],
+    now: datetime,
+) -> tuple[list[SourceItemIn], bool]:
     try:
         ids = json.loads(body.decode("utf-8"))
     except json.JSONDecodeError:
-        return []
+        return [], False
     if not isinstance(ids, list):
-        return []
+        return [], False
     found: list[SourceItemIn] = []
-    for raw_id in ids[: max(0, cap - 1)]:
-        url = f"https://hacker-news.firebaseio.com/v0/item/{int(raw_id)}.json"
-        outcome = safe_get(url, transport, resolver, DEFAULT_ALLOWLIST, headers=headers)
+    truncated = False
+    for raw_id in ids:
+        try:
+            story_id = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+        if story_id in seen:
+            continue
+        if len(found) >= slots or budget.remaining <= 0:
+            truncated = True
+            break
+        seen.add(story_id)
+        url = f"https://hacker-news.firebaseio.com/v0/item/{story_id}.json"
+        outcome = safe_get(
+            url,
+            transport,
+            resolver,
+            DEFAULT_ALLOWLIST,
+            headers=_request_headers(session, source, url, settings),
+            max_requests=budget.remaining,
+        )
+        budget.used += outcome.requests
         report.requests += outcome.requests
         report.urls.append(url)
+        _save_endpoint(session, source, url, outcome, now)
         if not outcome.ok or outcome.status != 200:
             continue
         try:
@@ -399,4 +528,6 @@ def _hn_items(body: bytes, transport, resolver, headers, report: CollectReport, 
         parsed = parse_hn_item(payload, now)
         if parsed is not None:
             found.append(parsed)
-    return found
+    if len(ids) > len(found) and budget.remaining <= 0:
+        truncated = True
+    return found, truncated

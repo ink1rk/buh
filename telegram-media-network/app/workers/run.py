@@ -38,9 +38,16 @@ def collect_cycle(session, settings: Settings, *, transport=None, resolver=None,
     else:
         chosen = PinnedHTTPTransport(resolver=resolver)
     client = None
+    hosts = {item.strip().lower() for item in settings.llm_allowed_hosts.split(",") if item.strip()}
     if settings.llm_mode == "local" and settings.llm_base_url:
-        client = LocalLLMClient(settings.llm_base_url, model=settings.llm_model, timeout=8)
-    return collect_once(
+        client = LocalLLMClient(
+            settings.llm_base_url,
+            model=settings.llm_model,
+            timeout=8,
+            api_path=settings.llm_api_path,
+            allowed_hosts=hosts,
+        )
+    report = collect_once(
         session,
         settings,
         transport=chosen,
@@ -51,6 +58,10 @@ def collect_cycle(session, settings: Settings, *, transport=None, resolver=None,
         llm_mode=settings.llm_mode,
         llm_client=client,
     )
+    from app.ops.heartbeat import beat
+
+    beat(session, "collector", "ok" if report.errors == 0 else "error", f"requests={report.requests}")
+    return report
 
 
 def main() -> None:
@@ -96,6 +107,9 @@ def main() -> None:
                     media_dir=settings.media_dir,
                     allowed_chat_id=sandbox_chat_id(settings),
                 )
+                from app.ops.heartbeat import beat
+
+                beat(session, "scheduler", "ok")
             if once:
                 return
             time.sleep(60)

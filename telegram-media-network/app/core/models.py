@@ -100,6 +100,30 @@ class Source(Base):
     policy_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
+class SourceEndpointState(Base):
+    """Conditional-request cache for one URL. It is never reused for a different endpoint."""
+
+    __tablename__ = "source_endpoint_states"
+    __table_args__ = (UniqueConstraint("source_id", "request_url", name="uq_source_endpoint"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_id: Mapped[str] = mapped_column(ForeignKey("sources.id"), nullable=False)
+    request_url: Mapped[str] = mapped_column(Text, nullable=False)
+    etag: Mapped[str] = mapped_column(Text, default="")
+    last_modified: Mapped[str] = mapped_column(Text, default="")
+    last_status: Mapped[int] = mapped_column(Integer, default=0)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class ComponentHeartbeat(Base):
+    __tablename__ = "component_heartbeats"
+
+    name: Mapped[str] = mapped_column(String(40), primary_key=True)
+    status: Mapped[str] = mapped_column(String(40), default="unknown")
+    detail: Mapped[str] = mapped_column(Text, default="")
+    beat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class SourceItem(Base):
     __tablename__ = "source_items"
     __table_args__ = (
