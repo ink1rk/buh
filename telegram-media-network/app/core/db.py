@@ -23,7 +23,7 @@ def init_schema(engine: Engine) -> None:
     apply_schema_extras(engine)
 
 
-SCHEMA_HEAD = "0004_global_product"
+SCHEMA_HEAD = "0005_r9_product_foundation"
 MIGRATION_LOCK = 8787002
 
 
@@ -100,6 +100,17 @@ def apply_schema_extras(engine: Engine) -> None:
         "ALTER TABLE publishing_outbox ADD COLUMN IF NOT EXISTS claimed_draft_version INTEGER",
         "ALTER TABLE publishing_outbox ADD COLUMN IF NOT EXISTS claimed_caption TEXT DEFAULT ''",
         "ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS demo BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS event_type VARCHAR(40) DEFAULT 'event'",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS event_at TIMESTAMPTZ",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS last_change_at TIMESTAMPTZ",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS dossier_json JSON DEFAULT '{}'::json",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS score_version VARCHAR(40) DEFAULT 'radar-v3'",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS locked BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE episodes ADD COLUMN IF NOT EXISTS locked BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE episodes ADD COLUMN IF NOT EXISTS origin VARCHAR(40) DEFAULT 'propose'",
+        "ALTER TABLE episodes ADD COLUMN IF NOT EXISTS format_id VARCHAR(40) DEFAULT ''",
+        "ALTER TABLE posts ADD COLUMN IF NOT EXISTS format_id VARCHAR(40) DEFAULT 'breaking_news'",
+        "ALTER TABLE posts ADD COLUMN IF NOT EXISTS quality_json JSON DEFAULT '{}'::json",
     ]
     with engine.begin() as conn:
         for statement in statements:

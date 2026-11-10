@@ -2,7 +2,7 @@
 {% block content %}
 <h1>Радар</h1>
 <p class="demo-banner">Оценки объясняются осями. Один снимок — не тренд. DEMO не является новостью.</p>
-<form method="get" action="/radar">
+<form class="filters" method="get" action="/radar">
   <label>Канал
     <select name="channel">
       <option value="">все</option>
@@ -22,21 +22,42 @@
   <label>Поиск <input name="q" value="{{ query }}"></label>
   <button type="submit">Показать</button>
 </form>
-<div class="scroll">
-<table>
-  <tr><th>Тема</th><th>Канал</th><th>Список</th><th>Счёт</th><th>Почему</th><th></th></tr>
+{% if user.role in ["OWNER", "EDITOR"] %}
+<form class="panel filters" method="post" action="/radar/merge">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <label>Объединить id <input name="source_id" required></label>
+  <label>в id <input name="target_id" required></label>
+  <label>Причина <input name="reason" required></label>
+  <button type="submit">Объединить</button>
+</form>
+{% endif %}
+<section class="radar-feed">
   {% for row in rows %}
-  <tr>
-    <td>{{ row.title }}</td>
-    <td>{{ row.channel_id }}</td>
-    <td>{{ row.list_name }}</td>
-    <td class="score">{{ row.score if row.score is not none else "н/д" }}</td>
-    <td>{{ row.explanation }}</td>
-    <td>{% if row.post_id %}<a href="/review/{{ row.post_id }}">В редакцию</a>{% else %}<span class="muted">черновика нет</span>{% endif %}</td>
-  </tr>
+  <article class="card story-card">
+    <div class="meta">
+      <span class="pill {{ row.list_name }}">{{ row.list_name }}</span>
+      <span class="pill trust">{{ row.trust }}</span>
+      <span class="pill">{{ row.evidence_state }}</span>
+    </div>
+    <h2>{{ row.title }}</h2>
+    <p class="muted">{{ row.channel_id }} · счёт <span class="score">{{ row.score if row.score is not none else "н/д" }}</span> · уверенность {{ row.confidence if row.confidence is not none else "н/д" }}</p>
+    <p class="why">{{ row.explanation }}</p>
+    <p class="muted">trend_signal: {{ row.trend }}</p>
+    <div class="actions">
+      {% if row.post_id %}<a class="button" href="/review/{{ row.post_id }}">В редакцию</a>{% else %}<span class="muted">черновика нет</span>{% endif %}
+      {% if user.role in ["OWNER", "EDITOR"] and row.member_id %}
+      <form method="post" action="/radar/split">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}">
+        <input type="hidden" name="cluster_id" value="{{ row.id }}">
+        <input type="hidden" name="member_id" value="{{ row.member_id }}">
+        <input type="hidden" name="reason" value="самостоятельный сюжет">
+        <button class="ghost" type="submit">Разделить</button>
+      </form>
+      {% endif %}
+    </div>
+  </article>
   {% else %}
-  <tr><td colspan="6">Тем нет. Это пустая выборка, а не нулевая аудитория.</td></tr>
+  <article class="card"><p>Тем нет. Это пустая выборка, а не нулевая аудитория.</p></article>
   {% endfor %}
-</table>
-</div>
+</section>
 {% endblock %}

@@ -2,7 +2,37 @@
 {% block content %}
 <h1>Коммерция</h1>
 <p class="demo-banner">SPONSORED_ENABLED выключен. Кампании ниже учебные. Фактическая выручка не подставляется.</p>
-<p>Монетизация: н/д</p>
+<p>Монетизация: н/д. Аудитория и охват: пока не измерены.</p>
+<section class="kpis">
+  <div class="kpi"><b>{{ kit.actual_revenue_label }}</b><span>факт выручки</span></div>
+  <div class="kpi"><b>{{ forecast.demo_campaigns }}</b><span>DEMO-кампании, не в факте</span></div>
+  <div class="kpi"><b>{{ leads|length }}</b><span>лидов в воронке</span></div>
+</section>
+<h2>Пайплайн</h2>
+<section class="pipeline">
+  {% for stage, items in pipeline.items() %}
+  <article class="stage">
+    <h3>{{ stage }}</h3>
+    {% for lead in items %}
+    <p>{{ lead.advertiser }}<br><span class="muted">{{ lead.segment }} · {{ lead.channel_id }}</span></p>
+    {% else %}
+    <p class="muted">пусто</p>
+    {% endfor %}
+  </article>
+  {% endfor %}
+</section>
+<h2>Пакеты</h2>
+<table>
+  <tr><th>Пакет</th><th>Цена</th><th>Статус</th></tr>
+  {% for card in rates %}
+  <tr>
+    <td>{{ card.title }}</td>
+    <td>{% if card.price is none %}н/д{% else %}{{ card.price }}{% endif %}</td>
+    <td>{{ card.status }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<h2>Кампании</h2>
 <table>
   <tr><th>Рекламодатель</th><th>Канал</th><th>DEMO</th><th>План</th><th>Факт</th><th>Статус</th></tr>
   {% for row in campaigns %}
@@ -18,4 +48,5 @@
   <tr><td colspan="6">Кампаний нет. Это отсутствие записей, не нулевая выручка.</td></tr>
   {% endfor %}
 </table>
+<p class="muted">{{ kit.rules }}</p>
 {% endblock %}

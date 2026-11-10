@@ -11,7 +11,7 @@
 <body>
   <a class="skip" href="#content">К содержанию</a>
   <header class="top">
-    <div class="brand">TMN</div>
+    <div class="brand">TMN<small>Центр управления сетью</small></div>
     <nav aria-label="Разделы">
       <a href="/" {% if nav == 'overview' %}aria-current="page"{% endif %}>Обзор</a>
       <a href="/radar" {% if nav == 'radar' %}aria-current="page"{% endif %}>Радар</a>
@@ -19,8 +19,9 @@
       <a href="/calendar" {% if nav == 'calendar' %}aria-current="page"{% endif %}>Календарь</a>
       <a href="/studio" {% if nav == 'studio' %}aria-current="page"{% endif %}>Студия</a>
       <a href="/sources" {% if nav == 'sources' %}aria-current="page"{% endif %}>Источники</a>
+      <a href="/quality" {% if nav == 'quality' %}aria-current="page"{% endif %}>Качество</a>
       <a href="/programs" {% if nav == 'programs' %}aria-current="page"{% endif %}>Программы</a>
-      <a href="/analytics" {% if nav == 'analytics' %}aria-current="page"{% endif %}>Аналитика</a>
+      <a href="/analytics" {% if nav == 'analytics' %}aria-current="page"{% endif %}>Рост</a>
       <a href="/commercial" {% if nav == 'commercial' %}aria-current="page"{% endif %}>Коммерция</a>
       <a href="/system" {% if nav == 'system' %}aria-current="page"{% endif %}>Система</a>
     </nav>

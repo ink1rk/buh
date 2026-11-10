@@ -277,6 +277,8 @@ class Post(Base):
     sponsored_campaign_id: Mapped[int | None] = mapped_column(ForeignKey("ad_campaigns.id"), nullable=True)
     synthetic: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     hashtags_json: Mapped[list] = mapped_column(JSON, default=list)
+    format_id: Mapped[str] = mapped_column(String(40), default="breaking_news")
+    quality_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class PostVersion(Base):
@@ -469,6 +471,12 @@ class StoryCluster(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     merge_reason: Mapped[str] = mapped_column(Text, default="")
     manual_override: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(40), default="event")
+    event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_change_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dossier_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    score_version: Mapped[str] = mapped_column(String(40), default="radar-v3")
+    locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class ClusterMember(Base):
@@ -560,6 +568,9 @@ class Episode(Base):
     draft_post_id: Mapped[int | None] = mapped_column(ForeignKey("posts.id"), nullable=True)
     reason: Mapped[str] = mapped_column(Text, default="")
     version: Mapped[int] = mapped_column(Integer, default=1)
+    locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    origin: Mapped[str] = mapped_column(String(40), default="propose")
+    format_id: Mapped[str] = mapped_column(String(40), default="")
 
 
 class EditorialFeedback(Base):
@@ -617,6 +628,124 @@ class Placement(Base):
     creative_id: Mapped[int] = mapped_column(ForeignKey("creatives.id"), nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="planned")
     demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class ChannelEditorialProfile(Base):
+    __tablename__ = "channel_editorial_profiles"
+
+    channel_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    audience: Mapped[str] = mapped_column(Text, default="")
+    promise: Mapped[str] = mapped_column(Text, default="")
+    rubrics_json: Mapped[list] = mapped_column(JSON, default=list)
+    avoid_json: Mapped[list] = mapped_column(JSON, default=list)
+    voice: Mapped[str] = mapped_column(Text, default="")
+    formats_json: Mapped[list] = mapped_column(JSON, default=list)
+    evidence_rules_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    palette_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class EditorialClaim(Base):
+    __tablename__ = "editorial_claims"
+    __table_args__ = (Index("ix_claims_post_version", "post_id", "draft_version"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("posts.id"), nullable=False)
+    draft_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    claim_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    text: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(40), default="not_checked")
+    evidence_url: Mapped[str] = mapped_column(Text, default="")
+    reviewer: Mapped[str] = mapped_column(String(80), default="")
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    origin_kind: Mapped[str] = mapped_column(String(40), default="source_claim")
+
+
+class StoryRelation(Base):
+    __tablename__ = "story_relations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    left_cluster_id: Mapped[int] = mapped_column(ForeignKey("story_clusters.id"), nullable=False)
+    right_cluster_id: Mapped[int] = mapped_column(ForeignKey("story_clusters.id"), nullable=False)
+    relation: Mapped[str] = mapped_column(String(40), default="merge_candidate")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    actor: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class MetricDefinition(Base):
+    __tablename__ = "metric_definitions"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    title: Mapped[str] = mapped_column(String(160), default="")
+    unit: Mapped[str] = mapped_column(String(40), default="count")
+    formula: Mapped[str] = mapped_column(Text, default="")
+    source_type: Mapped[str] = mapped_column(String(40), default="derived")
+
+
+class MetricObservation(Base):
+    __tablename__ = "metric_observations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    metric_id: Mapped[str] = mapped_column(ForeignKey("metric_definitions.id"), nullable=False)
+    channel_id: Mapped[str] = mapped_column(String(40), default="")
+    period_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    value: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source_type: Mapped[str] = mapped_column(String(40), default="unknown")
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    evidence_ref: Mapped[str] = mapped_column(Text, default="")
+    demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+class ExperimentPlan(Base):
+    __tablename__ = "experiment_plans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    hypothesis: Mapped[str] = mapped_column(Text, default="")
+    expected_metric: Mapped[str] = mapped_column(String(80), default="")
+    status: Mapped[str] = mapped_column(String(40), default="NOT_STARTED")
+    actual: Mapped[str] = mapped_column(Text, default="н/д")
+    decision: Mapped[str] = mapped_column(Text, default="")
+    demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class SalesLead(Base):
+    __tablename__ = "sales_leads"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    advertiser: Mapped[str] = mapped_column(String(200), default="")
+    segment: Mapped[str] = mapped_column(String(80), default="")
+    stage: Mapped[str] = mapped_column(String(40), default="lead")
+    channel_id: Mapped[str] = mapped_column(String(40), default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class RateCard(Base):
+    __tablename__ = "rate_cards"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(160), default="")
+    package: Mapped[str] = mapped_column(String(40), default="single")
+    price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    currency: Mapped[str] = mapped_column(String(8), default="RUB")
+    status: Mapped[str] = mapped_column(String(40), default="draft")
+    demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class ExpenseRecord(Base):
+    __tablename__ = "expense_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(40), default="infra")
+    amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    currency: Mapped[str] = mapped_column(String(8), default="RUB")
+    note: Mapped[str] = mapped_column(Text, default="")
+    demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    period_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class FinanceEvent(Base):

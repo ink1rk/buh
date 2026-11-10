@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Качество</h1>
+<p class="demo-banner">Блокирующие нарушения не обходят DRY RUN. Synthetic/NEVER_PUBLISH не идут в Telegram.</p>
+<section class="kpis">
+  <div class="kpi"><b>{{ blocking|length }}</b><span>материалов с блокировкой</span></div>
+  <div class="kpi"><b>{{ stale }}</b><span>устаревших карточек</span></div>
+  <div class="kpi"><b>{{ unclear }}</b><span>непроверенных claims</span></div>
+</section>
+<h2>Блокирующие отчёты</h2>
+<ul class="quality-list">
+  {% for row in blocking %}
+  <li><a href="/review/{{ row.id }}">{{ row.title }}</a> · {{ row.channel_id }} · {{ row.reasons }}</li>
+  {% else %}
+  <li class="muted">Блокирующих строк нет в этой выборке.</li>
+  {% endfor %}
+</ul>
+<h2>Claims</h2>
+<table>
+  <tr><th>Пост</th><th>Утверждение</th><th>Статус</th></tr>
+  {% for claim in claims %}
+  <tr>
+    <td>{{ claim.post_id }}</td>
+    <td>{{ claim.text }}</td>
+    <td>{{ claim.status }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="3">Реестр пуст.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

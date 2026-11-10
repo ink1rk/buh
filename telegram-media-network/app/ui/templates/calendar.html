@@ -1,9 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Календарь</h1>
-<p>Время хранения — UTC, подписи слотов — Europe/Moscow. Перенос идёт через сервер. Конфликт оставляет прежний слот.</p>
+<p>Время хранения — UTC, подписи слотов — Europe/Moscow. Перенос идёт через сервер. Конфликт оставляет прежний слот. Proposed не равен scheduled.</p>
+<p class="toolbar">
+  <a class="button ghost" href="/calendar?days=7">7 дней</a>
+  <a class="button ghost" href="/calendar?days=28">28 дней</a>
+  <span class="muted">горизонт {{ days }} суток</span>
+</p>
 <p id="move-note" class="warn">{{ notice }}</p>
 <p class="panel" data-drop="{{ drop_slot }}">Перетащите выпуск сюда: {{ drop_label }}</p>
+<div class="cal-grid" aria-label="Сетка {{ days }} дней">
+  <div class="cal-head">Канал</div>
+  {% for day in day_headers %}
+  <div class="cal-head">{{ day }}</div>
+  {% endfor %}
+  {% for row in grid %}
+    <div class="cal-label">{{ row.channel }}</div>
+    {% for cell in row.cells %}
+      {% if cell.episode %}
+      <div class="cal-cell proposed" draggable="true" data-episode="{{ cell.episode.id }}" data-version="{{ cell.episode.version }}">
+        {{ cell.episode.series_id }}<br>{{ cell.episode.status }}{% if cell.episode.locked %} · lock{% endif %}
+      </div>
+      {% else %}
+      <div class="cal-cell empty">пусто{% if cell.reason %}: {{ cell.reason }}{% endif %}</div>
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+</div>
 <div class="scroll">
 <table>
   <tr><th>Канал</th><th>Серия</th><th>Слот MSK</th><th>Статус</th><th>Версия</th></tr>
@@ -12,7 +35,7 @@
     <td>{{ row.channel_id }}</td>
     <td>{{ row.series_id }}</td>
     <td>{{ row.label }}</td>
-    <td>{{ row.status }}</td>
+    <td>{{ row.status }}{% if row.locked %} · lock{% endif %}</td>
     <td>{{ row.version }}</td>
   </tr>
   {% else %}
@@ -21,7 +44,7 @@
 </table>
 </div>
 {% if episodes %}
-<form method="post" action="/calendar/move">
+<form class="panel filters" method="post" action="/calendar/move">
   <input type="hidden" name="csrf_token" value="{{ csrf }}">
   <label>Выпуск
     <select name="episode_id">
@@ -31,6 +54,15 @@
   <label>Новый слот UTC <input name="slot_utc" value="{{ drop_slot }}" required></label>
   <label>Ожидаемая версия <input name="expected_version" value="{{ episodes[0].version }}" required></label>
   <button type="submit">Перенести через сервер</button>
+</form>
+<form class="panel filters" method="post" action="/calendar/lock">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <label>Зафиксировать
+    <select name="episode_id">
+      {% for row in episodes %}<option value="{{ row.id }}">{{ row.channel_id }} {{ row.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit">Lock</button>
 </form>
 {% endif %}
 {% endblock %}

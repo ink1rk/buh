@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Аналитика</h1>
+<h1>Рост</h1>
 <p class="demo-banner">Воронка посчитана по строкам этой базы на {{ report.as_of }}. Просмотры и подписчики не измерялись.</p>
 <p>{{ report.formula }}</p>
+<p class="muted">{{ board.zero_vs_unknown }}</p>
 <table>
   <tr><th>Шаг</th><th>Значение</th></tr>
   {% for name, value in report.stages.items() %}
@@ -10,6 +11,30 @@
   {% endfor %}
   <tr><td>Просмотры</td><td>н/д</td></tr>
   <tr><td>Подписчики</td><td>н/д</td></tr>
+</table>
+<h2>Наблюдения</h2>
+<table>
+  <tr><th>Метрика</th><th>Значение</th><th>Происхождение</th></tr>
+  {% for row in board.observations %}
+  <tr>
+    <td>{{ row.metric_id }}</td>
+    <td>{% if row.value is none %}н/д{% else %}{{ row.value }}{% endif %}</td>
+    <td>{{ row.source_type }}{% if row.demo %} · DEMO{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+<h2>Эксперименты</h2>
+<table>
+  <tr><th>Гипотеза</th><th>Статус</th><th>Факт</th></tr>
+  {% for row in board.experiments %}
+  <tr>
+    <td>{{ row.title }} — {{ row.hypothesis }}</td>
+    <td>{{ row.status }}</td>
+    <td>{{ row.actual }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="3">Планов нет. Это не нулевой результат A/B.</td></tr>
+  {% endfor %}
 </table>
 <p class="muted">Режим данных: {{ report.data_mode }}. Учебные графики сюда не подмешиваются.</p>
 {% endblock %}

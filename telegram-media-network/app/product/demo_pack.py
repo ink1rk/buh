@@ -22,6 +22,8 @@ def _row(
     arxiv: str = "",
     stars: int | None = None,
     days_old: int = 1,
+    product: str = "",
+    version_scope: str = "unknown",
 ) -> dict:
     return {
         "channel_id": channel,
@@ -36,6 +38,8 @@ def _row(
         "arxiv": arxiv,
         "stars": stars,
         "days_old": days_old,
+        "product": product,
+        "version_scope": version_scope,
         "synthetic": True,
     }
 
@@ -101,6 +105,8 @@ def build_pack() -> list[dict]:
                     arxiv=arxiv,
                     stars=stars,
                     days_old=days,
+                    product="Demo Catalog App" if cve else "",
+                    version_scope="unknown",
                 )
             )
     rows.append(
