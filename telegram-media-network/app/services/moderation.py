@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,7 @@ from app.core.models import (
     ApprovalEvent,
     Channel,
     Comment,
+    MediaAsset,
     Post,
     PostVersion,
     PublishingOutbox,
@@ -22,6 +24,7 @@ from app.core.security import Policy
 from app.core.timeutil import ensure_utc, utcnow
 from app.pipeline.caption import build_caption, caption_hash, validate_caption
 from app.pipeline.editor import license_claim_blocked
+from app.publishing.photo import card_gap
 from app.publishing.schedule import gap_ok, quiet
 from app.services.accounts import AuthError
 
@@ -50,6 +53,17 @@ def _sponsored_blocked(session: Session, post: Post) -> str:
     return ""
 
 
+def _invalidate_cards(session: Session, post: Post) -> None:
+    rows = session.query(MediaAsset).filter_by(post_id=post.id, kind="card", status="ready").all()
+    for row in rows:
+        row.status = "stale"
+
+
+def _discard_partial(directory: Path, post: Post) -> None:
+    partial = directory / f".post-{post.id}-v{post.draft_version}.jpg.partial"
+    partial.unlink(missing_ok=True)
+
+
 def save_post(
     session: Session,
     post: Post,
@@ -59,6 +73,7 @@ def save_post(
     body: str | None,
     channel_id: str | None,
     expected_version: int,
+    media_dir: Path | None = None,
 ) -> Post:
     if actor.role not in {"EDITOR", "OWNER"}:
         raise AuthError(403, "forbidden")
@@ -78,7 +93,7 @@ def save_post(
         post.draft_version += 1
         post.publish_intent_id = secrets.token_hex(8)
         post.approver_ids_json = []
-        if post.review_status == "APPROVED":
+        if post.review_status != "REJECTED":
             post.review_status = "NEEDS_REVIEW"
         post.final_hash = hashlib.sha256(
             f"{post.channel_id}|{post.draft_version}|{post.title}|{post.body}".encode()
@@ -86,6 +101,16 @@ def save_post(
         post.caption = build_caption(post.title, post.body, post.source_links_json or [], post.hashtags_json or [])
         post.caption_hash = caption_hash(post.caption)
         _cancel_active(session, post.id)
+        _invalidate_cards(session, post)
+        if media_dir is not None:
+            channel = session.get(Channel, post.channel_id)
+            if channel is not None:
+                from app.services.editorial import refresh_card
+
+                try:
+                    session.add(refresh_card(post, channel, media_dir))
+                except Exception:
+                    _discard_partial(media_dir, post)
         session.add(
             PostVersion(
                 post_id=post.id,
@@ -115,6 +140,8 @@ def approve_post(session: Session, post: Post, actor: User, *, confirmed: bool) 
         raise AuthError(409, story.hard_block_reason)
     if license_claim_blocked(f"{post.title}\n{post.body}", story.license_state if story else "unknown"):
         raise AuthError(422, "unsupported license claim")
+    if card_gap(session, post):
+        raise AuthError(409, "stale_card")
     sponsor = _sponsored_blocked(session, post)
     if sponsor:
         add_audit(session, actor=actor.username, action="approve", entity="post", entity_id=post.id, result="denied", payload={"reason": sponsor})
@@ -213,6 +240,8 @@ def schedule_post(
         raise AuthError(403, "forbidden")
     if post.review_status != "APPROVED":
         raise AuthError(409, "post is not approved")
+    if card_gap(session, post):
+        raise AuthError(409, "stale_card")
     sponsor = _sponsored_blocked(session, post)
     if sponsor:
         raise AuthError(403, sponsor)

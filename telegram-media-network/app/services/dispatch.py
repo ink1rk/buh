@@ -115,6 +115,12 @@ def dispatch_outbox(
     try:
         photo, digest = load_card(session, post, directory)
     except CardError as exc:
+        if exc.reason == "stale_card":
+            outbox.state = "dlq"
+            outbox.last_error = "stale_card"
+            post.review_status = "NEEDS_REVIEW"
+            session.commit()
+            return {"state": "dlq", "reason": "stale_card", "calls": 0}
         outbox.attempts += 1
         outbox.state = "dlq" if outbox.attempts >= 4 else "retryable_failed"
         outbox.due_utc = moment + timedelta(minutes=30)
@@ -185,6 +191,16 @@ def dispatch_outbox(
         COUNTERS.inc("telegram_429_total")
         session.commit()
         return {"state": outbox.state, "delay": delay}
+    if result.status >= 500 or (result.status == 200 and not result.message_id):
+        outbox.state = "needs_reconciliation"
+        outbox.request_sent = True
+        outbox.last_error = "ambiguous_response"
+        post.review_status = "NEEDS_RECONCILIATION"
+        raise_alert(session, "ambiguous_publish", "Ответ Telegram не доказывает, что публикация не ушла. Нужна ручная сверка.", channel_id=channel.id, now=moment)
+        COUNTERS.inc("publish_ambiguous_total")
+        add_audit(session, actor="publisher", action="publish", entity="outbox", entity_id=outbox.id, result="needs_reconciliation")
+        session.commit()
+        return {"state": "needs_reconciliation", "status": result.status}
     if result.status == 200 and result.message_id:
         outbox.request_sent = True
         outbox.pending_message_id = str(result.message_id)

@@ -184,7 +184,18 @@ def review(request: Request, post_id: int, notice: str = ""):
         from app.core.models import ScoreEvent
 
         score = db.query(ScoreEvent).filter_by(story_id=story.id).order_by(ScoreEvent.id.desc()).first() if story else None
-        image = db.query(MediaAsset).filter_by(post_id=post.id).order_by(MediaAsset.id.desc()).first()
+        image = (
+            db.query(MediaAsset)
+            .filter_by(
+                post_id=post.id,
+                kind="card",
+                status="ready",
+                draft_version=post.draft_version,
+                content_hash=post.final_hash,
+            )
+            .order_by(MediaAsset.id.desc())
+            .first()
+        )
         return templates.TemplateResponse(
             request,
             "review.html",
@@ -235,13 +246,16 @@ def review_save(
         if csrf_token != row.csrf_token:
             raise HTTPException(status_code=403, detail="csrf failed")
         post = db.get(Post, post_id)
-        save_post(db, post, user, title=title, body=body, channel_id=channel_id, expected_version=version)
-        channel = db.get(Channel, post.channel_id)
-        if channel is not None:
-            from app.services.editorial import refresh_card
-
-            db.add(refresh_card(post, channel, Path(request.app.state.settings.media_dir)))
-            db.commit()
+        save_post(
+            db,
+            post,
+            user,
+            title=title,
+            body=body,
+            channel_id=channel_id,
+            expected_version=version,
+            media_dir=Path(request.app.state.settings.media_dir),
+        )
     finally:
         db.close()
     return RedirectResponse(f"/review/{post_id}", status_code=303)

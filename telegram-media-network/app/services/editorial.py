@@ -134,8 +134,12 @@ def _write_media(post: Post, channel: Channel, directory: Path) -> MediaAsset:
     filename = f"post-{post.id}-v{post.draft_version}.jpg"
     path = directory / filename
     partial = directory / f".{filename}.partial"
-    partial.write_bytes(rendered.jpeg)
-    os.replace(partial, path)
+    try:
+        partial.write_bytes(rendered.jpeg)
+        os.replace(partial, path)
+    except Exception:
+        partial.unlink(missing_ok=True)
+        raise
     asset = MediaAsset(
         post_id=post.id,
         kind="card",
@@ -147,6 +151,8 @@ def _write_media(post: Post, channel: Channel, directory: Path) -> MediaAsset:
         byte_size=rendered.byte_size,
         status="ready",
         render_version="card-v1",
+        draft_version=post.draft_version,
+        content_hash=post.final_hash,
     )
     return asset
 

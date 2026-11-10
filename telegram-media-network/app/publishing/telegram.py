@@ -10,7 +10,13 @@ class AmbiguousTimeout(Exception):
 
 
 class DeliveryRejected(Exception):
-    """The request was refused before acceptance."""
+    """The request was refused before it could have been accepted.
+
+    Safe to retry later: ConnectError, ConnectTimeout, and PoolTimeout.
+    RemoteProtocolError, ReadError, ReadTimeout, WriteError, HTTP 5xx,
+    and a 200 without a message id are not this exception. Those outcomes
+    are ambiguous and must not be sent again automatically.
+    """
 
 
 @dataclass
@@ -68,10 +74,10 @@ class HttpxTelegramTransport:
         files = {"photo": ("card.jpg", payload["photo"], "image/jpeg")}
         try:
             response = self._client.post(url, data=data, files=files)
-        except httpx.TimeoutException as exc:
-            raise AmbiguousTimeout("timeout after request") from exc
+        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout) as exc:
+            raise DeliveryRejected("connect") from exc
         except httpx.TransportError as exc:
-            raise DeliveryRejected("transport") from exc
+            raise AmbiguousTimeout("uncertain transport") from exc
         retry_after = None
         description = ""
         message_id = None

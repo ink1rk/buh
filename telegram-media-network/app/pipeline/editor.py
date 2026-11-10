@@ -147,9 +147,9 @@ def _body(item: SourceItemIn, facts: list[Fact], channel_id: str) -> str:
     if item.is_preprint:
         limits.append("Это препринт: текст не выдаёт результат за рецензированный или доказанный вывод.")
     if item.license_state == "unknown":
-        limits.append("Лицензия в источнике не указана, поэтому редакция не делает вывод о праве на повторное использование.")
+        limits.append("Редакция не подтверждает лицензию и не делает вывод о праве на повторное использование.")
     elif item.license_state == "explicit_open_source" and item.license_spdx:
-        limits.append(f"В первоисточнике указана лицензия {item.license_spdx}.")
+        limits.append(f"GitHub указывает лицензию {item.license_spdx}. Это не обещание отсутствия ограничений.")
     if item.content_kind == "advisory" or item.cve_id:
         limits.append("Здесь только защитная формулировка источника, без инструкций по эксплуатации.")
     if EXTRAORDINARY_RE.search(item.untrusted_text or ""):

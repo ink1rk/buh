@@ -331,6 +331,7 @@ def bulk_reject(
 def patch_post(
     post_id: int,
     body: EditBody,
+    request: Request,
     user: User = Depends(require_roles("EDITOR", "OWNER")),
     db: Session = Depends(get_db),
     if_match: str | None = Header(default=None, alias="If-Match"),
@@ -345,7 +346,16 @@ def patch_post(
     except ValueError as exc:
         raise HTTPException(status_code=428, detail="If-Match required") from exc
     try:
-        save_post(db, post, user, title=body.title, body=body.body, channel_id=body.channel_id, expected_version=expected)
+        save_post(
+            db,
+            post,
+            user,
+            title=body.title,
+            body=body.body,
+            channel_id=body.channel_id,
+            expected_version=expected,
+            media_dir=request.app.state.settings.media_dir,
+        )
     except AuthError as exc:
         _guard(exc)
     return {"id": post.id, "draft_version": post.draft_version, "review_status": post.review_status}

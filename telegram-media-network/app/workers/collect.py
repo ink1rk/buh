@@ -129,10 +129,15 @@ def _parse(source: Source, url: str, body: bytes, now: datetime) -> list[SourceI
     adapter = source.adapter
     text = body.decode("utf-8", "replace")
     if adapter == "github_rest_search":
-        return parse_github_search(json.loads(text), now)
+        payload = json.loads(text)
+        if not isinstance(payload, dict) or not isinstance(payload.get("items"), list):
+            raise FeedError("invalid_payload")
+        return parse_github_search(payload, now)
     if adapter == "hf_hub":
         payload = json.loads(text)
-        rows = payload if isinstance(payload, list) else []
+        if not isinstance(payload, list):
+            raise FeedError("invalid_payload")
+        rows = payload
         if "/api/spaces" in url:
             return parse_hf_spaces(rows, now)
         return parse_hf_models(rows, now)
@@ -245,6 +250,10 @@ def collect_once(
             _mark(source, moment, "ok", "not_modified")
             report.polled += 1
             continue
+        if status_name == "ok" and not items:
+            _mark(source, moment, "ok", note or "no_new_items")
+            report.polled += 1
+            continue
         if status_name in {"rate_limited", "error", "outage", "auth_error"}:
             _mark(source, moment, status_name, str(primary or status_name), failures=source.consecutive_failures + 1)
             report.errors += 1
@@ -308,9 +317,13 @@ class _Budget:
         return max(0, self.cap - self.used)
 
 
+_RSS_ACCEPT = "application/rss+xml, application/atom+xml, application/xml, text/xml, */*;q=0.5"
+
+
 def _request_headers(session: Session, source: Source, url: str, settings: Settings) -> dict[str, str]:
     row = session.query(SourceEndpointState).filter_by(source_id=source.id, request_url=url).one_or_none()
-    headers = conditional_headers(row.etag if row else "", row.last_modified if row else "")
+    accept = _RSS_ACCEPT if source.adapter == "rss" else "application/json"
+    headers = conditional_headers(row.etag if row else "", row.last_modified if row else "", accept=accept)
     host = (urlsplit(url).hostname or "").lower()
     if host in _GITHUB_HOSTS and settings.github_read_token:
         headers["Authorization"] = f"Bearer {settings.github_read_token}"
@@ -422,29 +435,35 @@ def _fetch_all(session, source, urls, transport, resolver, settings: Settings, r
             else:
                 items.extend(_parse(source, url, outcome.body, now))
         except (json.JSONDecodeError, FeedError, TransportError) as exc:
-            notes.append(getattr(exc, "reason", "") or str(exc)[:80])
-            statuses.append("error")
+            notes.append(getattr(exc, "reason", "") or "invalid_payload")
+            if statuses and statuses[-1] == "ok":
+                statuses[-1] = "error"
+            else:
+                statuses.append("error")
     return _finish(items, notes, statuses, primary)
 
 
 def _finish(items, notes: list[str], statuses: list[str], primary):
     unique_notes = list(dict.fromkeys(notes))
-    if not items and statuses and set(statuses) <= {"not_modified"} and not unique_notes:
+    success = {"ok", "not_modified"}
+    if statuses and set(statuses) <= {"not_modified"} and not unique_notes:
         return "not_modified", [], primary, ""
-    if not items:
-        if "blocked" in statuses:
-            return "blocked", [], unique_notes[0] if unique_notes else "blocked", ""
-        if "auth_error" in statuses:
-            return "auth_error", [], unique_notes[0] if unique_notes else "auth_error", ""
-        if "rate_limited" in statuses:
-            return "rate_limited", [], unique_notes[0] if unique_notes else "rate_limited", ""
-        if "outage" in statuses:
-            return "outage", [], unique_notes[0] if unique_notes else "outage", ""
-        return "error", [], unique_notes[0] if unique_notes else "error", ""
-    incomplete = [status for status in statuses if status not in {"ok", "not_modified"}]
-    if unique_notes or incomplete:
+    incomplete = [status for status in statuses if status not in success]
+    if not incomplete and not unique_notes:
+        if not items:
+            return "ok", [], primary, "no_new_items"
+        return "ok", items, primary, ""
+    if items or "ok" in statuses:
         return "partial", items, primary, "; ".join(unique_notes) or ",".join(incomplete)
-    return "ok", items, primary, ""
+    if "blocked" in statuses:
+        return "blocked", [], unique_notes[0] if unique_notes else "blocked", ""
+    if "auth_error" in statuses:
+        return "auth_error", [], unique_notes[0] if unique_notes else "auth_error", ""
+    if "rate_limited" in statuses:
+        return "rate_limited", [], unique_notes[0] if unique_notes else "rate_limited", ""
+    if "outage" in statuses:
+        return "outage", [], unique_notes[0] if unique_notes else "outage", ""
+    return "error", [], unique_notes[0] if unique_notes else "error", ""
 
 
 def _hn_slots(urls: list[str], cap: int) -> dict[str, int]:
@@ -461,11 +480,10 @@ def _release_key(url: str) -> str:
 
 
 def _release_items(url: str, body: bytes, repo_doc: dict | None, now: datetime) -> list[SourceItemIn]:
-    try:
-        payload = json.loads(body.decode("utf-8"))
-    except json.JSONDecodeError:
-        return []
-    rows = payload if isinstance(payload, list) else []
+    payload = json.loads(body.decode("utf-8"))
+    if not isinstance(payload, list):
+        raise FeedError("invalid_payload")
+    rows = payload
     repo = repo_doc or _repo_from_release_url(url)
     found: list[SourceItemIn] = []
     for row in rows:
