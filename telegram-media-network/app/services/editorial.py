@@ -223,7 +223,7 @@ def ingest_source_item(
     status = "NEEDS_REVIEW"
     if drafted.blocked:
         status = "QUARANTINED"
-    elif scored.total < 60:
+    elif item.archived or scored.total < 60:
         status = "ARCHIVED"
     story = Story(
         canonical_url=canon.url,
@@ -235,7 +235,13 @@ def ingest_source_item(
         title=item.title[:400],
         summary=(drafted.public_text or item.title)[:500],
         status=status,
-        provenance_json={"source_id": item.source_id, "external_id": item.source_external_id, "keys": keys},
+        provenance_json={
+            "source_id": item.source_id,
+            "external_id": item.source_external_id,
+            "keys": keys,
+            "backfill": bool(item.archived),
+            "date_added": item.date_added or "",
+        },
         primary_channel_id=decision.primary,
         score_total=scored.total,
         score_band="blocked" if drafted.blocked else scored.band,

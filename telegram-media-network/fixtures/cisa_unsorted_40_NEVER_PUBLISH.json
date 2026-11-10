@@ -1,0 +1,325 @@
+{
+  "title": "NEVER_PUBLISH — SYNTHETIC TEST DATA",
+  "vulnerabilities": [
+    {
+      "cveID": "CVE-2026-990001",
+      "dateAdded": "2026-09-01",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 1; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990002",
+      "dateAdded": "2026-09-02",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 2; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990003",
+      "dateAdded": "2026-09-03",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 3; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990004",
+      "dateAdded": "2026-09-04",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 4; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990005",
+      "dateAdded": "2026-09-05",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 5; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990006",
+      "dateAdded": "2026-09-06",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 6; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990007",
+      "dateAdded": "2026-09-07",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 7; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990008",
+      "dateAdded": "2026-09-08",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 8; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990009",
+      "dateAdded": "2026-09-09",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 9; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990010",
+      "dateAdded": "2026-09-10",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 10; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990011",
+      "dateAdded": "2026-09-11",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 11; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990012",
+      "dateAdded": "2026-09-12",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 12; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990013",
+      "dateAdded": "2026-09-13",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 13; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990014",
+      "dateAdded": "2026-09-14",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 14; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990015",
+      "dateAdded": "2026-09-15",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 15; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990016",
+      "dateAdded": "2026-09-16",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 16; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990017",
+      "dateAdded": "2026-09-17",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 17; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990018",
+      "dateAdded": "2026-09-18",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 18; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990019",
+      "dateAdded": "2026-09-19",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 19; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990020",
+      "dateAdded": "2026-09-20",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 20; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990021",
+      "dateAdded": "2026-09-21",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 21; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990022",
+      "dateAdded": "2026-09-22",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 22; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990023",
+      "dateAdded": "2026-09-23",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 23; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990024",
+      "dateAdded": "2026-09-24",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 24; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990025",
+      "dateAdded": "2026-09-25",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 25; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990026",
+      "dateAdded": "2026-09-26",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 26; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990027",
+      "dateAdded": "2026-09-27",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 27; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990028",
+      "dateAdded": "2026-09-28",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 28; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990029",
+      "dateAdded": "2026-09-29",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 29; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990030",
+      "dateAdded": "2026-09-30",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 30; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990031",
+      "dateAdded": "2026-10-01",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 31; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990032",
+      "dateAdded": "2026-10-02",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 32; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990033",
+      "dateAdded": "2026-10-03",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 33; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990034",
+      "dateAdded": "2026-10-04",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 34; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990035",
+      "dateAdded": "2026-10-05",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 35; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990036",
+      "dateAdded": "2026-10-06",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 36; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990037",
+      "dateAdded": "2026-10-07",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 37; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990038",
+      "dateAdded": "2026-10-08",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 38; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990039",
+      "dateAdded": "2026-10-09",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 39; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    },
+    {
+      "cveID": "CVE-2026-990040",
+      "dateAdded": "2026-10-10",
+      "vendorProject": "NEVER_PUBLISH TEST FIXTURE",
+      "product": "DemoApp",
+      "shortDescription": "Fictional record 40; NOT A REAL VULNERABILITY",
+      "requiredAction": "No action; synthetic test only"
+    }
+  ]
+}

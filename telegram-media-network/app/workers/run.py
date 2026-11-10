@@ -11,7 +11,7 @@ from app.pipeline.llm import LocalLLMClient
 from app.publishing.gate import build_telegram_transport, sandbox_chat_id
 from app.publishing.leader import LeaderLock
 from app.services.bootstrap import bootstrap
-from app.services.dispatch import scheduler_tick
+from app.services.dispatch import recover_inflight, scheduler_tick
 from app.workers.collect import collect_once
 
 
@@ -85,6 +85,9 @@ def main() -> None:
     lock = LeaderLock(engine)
     transport = build_telegram_transport(settings)
     try:
+        if lock.held or lock.acquire():
+            with factory() as session:
+                recover_inflight(session)
         while True:
             leader = lock.held or lock.acquire()
             with factory() as session:

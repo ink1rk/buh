@@ -22,9 +22,10 @@ from app.adapters.parse import (
     parse_hf_models,
     parse_hf_spaces,
     parse_hn_item,
+    plan_cisa,
 )
 from app.core.config import Settings
-from app.core.models import Source, SourceEndpointState
+from app.core.models import Source, SourceEndpointState, SourceItem
 from app.core.timeutil import ensure_utc, utcnow
 from app.pipeline.types import SourceItemIn
 from app.pipeline.urlsec import DEFAULT_ALLOWLIST, DefaultResolver
@@ -42,6 +43,11 @@ class CollectReport:
     blocked: int = 0
     requests: int = 0
     urls: list[str] = field(default_factory=list)
+    count_total: int = 0
+    count_new: int = 0
+    count_queued: int = 0
+    count_archived: int = 0
+    count_truncated: int = 0
 
 
 def _due(source: Source, now: datetime, force: bool) -> bool:
@@ -270,7 +276,24 @@ def collect_once(
             seen.add(candidate.source_external_id)
             unique.append(candidate)
         items = unique
-        if len(items) > ITEM_CAP:
+        if source.adapter == "cisa_kev_json":
+            known = {
+                row
+                for (row,) in session.query(SourceItem.external_id).filter(SourceItem.source_id == source.id)
+            }
+            plan = plan_cisa(items, moment, known, limit=ITEM_CAP)
+            items = list(plan["news"]) + list(plan["archived"])
+            report.count_total += int(plan["total"])
+            report.count_new += int(plan["new"])
+            report.count_queued += int(plan["queued"])
+            report.count_archived += int(plan["archived_count"])
+            report.count_truncated += int(plan["truncated"])
+            if plan["truncated"]:
+                note = (
+                    f"{note} cisa total={plan['total']} new={plan['new']} queued={plan['queued']} "
+                    f"archived={plan['archived_count']} truncated={plan['truncated']}"
+                ).strip()
+        elif len(items) > ITEM_CAP:
             note = (note + f" kept {ITEM_CAP} of {len(items)}").strip()
             items = items[:ITEM_CAP]
         fresh = [item for item in items if _fresh(item, moment)]
