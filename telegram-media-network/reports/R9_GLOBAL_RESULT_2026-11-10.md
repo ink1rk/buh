@@ -1,6 +1,6 @@
 # R9 — Telegram Media Network 2.0, 10 ноября 2026
 
-Время прогона: около 20:27 Europe/Moscow. База: глобальный апгрейд `42bd8ca6dcb82c6029243feccaa1d4fa0adf972a` / код `e5efe19878073e7b22ca010259e9c2cd2b126013`. Ветка `cursor/tmn-r9-product-c7b2`. Это офлайн-редакционная платформа восьми каналов. Production не заявлялся. Live-проверка не заявлялась.
+Время прогона: около 20:27 Europe/Moscow. База: глобальный апгрейд `42bd8ca6dcb82c6029243feccaa1d4fa0adf972a` / код `e5efe19878073e7b22ca010259e9c2cd2b126013`. Код этой поставки: `365cd93`. Ветка `cursor/tmn-r9-product-c7b2`. Это офлайн-редакционная платформа восьми каналов. Production не заявлялся. Live-проверка не заявлялась.
 
 Флаги поставки не менялись: `DRY_RUN=true`, `PUBLISH_ENABLED=false`, `GLOBAL_KILL_SWITCH=true`, `SPONSORED_ENABLED=false`, `SOURCE_MODE=offline`, `LLM_MODE=mock`. `ENVIRONMENT=production` по-прежнему не стартует. Транспорт Telegram при этих флагах — `None`.
 
