@@ -11,10 +11,11 @@ from app.pipeline.caption import build_caption, preview_html, safe_links, telegr
 from app.publishing.telegram import AmbiguousTimeout, ScriptedTransport, SpyTransport, TgResult
 from app.services.accounts import AuthError
 from app.services.dispatch import dispatch_outbox, publish_preview_or_send, recover_inflight
+from app.services.editorial import refresh_card
 from app.services.moderation import schedule_post
 from PIL import Image
 from tests.factories import NOW
-from tests.support import approved_post
+from tests.support import MEDIA, approved_post
 
 
 def _jpeg() -> bytes:
@@ -50,6 +51,23 @@ def test_d01_long_russian_title_and_emoji_fit():
     caption = build_caption(title + " 🚀", "Короткий текст для подписи, в котором эмодзи остаётся.", ["https://github.com/acme/widget"])
     assert "🚀" in caption
     assert telegram_length("🚀") == 2
+
+
+def test_d01b_source_label_changes_the_card_and_stays_our_layout():
+    plain = _card("Локальная карточка без чужого изображения")
+    marked = render_card(
+        channel_title="GitHub Находки",
+        primary="#12344D",
+        accent="#F2C14E",
+        template="tool",
+        title="Локальная карточка без чужого изображения",
+        kicker="ИНСТРУМЕНТ",
+        footer="GitHub Находки",
+        source_label="github.com",
+    )
+    assert plain.sha256 != marked.sha256
+    assert marked.rights_basis == "own_typographic_template"
+    assert marked.jpeg.startswith(b"\xff\xd8\xff")
 
 
 def test_d02_remote_image_without_rights_falls_back():
@@ -151,6 +169,9 @@ def test_d08_channel_publish_disabled(db):
 
 def _scheduled(db):
     post, owner, editor = approved_post(db)
+    channel = db.get(Channel, post.channel_id)
+    db.add(refresh_card(post, channel, MEDIA))
+    db.commit()
     outbox = schedule_post(db, post, editor, due=NOW, confirmed=True, now=NOW)
     return post, owner, outbox
 
@@ -158,7 +179,7 @@ def _scheduled(db):
 def test_d09_mock_200_stores_message(db):
     post, _owner, outbox = _scheduled(db)
     transport = ScriptedTransport([TgResult(200, message_id="555")])
-    result = dispatch_outbox(db, outbox, transport, now=NOW)
+    result = dispatch_outbox(db, outbox, transport, now=NOW, media_dir=MEDIA)
     saved = db.query(PublishedMessage).one()
     assert result["message_id"] == "555"
     assert saved.telegram_message_id == "555"
@@ -170,12 +191,12 @@ def test_d09_mock_200_stores_message(db):
 def test_d10_mock_401_pauses_and_alerts(db):
     post, _owner, outbox = _scheduled(db)
     transport = ScriptedTransport([TgResult(401, description="unauthorized")])
-    result = dispatch_outbox(db, outbox, transport, now=NOW)
+    result = dispatch_outbox(db, outbox, transport, now=NOW, media_dir=MEDIA)
     channel = db.get(Channel, post.channel_id)
     assert result["state"] == "paused"
     assert channel.paused is True
     assert db.query(Alert).filter_by(channel_id=channel.id).count() == 1
-    again = dispatch_outbox(db, outbox, transport, now=NOW)
+    again = dispatch_outbox(db, outbox, transport, now=NOW, media_dir=MEDIA)
     assert again["state"] == "paused"
     assert len(transport.calls) == 1
 
@@ -183,7 +204,7 @@ def test_d10_mock_401_pauses_and_alerts(db):
 def test_d11_retry_after_is_exact(db):
     _post, _owner, outbox = _scheduled(db)
     transport = ScriptedTransport([TgResult(429, retry_after=17)])
-    result = dispatch_outbox(db, outbox, transport, now=NOW)
+    result = dispatch_outbox(db, outbox, transport, now=NOW, media_dir=MEDIA)
     db.refresh(outbox)
     assert result["delay"] == 17
     assert outbox.due_utc == NOW + timedelta(seconds=17)
@@ -193,11 +214,11 @@ def test_d11_retry_after_is_exact(db):
 def test_d12_timeout_needs_reconciliation(db):
     _post, _owner, outbox = _scheduled(db)
     transport = ScriptedTransport([AmbiguousTimeout("timeout")])
-    result = dispatch_outbox(db, outbox, transport, now=NOW)
+    result = dispatch_outbox(db, outbox, transport, now=NOW, media_dir=MEDIA)
     db.refresh(outbox)
     assert result["state"] == "needs_reconciliation"
     assert outbox.request_sent is True
-    again = dispatch_outbox(db, outbox, transport, now=NOW + timedelta(minutes=5))
+    again = dispatch_outbox(db, outbox, transport, now=NOW + timedelta(minutes=5), media_dir=MEDIA)
     assert again.get("calls") == 0
     assert len(transport.calls) == 1
     assert db.query(PublishedMessage).count() == 0
@@ -206,7 +227,7 @@ def test_d12_timeout_needs_reconciliation(db):
 def test_d13_crash_before_commit_does_not_resend(db):
     _post, _owner, outbox = _scheduled(db)
     transport = ScriptedTransport([TgResult(200, message_id="777")])
-    result = dispatch_outbox(db, outbox, transport, now=NOW, crash_before_commit=True)
+    result = dispatch_outbox(db, outbox, transport, now=NOW, crash_before_commit=True, media_dir=MEDIA)
     assert result["crashed"] is True
     db.refresh(outbox)
     assert outbox.state == "sending"
@@ -215,7 +236,7 @@ def test_d13_crash_before_commit_does_not_resend(db):
     db.refresh(outbox)
     assert moved == 1
     assert outbox.state == "needs_reconciliation"
-    again = dispatch_outbox(db, outbox, transport, now=NOW + timedelta(minutes=6))
+    again = dispatch_outbox(db, outbox, transport, now=NOW + timedelta(minutes=6), media_dir=MEDIA)
     assert len(transport.calls) == 1
     assert db.query(PublishedMessage).count() == 0
     assert again["state"] == "needs_reconciliation"

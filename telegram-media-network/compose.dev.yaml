@@ -38,12 +38,18 @@ services:
       SESSION_SECRET: ${SESSION_SECRET}
       APP_BIND_HOST: 0.0.0.0
       APP_BIND_PORT: 8787
+      TMN_SCHEMA: migrate
     ports:
       - "127.0.0.1:8787:8787"
     networks: [data]
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health/ready', timeout=3)"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
     read_only: true
     tmpfs: [/tmp, /app/var]
     cap_drop: [ALL]
@@ -63,6 +69,7 @@ services:
       DATABASE_URL: postgresql+psycopg://tmn_app:${POSTGRES_PASSWORD}@db:5432/tmn
       SESSION_SECRET: ${SESSION_SECRET}
       TMN_ROLE: scheduler
+      TMN_SCHEMA: migrate
     command: ["python", "-m", "app.workers.run"]
     networks: [data]
     depends_on:
@@ -85,6 +92,7 @@ services:
       DATABASE_URL: postgresql+psycopg://tmn_app:${POSTGRES_PASSWORD}@db:5432/tmn
       SESSION_SECRET: ${SESSION_SECRET}
       TMN_ROLE: collector
+      TMN_SCHEMA: migrate
     command: ["python", "-m", "app.workers.run"]
     networks: [data]
     depends_on:

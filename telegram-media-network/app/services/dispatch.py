@@ -2,15 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.audit import add_audit
+from app.core.config import ROOT
 from app.core.models import Alert, Channel, Post, PublishedMessage, PublishingOutbox, Story, User
 from app.core.security import Policy
 from app.core.timeutil import ensure_utc, msk_day_bounds, utcnow
 from app.ops.metrics import COUNTERS
+from app.publishing.photo import CardError, load_card
 from app.publishing.schedule import DueItem, select_sendable, slot_due
 from app.publishing.telegram import AmbiguousTimeout, DeliveryRejected
 from app.services.accounts import AuthError
@@ -96,6 +99,7 @@ def dispatch_outbox(
     *,
     now: datetime | None = None,
     crash_before_commit: bool = False,
+    media_dir: Path | None = None,
 ) -> dict:
     moment = ensure_utc(now or utcnow())
     if outbox.state not in {"scheduled", "retryable_failed"}:
@@ -106,6 +110,17 @@ def dispatch_outbox(
     post = session.get(Post, outbox.post_id)
     if channel is None or post is None:
         return {"state": "missing"}
+    directory = media_dir or (ROOT / "var" / "media")
+    try:
+        photo, digest = load_card(session, post, directory)
+    except CardError as exc:
+        outbox.attempts += 1
+        outbox.state = "dlq" if outbox.attempts >= 4 else "retryable_failed"
+        outbox.due_utc = moment + timedelta(minutes=30)
+        outbox.last_error = exc.reason
+        post.review_status = "SCHEDULED"
+        session.commit()
+        return {"state": outbox.state, "reason": exc.reason, "calls": 0}
     outbox.state = "sending"
     outbox.lease_until = moment + timedelta(seconds=60)
     outbox.request_sent = False
@@ -115,7 +130,8 @@ def dispatch_outbox(
         "chat_id": channel.chat_id or "unset",
         "caption": post.caption,
         "caption_hash": post.caption_hash,
-        "photo": b"",
+        "photo": photo,
+        "photo_sha256": digest,
     }
     try:
         result = transport.send_photo(payload)
@@ -346,6 +362,7 @@ def scheduler_tick(
     now: datetime,
     policy: Policy,
     transport=None,
+    media_dir: Path | None = None,
 ) -> TickResult:
     if not leader:
         return TickResult(False, 0, 0)
@@ -392,8 +409,9 @@ def scheduler_tick(
                 continue
             target_due = chosen[0].due_utc
             target = next(row for row in due_rows if row.due_utc == target_due)
-            dispatch_outbox(session, target, transport, now=moment)
-            sent += 1
+            outcome = dispatch_outbox(session, target, transport, now=moment, media_dir=media_dir)
+            if outcome.get("state") == "published":
+                sent += 1
     return TickResult(True, scheduled, sent)
 
 

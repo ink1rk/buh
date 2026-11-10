@@ -18,7 +18,7 @@ from app.publishing.telegram import ScriptedTransport, TgResult
 from app.services.accounts import create_user
 from app.services.bootstrap import bootstrap
 from app.services.dispatch import scheduler_tick
-from app.services.editorial import ingest_source_item
+from app.services.editorial import ingest_source_item, refresh_card
 from app.services.moderation import approve_post, schedule_post
 from sqlalchemy.exc import IntegrityError
 from tests.conftest import make_settings
@@ -127,8 +127,11 @@ def test_f05_stale_backlog_is_not_a_burst(db):
     transport = ScriptedTransport([TgResult(200, message_id="9")])
     channel = db.get(Channel, post.channel_id)
     channel.publish_enabled = True
+    db.add(refresh_card(post, channel, MEDIA))
     db.commit()
-    tick = scheduler_tick(db, leader=True, now=NOW, policy=Policy(False, True, False, False), transport=transport)
+    tick = scheduler_tick(
+        db, leader=True, now=NOW, policy=Policy(False, True, False, False), transport=transport, media_dir=MEDIA
+    )
     db.refresh(fresh)
     db.refresh(stale_row)
     assert tick.sent == 1
