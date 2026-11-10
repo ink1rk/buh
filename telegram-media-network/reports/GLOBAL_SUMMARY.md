@@ -1,6 +1,6 @@
 # Сводка глобального обновления, 10 ноября 2026
 
-Время прогона: около 19:30 Europe/Moscow. База: R8 `ce24618215cc00655606ad7a17560fe10c194208` и отчёт `be66eae13bf3d06957897b0a158f2787e5389534`. Это офлайн-редакция восьми каналов. Production не заявлялся. Live-проверка не заявлялась.
+Время прогона: около 19:30 Europe/Moscow. База: R8 `ce24618215cc00655606ad7a17560fe10c194208` и отчёт `be66eae13bf3d06957897b0a158f2787e5389534`. Код этой поставки: `e5efe19878073e7b22ca010259e9c2cd2b126013`. Это офлайн-редакция восьми каналов. Production не заявлялся. Live-проверка не заявлялась.
 
 Флаги поставки не менялись: `DRY_RUN=true`, `PUBLISH_ENABLED=false`, `GLOBAL_KILL_SWITCH=true`, `SPONSORED_ENABLED=false`, `SOURCE_MODE=offline`, `LLM_MODE=mock`. `ENVIRONMENT=production` по-прежнему не стартует. Транспорт Telegram при этих флагах — `None`.
 
