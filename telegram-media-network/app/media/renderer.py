@@ -33,6 +33,7 @@ class CardLayout:
     font_size: int = 0
     width: int = CARD_W
     height: int = CARD_H
+    overflow: str = ""
 
 
 @dataclass
@@ -67,6 +68,24 @@ def _glyph_ok(font: ImageFont.FreeTypeFont, char: str) -> bool:
 
 def filter_text(font: ImageFont.FreeTypeFont, text: str) -> str:
     return "".join(char for char in text if _glyph_ok(font, char))
+
+
+def fit_headline(text: str, max_width: int, max_lines: int, max_size: int = 46, min_size: int = 22) -> tuple[list[str], int, bool, str]:
+    visible = filter_text(_font(FONT_BOLD, max_size), text).strip()
+    size = max_size
+    while size >= min_size:
+        font = _font(FONT_BOLD, size)
+        lines = wrap_text(visible, font, max_width)
+        drawn = " ".join(lines)
+        if len(lines) <= max_lines and drawn == visible:
+            return lines, size, True, ""
+        size -= 2
+    font = _font(FONT_BOLD, min_size)
+    lines = wrap_text(visible, font, max_width)
+    if len(lines) <= max_lines and " ".join(lines) == visible:
+        return lines, min_size, True, ""
+    clipped = lines[:max_lines]
+    return clipped, min_size, False, "headline_overflow"
 
 
 def wrap_text(text: str, font: ImageFont.FreeTypeFont, max_width: int) -> list[str]:
@@ -222,14 +241,15 @@ def render_network_card(
         "advisory": "ЗАПИСЬ",
         "digest": "ПОДБОРКА",
         "deep-dive": "РАЗБОР",
+        "review": "ОБЗОР",
     }.get(template_id, "МАТЕРИАЛ")
     draw.text((64, 78), label, font=small, fill=(236, 239, 244))
     if demo:
         draw.text((1040, 36), "DEMO", font=small, fill=accent_rgb)
     draw.text((1040, 68), "СВОЙ МАКЕТ", font=_font(FONT_REGULAR, 16), fill=(220, 224, 230))
-    title_font = _font(FONT_BOLD, 46)
-    visible = filter_text(title_font, title).strip()
-    lines = wrap_text(visible, title_font, 760 if template_id == "tool" else 1100)[:2]
+    max_width = 760 if template_id == "tool" else 1100
+    lines, font_size, fits_title, overflow = fit_headline(title, max_width, 2)
+    title_font = _font(FONT_BOLD, font_size)
     y = 150
     if template_id in {"advisory", "security"} and cve:
         draw.rounded_rectangle((64, 140, 640, 210), radius=8, outline=accent_rgb, width=3)
@@ -243,17 +263,27 @@ def render_network_card(
     if template_id in {"hero", "lead"}:
         draw.ellipse((980, 160, 1220, 400), outline=accent_rgb, width=8)
         draw.ellipse((1040, 220, 1160, 340), fill=accent_rgb)
+    if template_id == "review":
+        draw.rectangle((64, 430, 620, 600), outline=accent_rgb, width=3)
+        draw.rectangle((660, 430, 1216, 600), outline=accent_rgb, width=3)
+        draw.text((84, 450), "источник", font=small, fill=accent_rgb)
+        draw.text((680, 450), "ограничение", font=small, fill=accent_rgb)
+        draw.text((84, 500), filter_text(small, subtitle or "факт из карточки")[:28], font=small, fill=(255, 255, 255))
+        draw.text((680, 500), "не подтверждено источником", font=small, fill=(255, 255, 255))
     if template_id == "digest":
         y = 150
         lines = []
-        for index, item in enumerate((digest_lines or [visible])[:5]):
+        source_items = digest_lines or [title]
+        for index, item in enumerate(source_items[:5]):
             top = 150 + index * 90
             draw.rectangle((64, top, 1216, top + 72), outline=accent_rgb, width=2)
             snippet = filter_text(small, item)[:70]
             draw.text((84, top + 22), snippet, font=small, fill=(255, 255, 255))
-        bottom = 150 + min(5, len(digest_lines or [visible])) * 90
+        bottom = 150 + min(5, len(source_items)) * 90
         payload = _save(image)
-        layout = CardLayout(fits=True, lines=digest_lines or [visible], bottom=bottom, font_size=22)
+        items = digest_lines or [filter_text(small, title).strip()]
+        overflow = "" if items else "headline_overflow"
+        layout = CardLayout(fits=not overflow, lines=items, bottom=bottom, font_size=22, overflow=overflow)
         return RenderedCard(payload, layout, hashlib.sha256(payload).hexdigest(), "own_typographic_template")
     if template_id == "deep-dive":
         facts = (digest_lines or [subtitle or "факт из источника", "ограничение не выдумано", "ссылка обязательна"])[:3]
@@ -271,9 +301,11 @@ def render_network_card(
     if template_id in {"advisory", "security"}:
         footer = "CVSS нет в источнике" if not source_label else source_label
     draw.text((64, 648), filter_text(small, footer)[:80], font=small, fill=(236, 239, 244))
+    if overflow:
+        draw.text((64, 580), "заголовок не поместился", font=small, fill=(255, 180, 160))
     payload = _save(image)
-    fits = bool(lines) and len(lines) <= 2
-    layout = CardLayout(fits=fits, lines=lines, bottom=y, font_size=46)
+    fits = bool(lines) and fits_title and not overflow
+    layout = CardLayout(fits=fits, lines=lines, bottom=y, font_size=font_size, overflow=overflow)
     return RenderedCard(payload, layout, hashlib.sha256(payload).hexdigest(), "own_typographic_template")
 
 
@@ -316,6 +348,16 @@ def _motif(draw: ImageDraw.ImageDraw, channel_id: str, accent: tuple[int, int, i
 
 
 NETWORK_TEMPLATES = ("lead", "tool", "security", "digest", "deep-dive")
+STUDIO_PURPOSES = ("news", "review", "tool", "security", "digest", "deep-dive")
+RATIOS = {"16:9": (1280, 720), "1:1": (1080, 1080), "4:5": (1080, 1350)}
+PURPOSE_TO_TEMPLATE = {
+    "news": "lead",
+    "review": "review",
+    "tool": "tool",
+    "security": "security",
+    "digest": "digest",
+    "deep-dive": "deep-dive",
+}
 
 
 def write_studio_pack(directory: Path, channels: list) -> list[Path]:
@@ -344,6 +386,90 @@ def write_studio_pack(directory: Path, channels: list) -> list[Path]:
                 demo=True,
             )
             path = directory / f"{channel.id}-{template_id}.jpg"
+            path.write_bytes(card.jpeg)
+            written.append(path)
+    return written
+
+
+def render_studio_card(
+    *,
+    channel_id: str,
+    channel_title: str,
+    primary: str,
+    accent: str,
+    purpose: str,
+    title: str,
+    ratio: str = "16:9",
+    theme: str = "dark",
+    subtitle: str = "",
+    source_label: str = "",
+    cve: str = "",
+    digest_lines: list[str] | None = None,
+    demo: bool = True,
+) -> RenderedCard:
+    """One layout engine. Ratio only changes canvas; composition stays the purpose."""
+    width, height = RATIOS.get(ratio, (CARD_W, CARD_H))
+    template_id = PURPOSE_TO_TEMPLATE.get(purpose, purpose)
+    card = render_network_card(
+        channel_id=channel_id,
+        channel_title=channel_title,
+        primary="#f4f1ea" if theme == "light" else primary,
+        accent=accent,
+        template_id=template_id,
+        title=title,
+        subtitle=subtitle,
+        source_label=source_label,
+        cve=cve,
+        digest_lines=digest_lines,
+        demo=demo,
+    )
+    if (width, height) == (CARD_W, CARD_H):
+        return card
+    with Image.open(io.BytesIO(card.jpeg)) as image:
+        scaled = image.resize((width, height))
+        payload = _save(scaled)
+    layout = CardLayout(
+        fits=card.layout.fits,
+        lines=card.layout.lines,
+        bottom=int(card.layout.bottom * height / CARD_H),
+        font_size=card.layout.font_size,
+        width=width,
+        height=height,
+        overflow=card.layout.overflow,
+    )
+    return RenderedCard(payload, layout, hashlib.sha256(payload).hexdigest(), "own_typographic_template", width, height)
+
+
+def write_studio_pack_v3(directory: Path, channels: list) -> list[Path]:
+    """48 distinct 16:9 covers: eight brands by six purposes."""
+    directory.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    titles = {
+        "news": "DEMO: короткое событие без выдуманных цифр",
+        "review": "DEMO: разбор ограничений по первоисточнику",
+        "tool": "DEMO: сценарий применения и чего нет в карточке",
+        "security": "DEMO: учебная запись каталога, не сводка",
+        "digest": "DEMO: три независимых пункта подборки",
+        "deep-dive": "DEMO: метод, неизвестное, ссылка на источник",
+    }
+    for channel in channels:
+        theme = getattr(channel, "theme_json", None) or {}
+        for purpose in STUDIO_PURPOSES:
+            digest = [f"DEMO: {channel.title} пункт {index}" for index in range(1, 4)] if purpose in {"digest", "deep-dive"} else None
+            card = render_studio_card(
+                channel_id=channel.id,
+                channel_title=channel.title,
+                primary=str(theme.get("primary") or "#1c2434"),
+                accent=str(theme.get("accent") or "#d7e2ea"),
+                purpose=purpose,
+                title=titles[purpose],
+                subtitle=f"{channel.title} · {purpose}",
+                source_label="example.com/demo",
+                cve="CVE-2026-990099" if purpose == "security" and channel.id == "cyber" else "",
+                digest_lines=digest,
+                demo=True,
+            )
+            path = directory / f"{channel.id}-{purpose}.jpg"
             path.write_bytes(card.jpeg)
             written.append(path)
     return written

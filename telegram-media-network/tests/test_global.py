@@ -107,7 +107,8 @@ def test_g2_drafts_are_checkable_and_not_published(db):
     assert all("CVSS" not in post.body for post in cyber)
     snapshots = db.query(EvidenceSnapshot).all()
     assert snapshots
-    assert all(row.verified_at is None and row.support_level == "source_claim" for row in snapshots)
+    assert all(row.verified_at is None and row.support_level == "source_supported" for row in snapshots)
+    assert all(row.origin_kind == "source_claim" for row in snapshots)
     preprint = db.query(Story).filter_by(is_preprint=True).one()
     post = db.query(Post).filter_by(story_id=preprint.id).one()
     value = [item for item in variants_for(db, post) if item["angle"] == "value"][0]
@@ -185,7 +186,7 @@ def test_g4_pages_and_routes(db, client):
     assert "проверено" in review.text
     studio = client.get("/studio")
     assert studio.status_code == 200
-    assert studio.text.count("<img") == 40
+    assert studio.text.count("<img") == 48
     calendar = client.get("/calendar")
     assert calendar.status_code == 200
     assert "Europe/Moscow" in calendar.text or "MSK" in calendar.text
@@ -362,7 +363,7 @@ def test_ops01_upgrade_keeps_existing_story():
         ).scalar()
     engine.dispose()
     assert kept == "kept-row"
-    assert version == "0005_r9_product_foundation"
+    assert version == "0006_r10_media_os"
     assert clusters == "story_clusters"
     assert column == 1
 

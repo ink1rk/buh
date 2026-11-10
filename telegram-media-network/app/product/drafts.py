@@ -8,6 +8,8 @@ import re
 from sqlalchemy.orm import Session
 
 from app.core.models import (
+    EditorialBrief,
+    EditorialVariant,
     EvidenceSnapshot,
     Post,
     PostVersion,
@@ -21,7 +23,7 @@ from app.pipeline.caption import build_caption
 from app.product.editorial import format_for, quality_gate, replace_claims, write_format
 from app.product.radar import MODEL, _primary_story
 
-PROMPT_VERSION = "editorial-v2"
+PROMPT_VERSION = "editorial-v4"
 ANGLES = ("news", "value", "apply")
 _INJECTION = re.compile(r"ignore previous|system prompt|you are now|publish:\s*true", re.I)
 
@@ -191,6 +193,9 @@ def _create_post(session: Session, story: Story, channel_id: str, angle: str = "
         hashtags_json=["#demo"],
         format_id=news.get("format_id") or "breaking_news",
         quality_json={},
+        angle_id=angle,
+        text_hash=digest,
+        data_mode="demo",
     )
     session.add(post)
     session.flush()
@@ -217,11 +222,94 @@ def _create_post(session: Session, story: Story, channel_id: str, angle: str = "
                 observed_at=story.discovered_utc,
                 verified_at=None,
                 verification_method="",
-                support_level="source_claim",
+                support_level="source_supported",
                 excerpt=fact[:160],
                 origin_kind="source_claim",
             )
         )
     replace_claims(session, post, fact, url, utcnow())
     post.quality_json = quality_gate(session, post, story)
+    _store_brief(session, post, story, fact, url)
     return post
+
+
+def create_angles(session: Session, post: Post, actor: str = "editor") -> list[dict]:
+    """Two to four structurally different drafts from one brief. Not a first-sentence swap."""
+    variants = variants_for(session, post)
+    story = session.get(Story, post.story_id)
+    cluster = None
+    if story is not None:
+        cluster = session.query(StoryCluster).filter_by(cluster_key=story.cluster_id).one_or_none()
+    brief = EditorialBrief(
+        cluster_id=cluster.id if cluster else 0,
+        channel_id=post.channel_id,
+        angle_id="multi",
+        format_id=post.format_id,
+        prompt_version=PROMPT_VERSION,
+        notes="детерминированный генератор, не LLM",
+        actor=actor,
+    )
+    if cluster is None:
+        return variants
+    session.add(brief)
+    session.flush()
+    post.brief_id = brief.id
+    stored = []
+    for item in variants:
+        digest = hashlib.sha256(item["body"].encode()).hexdigest()
+        row = EditorialVariant(
+            brief_id=brief.id,
+            post_id=post.id,
+            angle_id=item["angle"],
+            title=item["title"],
+            body=item["body"],
+            text_hash=digest,
+            prompt_version=PROMPT_VERSION,
+            agent_role="editor",
+            model_config_json={"mode": "mock", "prompt_version": PROMPT_VERSION},
+            claim_ids_json=list(post.claim_ids_json or ["f1"]),
+            qa_json={"requires_review": True},
+            duration_ms=0,
+            cost=None,
+        )
+        session.add(row)
+        stored.append(item)
+    session.flush()
+    return stored
+
+
+def _store_brief(session: Session, post: Post, story: Story, fact: str, url: str) -> None:
+    cluster = session.query(StoryCluster).filter_by(cluster_key=story.cluster_id).one_or_none()
+    if cluster is None:
+        return
+    brief = EditorialBrief(
+        cluster_id=cluster.id,
+        channel_id=post.channel_id,
+        angle_id=post.angle_id or "news",
+        format_id=post.format_id,
+        prompt_version=PROMPT_VERSION,
+        notes="учебный brief DEMO",
+        actor="desk",
+    )
+    session.add(brief)
+    session.flush()
+    post.brief_id = brief.id
+    for angle in ANGLES:
+        variant = build_variant(post.channel_id, angle, story.title, fact, url, preprint=story.is_preprint)
+        session.add(
+            EditorialVariant(
+                brief_id=brief.id,
+                post_id=post.id,
+                angle_id=angle,
+                title=variant["title"],
+                body=variant["body"],
+                text_hash=hashlib.sha256(variant["body"].encode()).hexdigest(),
+                prompt_version=PROMPT_VERSION,
+                agent_role="editor",
+                model_config_json={"mode": "mock"},
+                claim_ids_json=["f1"],
+                qa_json=post.quality_json or {},
+                duration_ms=0,
+                cost=None,
+            )
+        )

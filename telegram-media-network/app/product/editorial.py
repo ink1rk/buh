@@ -7,7 +7,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.core.models import Channel, ChannelEditorialProfile, EditorialClaim, Post, Story
+from app.core.models import Channel, ChannelEditorialProfile, ClaimEvidence, EditorialClaim, Post, Story
 from app.core.timeutil import utcnow
 
 FORMATS = (
@@ -82,28 +82,52 @@ PROFILES: dict[str, dict] = {
     },
 }
 
+PASSPORT_EXTRAS = {
+    "ai_news": {"tone": "спокойный фактический", "frequency": "ежедневно", "link_format": "источник в конце"},
+    "ai_tools": {"tone": "практический", "frequency": "ежедневно", "link_format": "ссылка на карточку инструмента"},
+    "github": {"tone": "инженерный", "frequency": "ежедневно", "link_format": "репозиторий и тег"},
+    "cyber": {"tone": "осторожный", "frequency": "по факту риска", "link_format": "бюллетень / CVE"},
+    "infra": {"tone": "эксплуатационный", "frequency": "по релизам", "link_format": "changelog вендора"},
+    "homelab": {"tone": "прикладной", "frequency": "еженедельно", "link_format": "документация проекта"},
+    "dev": {"tone": "лаконичный", "frequency": "ежедневно", "link_format": "репозиторий или changelog"},
+    "future": {"tone": "сдержанный научный", "frequency": "еженедельно", "link_format": "DOI / arXiv"},
+}
+
 
 def ensure_profiles(session: Session) -> None:
     for channel in session.query(Channel).all():
         spec = PROFILES.get(channel.id, PROFILES["dev"])
+        extra = PASSPORT_EXTRAS.get(channel.id, PASSPORT_EXTRAS["dev"])
         row = session.get(ChannelEditorialProfile, channel.id)
+        created = row is None
         if row is None:
             row = ChannelEditorialProfile(channel_id=channel.id)
             session.add(row)
-        row.audience = spec["audience"]
-        row.promise = spec["promise"]
-        row.rubrics_json = spec["rubrics"]
-        row.avoid_json = spec["avoid"]
-        row.voice = channel.voice
-        row.formats_json = spec["formats"]
-        row.evidence_rules_json = {"primary_required": channel.id in {"cyber", "ai_news", "future"}}
-        row.palette_json = channel.theme_json or {}
-        row.updated_at = utcnow()
+        if created or not row.promise:
+            row.audience = spec["audience"]
+            row.promise = spec["promise"]
+            row.rubrics_json = spec["rubrics"]
+            row.avoid_json = spec["avoid"]
+            row.voice = channel.voice
+            row.formats_json = spec["formats"]
+            row.evidence_rules_json = {"primary_required": channel.id in {"cyber", "ai_news", "future"}}
+            row.palette_json = channel.theme_json or {}
+            row.tone = extra["tone"]
+            row.frequency = extra["frequency"]
+            row.link_format = extra["link_format"]
+            row.stopwords_json = spec["avoid"]
+            row.risks_json = spec["avoid"]
+            row.length_chars = 900
+            row.updated_at = utcnow()
 
 
-def format_for(channel_id: str, angle: str) -> str:
-    mapping = {"news": 0, "value": 1, "apply": 2}
-    formats = PROFILES.get(channel_id, PROFILES["dev"])["formats"]
+def format_for(channel_id: str, angle: str, session: Session | None = None) -> str:
+    mapping = {"news": 0, "value": 1, "apply": 2, "digest": 2}
+    formats = list(PROFILES.get(channel_id, PROFILES["dev"])["formats"])
+    if session is not None:
+        row = session.get(ChannelEditorialProfile, channel_id)
+        if row is not None and row.formats_json:
+            formats = list(row.formats_json)
     return formats[mapping.get(angle, 0) % len(formats)]
 
 
@@ -178,8 +202,10 @@ def quality_gate(session: Session, post: Post, story: Story | None) -> dict:
     if not (post.source_links_json or []):
         blocking.append("missing_primary_source")
     claims = session.query(EditorialClaim).filter_by(post_id=post.id, draft_version=post.draft_version).all()
-    if any(claim.status in {"unclear", "contradicted", "not_checked"} and "CVE" in claim.text for claim in claims):
+    if any(claim.status in {"unclear", "contradicted", "not_checked", "unreviewed", "conflicted"} and "CVE" in claim.text for claim in claims):
         hints.append("cve_claim_not_verified")
+    if any(claim.status in {"conflicted", "contradicted", "expired"} for claim in claims):
+        blocking.append("claim_conflict_or_expired")
     if not claims:
         hints.append("claims_not_materialised")
     return {
@@ -187,21 +213,38 @@ def quality_gate(session: Session, post: Post, story: Story | None) -> dict:
         "hints": hints,
         "publishable": False,
         "reason": "dry-run quality gate never auto-publishes",
+        "qa_color": "red" if blocking else "yellow" if hints else "green",
     }
 
 
 def replace_claims(session: Session, post: Post, fact: str, url: str, now: datetime) -> None:
+    old = session.query(EditorialClaim).filter_by(post_id=post.id, draft_version=post.draft_version).all()
+    for claim in old:
+        session.query(ClaimEvidence).filter_by(claim_row_id=claim.id).delete()
     session.query(EditorialClaim).filter_by(post_id=post.id, draft_version=post.draft_version).delete()
-    status = "partially_supported" if url else "not_checked"
-    session.add(
-        EditorialClaim(
-            post_id=post.id,
-            draft_version=post.draft_version,
-            claim_id="f1",
-            text=fact[:400],
-            status=status,
-            evidence_url=url,
-            origin_kind="source_claim",
-            checked_at=None,
-        )
+    status = "source_supported" if url else "unreviewed"
+    claim = EditorialClaim(
+        post_id=post.id,
+        draft_version=post.draft_version,
+        claim_id="f1",
+        text=fact[:400],
+        status=status,
+        evidence_url=url,
+        origin_kind="source_claim",
+        checked_at=None,
+        method="",
+        actor="",
+        excerpt=fact[:240],
     )
+    session.add(claim)
+    session.flush()
+    if url:
+        session.add(
+            ClaimEvidence(
+                claim_row_id=claim.id,
+                url=url,
+                excerpt=fact[:240],
+                method="source_extract",
+                snapshot_utc=now,
+            )
+        )

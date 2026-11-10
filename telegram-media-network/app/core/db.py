@@ -23,7 +23,7 @@ def init_schema(engine: Engine) -> None:
     apply_schema_extras(engine)
 
 
-SCHEMA_HEAD = "0005_r9_product_foundation"
+SCHEMA_HEAD = "0006_r10_media_os"
 MIGRATION_LOCK = 8787002
 
 
@@ -111,6 +111,51 @@ def apply_schema_extras(engine: Engine) -> None:
         "ALTER TABLE episodes ADD COLUMN IF NOT EXISTS format_id VARCHAR(40) DEFAULT ''",
         "ALTER TABLE posts ADD COLUMN IF NOT EXISTS format_id VARCHAR(40) DEFAULT 'breaking_news'",
         "ALTER TABLE posts ADD COLUMN IF NOT EXISTS quality_json JSON DEFAULT '{}'::json",
+        "ALTER TABLE source_items ADD COLUMN IF NOT EXISTS publisher_id VARCHAR(80) DEFAULT ''",
+        "ALTER TABLE source_items ADD COLUMN IF NOT EXISTS content_kind VARCHAR(40) DEFAULT 'news'",
+        "ALTER TABLE source_items ADD COLUMN IF NOT EXISTS origin_mode VARCHAR(40) DEFAULT 'demo'",
+        "ALTER TABLE source_items ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
+        "ALTER TABLE posts ADD COLUMN IF NOT EXISTS angle_id VARCHAR(40) DEFAULT ''",
+        "ALTER TABLE posts ADD COLUMN IF NOT EXISTS brief_id INTEGER",
+        "ALTER TABLE posts ADD COLUMN IF NOT EXISTS text_hash VARCHAR(64) DEFAULT ''",
+        "ALTER TABLE posts ADD COLUMN IF NOT EXISTS data_mode VARCHAR(20) DEFAULT 'demo'",
+        "ALTER TABLE posts ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS trend_state VARCHAR(40) DEFAULT 'unknown'",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS trend_delta INTEGER",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS data_mode VARCHAR(20) DEFAULT 'demo'",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS program_kind VARCHAR(40) DEFAULT 'breaking'",
+        "ALTER TABLE story_clusters ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
+        "ALTER TABLE ranked_candidates ADD COLUMN IF NOT EXISTS trend_state VARCHAR(40) DEFAULT 'unknown'",
+        "ALTER TABLE ranked_candidates ADD COLUMN IF NOT EXISTS reasons_json JSON DEFAULT '[]'::json",
+        "ALTER TABLE episodes ADD COLUMN IF NOT EXISTS program_kind VARCHAR(40) DEFAULT 'breaking'",
+        "ALTER TABLE episodes ADD COLUMN IF NOT EXISTS vacancy_reason TEXT DEFAULT ''",
+        "ALTER TABLE episodes ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
+        "ALTER TABLE channel_editorial_profiles ADD COLUMN IF NOT EXISTS tone TEXT DEFAULT ''",
+        "ALTER TABLE channel_editorial_profiles ADD COLUMN IF NOT EXISTS length_chars INTEGER DEFAULT 900",
+        "ALTER TABLE channel_editorial_profiles ADD COLUMN IF NOT EXISTS frequency TEXT DEFAULT ''",
+        "ALTER TABLE channel_editorial_profiles ADD COLUMN IF NOT EXISTS stopwords_json JSON DEFAULT '[]'::json",
+        "ALTER TABLE channel_editorial_profiles ADD COLUMN IF NOT EXISTS link_format TEXT DEFAULT ''",
+        "ALTER TABLE channel_editorial_profiles ADD COLUMN IF NOT EXISTS risks_json JSON DEFAULT '[]'::json",
+        "ALTER TABLE editorial_claims ADD COLUMN IF NOT EXISTS method VARCHAR(80) DEFAULT ''",
+        "ALTER TABLE editorial_claims ADD COLUMN IF NOT EXISTS actor VARCHAR(80) DEFAULT ''",
+        "ALTER TABLE editorial_claims ADD COLUMN IF NOT EXISTS cluster_id INTEGER",
+        "ALTER TABLE editorial_claims ADD COLUMN IF NOT EXISTS excerpt VARCHAR(240) DEFAULT ''",
+        "ALTER TABLE editorial_claims ADD COLUMN IF NOT EXISTS invalidated_at TIMESTAMPTZ",
+        "ALTER TABLE metric_observations ADD COLUMN IF NOT EXISTS unit VARCHAR(40) DEFAULT 'count'",
+        "ALTER TABLE metric_observations ADD COLUMN IF NOT EXISTS interval VARCHAR(40) DEFAULT 'snapshot'",
+        "ALTER TABLE metric_observations ADD COLUMN IF NOT EXISTS actor VARCHAR(80) DEFAULT ''",
+        "ALTER TABLE experiment_plans ADD COLUMN IF NOT EXISTS segment VARCHAR(80) DEFAULT ''",
+        "ALTER TABLE experiment_plans ADD COLUMN IF NOT EXISTS format_id VARCHAR(40) DEFAULT ''",
+        "ALTER TABLE experiment_plans ADD COLUMN IF NOT EXISTS period VARCHAR(80) DEFAULT ''",
+        "ALTER TABLE experiment_plans ADD COLUMN IF NOT EXISTS control TEXT DEFAULT ''",
+        "ALTER TABLE experiment_plans ADD COLUMN IF NOT EXISTS confidence_note TEXT DEFAULT ''",
+        "ALTER TABLE sales_leads ADD COLUMN IF NOT EXISTS owner VARCHAR(80) DEFAULT ''",
+        "ALTER TABLE sales_leads ADD COLUMN IF NOT EXISTS next_action_at TIMESTAMPTZ",
+        "ALTER TABLE sales_leads ADD COLUMN IF NOT EXISTS offer_version INTEGER DEFAULT 1",
+        "ALTER TABLE sales_leads ADD COLUMN IF NOT EXISTS history_json JSON DEFAULT '[]'::json",
+        "ALTER TABLE sales_leads ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
+        "ALTER TABLE rate_cards ADD COLUMN IF NOT EXISTS channels_json JSON DEFAULT '[]'::json",
+        "ALTER TABLE rate_cards ADD COLUMN IF NOT EXISTS materials_count INTEGER DEFAULT 1",
     ]
     with engine.begin() as conn:
         for statement in statements:

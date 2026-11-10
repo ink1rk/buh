@@ -9,7 +9,7 @@
 </p>
 <p id="move-note" class="warn">{{ notice }}</p>
 <p class="panel" data-drop="{{ drop_slot }}">Перетащите выпуск сюда: {{ drop_label }}</p>
-<div class="cal-grid" aria-label="Сетка {{ days }} дней">
+<div class="cal-grid days-{{ days }}" aria-label="Сетка {{ days }} дней">
   <div class="cal-head">Канал</div>
   {% for day in day_headers %}
   <div class="cal-head">{{ day }}</div>

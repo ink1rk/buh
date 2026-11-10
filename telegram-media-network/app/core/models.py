@@ -140,6 +140,10 @@ class SourceItem(Base):
     raw_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     raw_json: Mapped[dict] = mapped_column(JSON, default=dict)
     fetched_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    publisher_id: Mapped[str] = mapped_column(String(80), default="")
+    content_kind: Mapped[str] = mapped_column(String(40), default="news")
+    origin_mode: Mapped[str] = mapped_column(String(40), default="demo")
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class Story(Base):
@@ -279,6 +283,11 @@ class Post(Base):
     hashtags_json: Mapped[list] = mapped_column(JSON, default=list)
     format_id: Mapped[str] = mapped_column(String(40), default="breaking_news")
     quality_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    angle_id: Mapped[str] = mapped_column(String(40), default="")
+    brief_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    text_hash: Mapped[str] = mapped_column(String(64), default="")
+    data_mode: Mapped[str] = mapped_column(String(20), default="demo")
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class PostVersion(Base):
@@ -477,6 +486,11 @@ class StoryCluster(Base):
     dossier_json: Mapped[dict] = mapped_column(JSON, default=dict)
     score_version: Mapped[str] = mapped_column(String(40), default="radar-v3")
     locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    trend_state: Mapped[str] = mapped_column(String(40), default="unknown")
+    trend_delta: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    data_mode: Mapped[str] = mapped_column(String(20), default="demo")
+    program_kind: Mapped[str] = mapped_column(String(40), default="breaking")
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class ClusterMember(Base):
@@ -506,6 +520,8 @@ class RankedCandidate(Base):
     confidence: Mapped[int] = mapped_column(Integer, default=0)
     explanation: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(40), default="ranked")
+    trend_state: Mapped[str] = mapped_column(String(40), default="unknown")
+    reasons_json: Mapped[list] = mapped_column(JSON, default=list)
 
 
 class TrendSample(Base):
@@ -571,6 +587,9 @@ class Episode(Base):
     locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     origin: Mapped[str] = mapped_column(String(40), default="propose")
     format_id: Mapped[str] = mapped_column(String(40), default="")
+    program_kind: Mapped[str] = mapped_column(String(40), default="breaking")
+    vacancy_reason: Mapped[str] = mapped_column(Text, default="")
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class EditorialFeedback(Base):
@@ -644,6 +663,12 @@ class ChannelEditorialProfile(Base):
     evidence_rules_json: Mapped[dict] = mapped_column(JSON, default=dict)
     palette_json: Mapped[dict] = mapped_column(JSON, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    tone: Mapped[str] = mapped_column(Text, default="")
+    length_chars: Mapped[int] = mapped_column(Integer, default=900)
+    frequency: Mapped[str] = mapped_column(Text, default="")
+    stopwords_json: Mapped[list] = mapped_column(JSON, default=list)
+    link_format: Mapped[str] = mapped_column(Text, default="")
+    risks_json: Mapped[list] = mapped_column(JSON, default=list)
 
 
 class EditorialClaim(Base):
@@ -660,6 +685,11 @@ class EditorialClaim(Base):
     reviewer: Mapped[str] = mapped_column(String(80), default="")
     checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     origin_kind: Mapped[str] = mapped_column(String(40), default="source_claim")
+    method: Mapped[str] = mapped_column(String(80), default="")
+    actor: Mapped[str] = mapped_column(String(80), default="")
+    cluster_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    excerpt: Mapped[str] = mapped_column(String(240), default="")
+    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class StoryRelation(Base):
@@ -696,6 +726,9 @@ class MetricObservation(Base):
     collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     evidence_ref: Mapped[str] = mapped_column(Text, default="")
     demo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    unit: Mapped[str] = mapped_column(String(40), default="count")
+    interval: Mapped[str] = mapped_column(String(40), default="snapshot")
+    actor: Mapped[str] = mapped_column(String(80), default="")
 
 
 class ExperimentPlan(Base):
@@ -709,6 +742,11 @@ class ExperimentPlan(Base):
     actual: Mapped[str] = mapped_column(Text, default="н/д")
     decision: Mapped[str] = mapped_column(Text, default="")
     demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    segment: Mapped[str] = mapped_column(String(80), default="")
+    format_id: Mapped[str] = mapped_column(String(40), default="")
+    period: Mapped[str] = mapped_column(String(80), default="")
+    control: Mapped[str] = mapped_column(Text, default="")
+    confidence_note: Mapped[str] = mapped_column(Text, default="")
 
 
 class SalesLead(Base):
@@ -722,6 +760,11 @@ class SalesLead(Base):
     notes: Mapped[str] = mapped_column(Text, default="")
     demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    owner: Mapped[str] = mapped_column(String(80), default="")
+    next_action_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    offer_version: Mapped[int] = mapped_column(Integer, default=1)
+    history_json: Mapped[list] = mapped_column(JSON, default=list)
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class RateCard(Base):
@@ -734,6 +777,8 @@ class RateCard(Base):
     currency: Mapped[str] = mapped_column(String(8), default="RUB")
     status: Mapped[str] = mapped_column(String(40), default="draft")
     demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    channels_json: Mapped[list] = mapped_column(JSON, default=list)
+    materials_count: Mapped[int] = mapped_column(Integer, default=1)
 
 
 class ExpenseRecord(Base):
@@ -758,3 +803,258 @@ class FinanceEvent(Base):
     currency: Mapped[str] = mapped_column(String(8), default="RUB")
     note: Mapped[str] = mapped_column(Text, default="")
     demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class PublisherIdentity(Base):
+    __tablename__ = "publisher_identities"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    title: Mapped[str] = mapped_column(String(160), default="")
+    kind: Mapped[str] = mapped_column(String(40), default="origin")
+    trust: Mapped[int] = mapped_column(Integer, default=8)
+
+
+class SourceSnapshot(Base):
+    __tablename__ = "source_snapshots"
+    __table_args__ = (Index("ix_source_snapshots_item", "source_item_id", "raw_hash"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_item_id: Mapped[int] = mapped_column(ForeignKey("source_items.id"), nullable=False)
+    raw_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    body: Mapped[dict] = mapped_column(JSON, default=dict)
+    discovered_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    claimed_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    canonical_url: Mapped[str] = mapped_column(Text, default="")
+    origin_mode: Mapped[str] = mapped_column(String(40), default="demo")
+
+
+class EventRelation(Base):
+    __tablename__ = "event_relations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    left_cluster_id: Mapped[int] = mapped_column(ForeignKey("story_clusters.id"), nullable=False)
+    right_cluster_id: Mapped[int] = mapped_column(ForeignKey("story_clusters.id"), nullable=False)
+    relation: Mapped[str] = mapped_column(String(40), default="related")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    actor: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class StoryDossier(Base):
+    __tablename__ = "story_dossiers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[int] = mapped_column(ForeignKey("story_clusters.id"), unique=True, nullable=False)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    timeline_json: Mapped[list] = mapped_column(JSON, default=list)
+    entities_json: Mapped[list] = mapped_column(JSON, default=list)
+    contradictions_json: Mapped[list] = mapped_column(JSON, default=list)
+    unknowns_json: Mapped[list] = mapped_column(JSON, default=list)
+    why_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    license_note: Mapped[str] = mapped_column(Text, default="")
+    data_mode: Mapped[str] = mapped_column(String(20), default="demo")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class EntityMention(Base):
+    __tablename__ = "entity_mentions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[int] = mapped_column(ForeignKey("story_clusters.id"), index=True, nullable=False)
+    kind: Mapped[str] = mapped_column(String(40), default="product")
+    name: Mapped[str] = mapped_column(String(200), default="")
+    version: Mapped[str] = mapped_column(String(80), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+
+
+class ClaimEvidence(Base):
+    __tablename__ = "claim_evidence"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    claim_row_id: Mapped[int] = mapped_column(ForeignKey("editorial_claims.id"), index=True, nullable=False)
+    source_item_id: Mapped[int | None] = mapped_column(ForeignKey("source_items.id"), nullable=True)
+    url: Mapped[str] = mapped_column(Text, default="")
+    excerpt: Mapped[str] = mapped_column(String(240), default="")
+    publisher_id: Mapped[str] = mapped_column(String(80), default="")
+    snapshot_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    method: Mapped[str] = mapped_column(String(80), default="")
+    actor: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class EditorialBrief(Base):
+    __tablename__ = "editorial_briefs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[int] = mapped_column(ForeignKey("story_clusters.id"), index=True, nullable=False)
+    channel_id: Mapped[str] = mapped_column(String(40), default="")
+    angle_id: Mapped[str] = mapped_column(String(40), default="news")
+    format_id: Mapped[str] = mapped_column(String(40), default="breaking_news")
+    prompt_version: Mapped[str] = mapped_column(String(40), default="editorial-v4")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    actor: Mapped[str] = mapped_column(String(80), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class EditorialVariant(Base):
+    __tablename__ = "editorial_variants"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    brief_id: Mapped[int] = mapped_column(ForeignKey("editorial_briefs.id"), index=True, nullable=False)
+    post_id: Mapped[int | None] = mapped_column(ForeignKey("posts.id"), nullable=True)
+    angle_id: Mapped[str] = mapped_column(String(40), default="")
+    title: Mapped[str] = mapped_column(Text, default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    text_hash: Mapped[str] = mapped_column(String(64), default="")
+    prompt_version: Mapped[str] = mapped_column(String(40), default="")
+    agent_role: Mapped[str] = mapped_column(String(40), default="editor")
+    model_config_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    claim_ids_json: Mapped[list] = mapped_column(JSON, default=list)
+    qa_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cost: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class VisualPreset(Base):
+    __tablename__ = "visual_presets"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    channel_id: Mapped[str] = mapped_column(String(40), default="")
+    purpose: Mapped[str] = mapped_column(String(40), default="news")
+    ratio: Mapped[str] = mapped_column(String(16), default="16:9")
+    theme: Mapped[str] = mapped_column(String(16), default="dark")
+    palette_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class WorkflowRun(Base):
+    __tablename__ = "workflow_runs"
+    __table_args__ = (UniqueConstraint("idempotency_key", name="uq_workflow_idempotency"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    story_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cluster_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    channel_id: Mapped[str] = mapped_column(String(40), default="")
+    trace_id: Mapped[str] = mapped_column(String(64), default="")
+    idempotency_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    stage: Mapped[str] = mapped_column(String(40), default="ingest")
+    status: Mapped[str] = mapped_column(String(40), default="running", index=True)
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    retry_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paused: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    editorial_ready: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    delivery_allowed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class WorkflowStep(Base):
+    __tablename__ = "workflow_steps"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("workflow_runs.id"), index=True, nullable=False)
+    stage: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="ok")
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    last_error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class EditorialTask(Base):
+    __tablename__ = "editorial_tasks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    kind: Mapped[str] = mapped_column(String(40), default="research")
+    cluster_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    channel_id: Mapped[str] = mapped_column(String(40), default="")
+    title: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(40), default="open")
+    assignee: Mapped[str] = mapped_column(String(80), default="")
+    reason: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class MetricProvenance(Base):
+    __tablename__ = "metric_provenance"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    observation_id: Mapped[int] = mapped_column(ForeignKey("metric_observations.id"), index=True, nullable=False)
+    source_type: Mapped[str] = mapped_column(String(40), default="unknown")
+    evidence: Mapped[str] = mapped_column(Text, default="")
+    actor: Mapped[str] = mapped_column(String(80), default="")
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class CommercialOffer(Base):
+    __tablename__ = "commercial_offers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    lead_id: Mapped[int | None] = mapped_column(ForeignKey("sales_leads.id"), nullable=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    status: Mapped[str] = mapped_column(String(40), default="draft")
+    currency: Mapped[str] = mapped_column(String(8), default="RUB")
+    price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    price_kind: Mapped[str] = mapped_column(String(40), default="proposal")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    demo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    history_json: Mapped[list] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class CommercialLineItem(Base):
+    __tablename__ = "commercial_line_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    offer_id: Mapped[int] = mapped_column(ForeignKey("commercial_offers.id"), index=True, nullable=False)
+    package: Mapped[str] = mapped_column(String(40), default="single")
+    channel_id: Mapped[str] = mapped_column(String(40), default="")
+    materials_count: Mapped[int] = mapped_column(Integer, default=1)
+    slot_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(40), default="proposed")
+
+
+class LabRun(Base):
+    __tablename__ = "lab_runs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(160), default="offline-30d")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    through_day: Mapped[int] = mapped_column(Integer, default=30)
+    status: Mapped[str] = mapped_column(String(40), default="ready")
+    report_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    data_mode: Mapped[str] = mapped_column(String(20), default="demo")
+
+
+class ChannelPlanSettings(Base):
+    __tablename__ = "channel_plan_settings"
+
+    channel_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    daily_cap: Mapped[int] = mapped_column(Integer, default=2)
+    quiet_start: Mapped[str] = mapped_column(String(5), default="22:00")
+    quiet_end: Mapped[str] = mapped_column(String(5), default="08:00")
+    mix_fresh_pct: Mapped[int] = mapped_column(Integer, default=70)
+    min_gap_minutes: Mapped[int] = mapped_column(Integer, default=240)
+    blackout_dates_json: Mapped[list] = mapped_column(JSON, default=list)
+    theme_days_json: Mapped[list] = mapped_column(JSON, default=list)
+    reserve_slots: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class ScoreRevision(Base):
+    __tablename__ = "score_revisions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cluster_id: Mapped[int] = mapped_column(ForeignKey("story_clusters.id"), index=True, nullable=False)
+    channel_id: Mapped[str] = mapped_column(String(40), default="")
+    formula_version: Mapped[str] = mapped_column(String(40), default="rank-v4")
+    weights_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    dimensions_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

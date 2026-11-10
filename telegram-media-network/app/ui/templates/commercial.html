@@ -49,4 +49,54 @@
   {% endfor %}
 </table>
 <p class="muted">{{ kit.rules }}</p>
+<h2>Предложения</h2>
+<table>
+  <tr><th>ID</th><th>Заголовок</th><th>Статус</th><th>Цена</th></tr>
+  {% for offer in offers %}
+  <tr>
+    <td>{{ offer.id }}</td>
+    <td>{{ offer.title }}</td>
+    <td>{{ offer.status }}</td>
+    <td>{% if offer.price is none %}предложение, не рынок{% else %}{{ offer.price }}{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Предложений нет. Это отсутствие записей, не нулевая выручка.</td></tr>
+  {% endfor %}
+</table>
+{% if user.role == "OWNER" and leads %}
+<form class="panel filters" method="post" action="/commercial/offer">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <label>Лид
+    <select name="lead_id">
+      {% for lead in leads %}<option value="{{ lead.id }}">{{ lead.advertiser }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Заголовок <input name="title" value="DEMO пакет сети" required></label>
+  <label>Пакет <input name="package" value="single" required></label>
+  <label>Канал <input name="channel_id" value="{{ leads[0].channel_id }}"></label>
+  <button type="submit">Создать предложение</button>
+</form>
+{% endif %}
+{% if user.role == "OWNER" and offers %}
+<form class="panel filters" method="post" action="/commercial/reserve">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <label>Резерв
+    <select name="offer_id">
+      {% for offer in offers %}<option value="{{ offer.id }}">{{ offer.id }} {{ offer.status }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Слот UTC <input name="slot_utc" value="2026-11-14T06:00:00+00:00" required></label>
+  <button type="submit">Зарезервировать слот</button>
+</form>
+<form class="panel filters" method="post" action="/commercial/cancel">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <label>Отмена
+    <select name="offer_id">
+      {% for offer in offers %}<option value="{{ offer.id }}">{{ offer.id }} {{ offer.status }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit">Отменить предложение</button>
+</form>
+{% endif %}
+<p><a class="button ghost" href="/api/v1/commercial/mediakit">Медиакит JSON</a></p>
 {% endblock %}

@@ -14,6 +14,8 @@ from app.core.models import (
     AdCampaign,
     Channel,
     ClusterMember,
+    CommercialOffer,
+    EditorialClaim,
     Episode,
     EvidenceSnapshot,
     FinanceEvent,
@@ -21,12 +23,21 @@ from app.core.models import (
     Post,
     PostVersion,
     RankedCandidate,
+    SalesLead,
     Series,
     StoryCluster,
+    WorkflowRun,
 )
 from app.core.timeutil import ensure_utc, utcnow
 from app.media.renderer import choose_rights, render_network_card
-from app.product.commercial import forecast, media_kit, seed_commercial
+from app.product.commercial import (
+    cancel_offer,
+    create_offer,
+    forecast,
+    media_kit,
+    reserve_offer,
+    seed_commercial,
+)
 from app.product.demo_pack import build_pack
 from app.product.drafts import fallback_from_invalid, materialise_desk, variants_for
 from app.product.editorial import ensure_profiles, quality_gate
@@ -114,6 +125,7 @@ def radar_clusters(
             .first()
         )
         members = db.query(ClusterMember).filter_by(cluster_id=cluster.id, relation="member").count()
+        data_mode = cluster.data_mode or ("demo" if "DEMO" in (cluster.title or "") else "measured")
         payload.append(
             {
                 "id": cluster.id,
@@ -124,12 +136,14 @@ def radar_clusters(
                 "score": None if rank is None else rank.rank_score,
                 "explanation": "" if rank is None else rank.explanation,
                 "dimensions": {} if rank is None else rank.dimensions_json,
+                "data_mode": data_mode,
+                "trend_state": cluster.trend_state,
+                "reasons": [] if rank is None else list(rank.reasons_json or [])[:3],
             }
         )
-    mode = "measured"
-    if payload and "DEMO" in str(payload[0]["title"] or ""):
-        mode = "demo"
-    return _envelope({"page": page, "clusters": payload}, mode)
+    modes = {item["data_mode"] for item in payload}
+    mode = "demo" if modes == {"demo"} else "measured" if modes == {"measured"} else "mixed" if payload else "measured"
+    return _envelope({"page": page, "clusters": payload, "aggregate_data_mode": mode}, mode)
 
 
 @router.post("/api/v1/radar/clusters/{cluster_id}/route")
@@ -294,9 +308,10 @@ def post_evidence(post_id: int, auth=Depends(require_user), db: Session = Depend
                     "claim_id": row.claim_id,
                     "text": row.claim_text,
                     "source_url": row.source_url,
-                    "status": "extracted",
-                    "verified_at": None,
+                    "status": row.support_level or row.origin_kind or "unreviewed",
+                    "verified_at": None if row.verified_at is None else row.verified_at.isoformat(),
                     "origin_kind": row.origin_kind,
+                    "verification_method": row.verification_method,
                 }
                 for row in rows
             ]
@@ -343,11 +358,14 @@ def studio_templates(auth=Depends(require_user)) -> dict:
     return _envelope(
         {
             "templates": [
-                {"id": "hero", "title": "News/Hero"},
-                {"id": "tool", "title": "Tool Spotlight"},
-                {"id": "advisory", "title": "Security Advisory"},
-                {"id": "digest", "title": "Daily/Weekly Digest"},
-            ]
+                {"id": "news", "title": "Новость"},
+                {"id": "review", "title": "Обзор"},
+                {"id": "tool", "title": "Инструмент"},
+                {"id": "security", "title": "ИБ-запись"},
+                {"id": "digest", "title": "Подборка"},
+                {"id": "deep-dive", "title": "Разбор"},
+            ],
+            "ratios": ["16:9", "1:1", "4:5"],
         }
     )
 
@@ -366,7 +384,7 @@ def render_post(
     if post is None or channel is None:
         raise HTTPException(status_code=404, detail="post missing")
     theme = channel.theme_json or {}
-    template_id = body.template_id if body.template_id in {"lead", "hero", "tool", "security", "advisory", "digest", "deep-dive"} else "lead"
+    template_id = body.template_id if body.template_id in {"lead", "hero", "tool", "security", "advisory", "digest", "deep-dive", "review", "news"} else "lead"
     card = render_network_card(
         channel_id=channel.id,
         channel_title=channel.title,
@@ -406,8 +424,9 @@ def render_post(
 
 
 @router.get("/api/v1/calendar")
-def calendar_api(channel_id: str = "", auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
+def calendar_api(channel_id: str = "", days: int = 28, auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
     del auth
+    horizon = 7 if days == 7 else 28
     query = db.query(Episode)
     if channel_id:
         query = query.filter(Episode.channel_id == channel_id)
@@ -415,6 +434,7 @@ def calendar_api(channel_id: str = "", auth=Depends(require_user), db: Session =
     return _envelope(
         {
             "timezone": "Europe/Moscow",
+            "days": horizon,
             "episodes": [
                 {
                     "id": row.id,
@@ -423,6 +443,8 @@ def calendar_api(channel_id: str = "", auth=Depends(require_user), db: Session =
                     "slot_utc": ensure_utc(row.slot_utc).isoformat(),
                     "status": row.status,
                     "version": row.version,
+                    "program_kind": row.program_kind,
+                    "data_mode": "demo",
                 }
                 for row in rows
             ],
@@ -536,3 +558,127 @@ def sponsored_switch(user=Depends(require_roles("OWNER")), db: Session = Depends
     add_audit(db, actor=user.username, action="sponsored", entity="policy", result="blocked")
     db.commit()
     raise HTTPException(status_code=403, detail="sponsored publishing is off")
+
+
+class OfferBody(BaseModel):
+    lead_id: int
+    title: str
+    package: str = "single"
+    channel_id: str = ""
+
+
+class ReserveBody(BaseModel):
+    slot_utc: datetime
+
+
+@router.get("/api/v1/radar/clusters/{cluster_id}/dossier")
+def radar_dossier(cluster_id: int, auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
+    del auth
+    cluster = db.get(StoryCluster, cluster_id)
+    if cluster is None:
+        raise HTTPException(status_code=404, detail="cluster missing")
+    from app.product.dossier import dossier_payload
+
+    return _envelope(dossier_payload(db, cluster), cluster.data_mode or "demo")
+
+
+@router.post("/api/v1/lab/load")
+def lab_load(user=Depends(require_roles("OWNER")), db: Session = Depends(get_db)) -> dict:
+    from app.product.lab import load_lab
+
+    report = load_lab(db, through_day=30, actor=user.username)
+    return _envelope(report, "demo")
+
+
+@router.get("/api/v1/lab/export")
+def lab_export(auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
+    del auth
+    from app.product.lab import export_lab
+
+    return _envelope(export_lab(db), "demo")
+
+
+@router.get("/api/v1/autopilot")
+def autopilot(auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
+    del auth
+    from app.product.workflow import board as workflow_board
+
+    return _envelope(workflow_board(db), "demo")
+
+
+@router.post("/api/v1/autopilot/{run_id}/pause")
+def autopilot_pause(run_id: int, user=Depends(require_roles("EDITOR", "OWNER")), db: Session = Depends(get_db)) -> dict:
+    from app.product.workflow import pause_run
+
+    run = db.get(WorkflowRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run missing")
+    pause_run(db, run, user.username)
+    db.commit()
+    return _envelope({"id": run.id, "status": run.status, "delivery_allowed": False})
+
+
+@router.post("/api/v1/autopilot/{run_id}/resume")
+def autopilot_resume(run_id: int, user=Depends(require_roles("EDITOR", "OWNER")), db: Session = Depends(get_db)) -> dict:
+    from app.product.workflow import resume_run
+
+    run = db.get(WorkflowRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run missing")
+    resume_run(db, run, user.username)
+    db.commit()
+    return _envelope({"id": run.id, "status": run.status, "delivery_allowed": False})
+
+
+@router.post("/api/v1/commercial/offers")
+def commercial_offer(body: OfferBody, user=Depends(require_roles("OWNER")), db: Session = Depends(get_db)) -> dict:
+    lead = db.get(SalesLead, body.lead_id)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="lead missing")
+    offer = create_offer(db, lead, title=body.title, package=body.package, channel_id=body.channel_id, actor=user.username)
+    db.commit()
+    return _envelope({"id": offer.id, "status": offer.status, "price": offer.price, "published": False}, "demo")
+
+
+@router.post("/api/v1/commercial/offers/{offer_id}/reserve")
+def commercial_reserve(
+    offer_id: int, body: ReserveBody, user=Depends(require_roles("OWNER")), db: Session = Depends(get_db)
+) -> dict:
+    offer = db.get(CommercialOffer, offer_id)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="offer missing")
+    reserve_offer(db, offer, body.slot_utc, user.username)
+    db.commit()
+    return _envelope({"id": offer.id, "status": offer.status, "published": False}, "demo")
+
+
+@router.post("/api/v1/commercial/offers/{offer_id}/cancel")
+def commercial_cancel(offer_id: int, user=Depends(require_roles("OWNER")), db: Session = Depends(get_db)) -> dict:
+    offer = db.get(CommercialOffer, offer_id)
+    if offer is None:
+        raise HTTPException(status_code=404, detail="offer missing")
+    cancel_offer(db, offer, user.username)
+    db.commit()
+    return _envelope({"id": offer.id, "status": offer.status, "published": False}, "demo")
+
+
+class VerifyBody(BaseModel):
+    method: str
+    second_publisher: str
+
+
+@router.post("/api/v1/claims/{claim_id}/verify")
+def verify_claim_api(
+    claim_id: int, body: VerifyBody, user=Depends(require_roles("EDITOR", "OWNER")), db: Session = Depends(get_db)
+) -> dict:
+    claim = db.get(EditorialClaim, claim_id)
+    if claim is None:
+        raise HTTPException(status_code=404, detail="claim missing")
+    from app.product.dossier import verify_claim
+
+    try:
+        verify_claim(db, claim, actor=user.username, method=body.method, second_publisher=body.second_publisher)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.commit()
+    return _envelope({"id": claim.id, "status": claim.status})

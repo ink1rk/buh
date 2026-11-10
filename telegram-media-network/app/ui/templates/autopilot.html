@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Автопилот</h1>
+<p class="demo-banner">Локальный контур. Отправка в Telegram заблокирована политикой, это не неисправность. editorial_ready ≠ delivery_allowed.</p>
+<table>
+  <tr><th>Задача</th><th>Канал</th><th>Стадия</th><th>Статус</th><th>Попытка</th><th>Ошибка</th><th></th></tr>
+  {% for run in runs %}
+  <tr>
+    <td>{{ run.id }}{% if run.cluster_id %} · сюжет {{ run.cluster_id }}{% endif %}</td>
+    <td>{{ run.channel_id }}</td>
+    <td>{{ run.stage }}</td>
+    <td>{{ run.status }}{% if run.paused %} · пауза{% endif %}</td>
+    <td>{{ run.attempt }}</td>
+    <td>{{ run.last_error or "—" }}</td>
+    <td>
+      {% if user.role in ["OWNER", "EDITOR"] and not run.paused %}
+      <form method="post" action="/autopilot/pause">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}">
+        <input type="hidden" name="run_id" value="{{ run.id }}">
+        <button class="ghost" type="submit">Пауза</button>
+      </form>
+      {% endif %}
+      {% if user.role in ["OWNER", "EDITOR"] and run.paused %}
+      <form method="post" action="/autopilot/resume">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}">
+        <input type="hidden" name="run_id" value="{{ run.id }}">
+        <button class="ghost" type="submit">Продолжить</button>
+      </form>
+      {% endif %}
+      <span class="muted">доставка: заблокировано политикой</span>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7">Задач нет. Это пустой конвейер, не ошибка Telegram.</td></tr>
+  {% endfor %}
+</table>
+<h2>Задачи исследователю</h2>
+<ul>
+  {% for task in tasks %}
+  <li>{{ task.title }} · {{ task.channel_id }} · {{ task.reason }}</li>
+  {% else %}<li class="muted">Открытых задач нет.</li>{% endfor %}
+</ul>
+{% endblock %}
