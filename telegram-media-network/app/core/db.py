@@ -23,7 +23,7 @@ def init_schema(engine: Engine) -> None:
     apply_schema_extras(engine)
 
 
-SCHEMA_HEAD = "0003_r7_integrity"
+SCHEMA_HEAD = "0004_global_product"
 MIGRATION_LOCK = 8787002
 
 
@@ -97,6 +97,9 @@ def apply_schema_extras(engine: Engine) -> None:
         """,
         "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS draft_version INTEGER",
         "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS content_hash VARCHAR(64) DEFAULT ''",
+        "ALTER TABLE publishing_outbox ADD COLUMN IF NOT EXISTS claimed_draft_version INTEGER",
+        "ALTER TABLE publishing_outbox ADD COLUMN IF NOT EXISTS claimed_caption TEXT DEFAULT ''",
+        "ALTER TABLE ad_campaigns ADD COLUMN IF NOT EXISTS demo BOOLEAN NOT NULL DEFAULT false",
     ]
     with engine.begin() as conn:
         for statement in statements:

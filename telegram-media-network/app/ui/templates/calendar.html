@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Календарь</h1>
+<p>Время хранения — UTC, подписи слотов — Europe/Moscow. Перенос идёт через сервер. Конфликт оставляет прежний слот.</p>
+<p id="move-note" class="warn">{{ notice }}</p>
+<p class="panel" data-drop="{{ drop_slot }}">Перетащите выпуск сюда: {{ drop_label }}</p>
+<div class="scroll">
+<table>
+  <tr><th>Канал</th><th>Серия</th><th>Слот MSK</th><th>Статус</th><th>Версия</th></tr>
+  {% for row in episodes %}
+  <tr draggable="true" data-episode="{{ row.id }}" data-version="{{ row.version }}">
+    <td>{{ row.channel_id }}</td>
+    <td>{{ row.series_id }}</td>
+    <td>{{ row.label }}</td>
+    <td>{{ row.status }}</td>
+    <td>{{ row.version }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5">Предложений нет. Пустой календарь не означает опубликованный ноль.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% if episodes %}
+<form method="post" action="/calendar/move">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <label>Выпуск
+    <select name="episode_id">
+      {% for row in episodes %}<option value="{{ row.id }}">{{ row.channel_id }} {{ row.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Новый слот UTC <input name="slot_utc" value="{{ drop_slot }}" required></label>
+  <label>Ожидаемая версия <input name="expected_version" value="{{ episodes[0].version }}" required></label>
+  <button type="submit">Перенести через сервер</button>
+</form>
+{% endif %}
+{% endblock %}

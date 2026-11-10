@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Коммерция</h1>
+<p class="demo-banner">SPONSORED_ENABLED выключен. Кампании ниже учебные. Фактическая выручка не подставляется.</p>
+<p>Монетизация: н/д</p>
+<table>
+  <tr><th>Рекламодатель</th><th>Канал</th><th>DEMO</th><th>План</th><th>Факт</th><th>Статус</th></tr>
+  {% for row in campaigns %}
+  <tr>
+    <td>{{ row.advertiser }}</td>
+    <td>{{ row.channel_id }}</td>
+    <td>{% if row.demo %}да{% else %}нет{% endif %}</td>
+    <td>не согласован</td>
+    <td>{% if row.actual is none %}н/д{% else %}{{ row.actual }}{% endif %}</td>
+    <td>{{ row.legal_status }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6">Кампаний нет. Это отсутствие записей, не нулевая выручка.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

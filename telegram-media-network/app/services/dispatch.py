@@ -34,6 +34,13 @@ class TickResult:
     blocked: str = ""
 
 
+def _demo_blocked(post: Post, story: Story | None) -> bool:
+    blob = f"{post.title}\n{post.body}\n{post.caption}".upper()
+    if post.synthetic or (story is not None and story.synthetic):
+        return True
+    return "NEVER_PUBLISH" in blob or "NEVER PUBLISH" in blob
+
+
 def raise_alert(
     session: Session,
     code: str,
@@ -147,6 +154,14 @@ def dispatch_outbox(
     post = session.get(Post, outbox.post_id)
     if channel is None or post is None:
         return {"state": "missing"}
+    story = session.get(Story, post.story_id)
+    if _demo_blocked(post, story):
+        outbox.state = "dlq"
+        outbox.last_error = "synthetic_never_publish"
+        post.review_status = "NEEDS_REVIEW"
+        add_audit(session, actor="publisher", action="publish", entity="outbox", entity_id=outbox.id, result="synthetic_never_publish")
+        session.commit()
+        return {"state": "dlq", "reason": "synthetic_never_publish", "calls": 0}
     directory = media_dir or (ROOT / "var" / "media")
     try:
         photo, digest = load_card(session, post, directory)
@@ -185,11 +200,14 @@ def dispatch_outbox(
         return {"state": "already_claimed", "calls": 0}
     session.refresh(outbox)
     session.refresh(post)
+    outbox.caption_hash = post.caption_hash or outbox.caption_hash
+    outbox.claimed_draft_version = post.draft_version
+    outbox.claimed_caption = post.caption
     post.review_status = "SENDING"
     session.commit()
     payload = {
         "chat_id": channel.chat_id or "unset",
-        "caption": post.caption,
+        "caption": outbox.claimed_caption or post.caption,
         "caption_hash": post.caption_hash,
         "photo": photo,
         "photo_sha256": digest,
@@ -265,6 +283,21 @@ def dispatch_outbox(
         outbox.request_sent = True
         outbox.pending_message_id = str(result.message_id)
         session.commit()
+        session.refresh(post)
+        if post.draft_version != outbox.claimed_draft_version or post.caption_hash != outbox.caption_hash:
+            outbox.state = "needs_reconciliation"
+            outbox.last_error = "content_changed_during_send"
+            post.review_status = "NEEDS_RECONCILIATION"
+            add_audit(
+                session,
+                actor="publisher",
+                action="publish",
+                entity="outbox",
+                entity_id=outbox.id,
+                result="content_changed_during_send",
+            )
+            session.commit()
+            return {"state": "needs_reconciliation", "calls": 1, "reason": "content_changed_during_send"}
         message = PublishedMessage(
             post_id=post.id,
             channel_id=channel.id,

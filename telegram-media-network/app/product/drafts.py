@@ -1,0 +1,200 @@
+"""Deterministic editorial variants. The model output is never a fact source."""
+
+from __future__ import annotations
+
+import hashlib
+import re
+
+from sqlalchemy.orm import Session
+
+from app.core.models import (
+    EvidenceSnapshot,
+    Post,
+    PostVersion,
+    RankedCandidate,
+    Story,
+    StoryCluster,
+    StoryEvidence,
+)
+from app.pipeline.caption import build_caption
+from app.product.radar import MODEL, _primary_story
+
+PROMPT_VERSION = "editorial-v2"
+ANGLES = ("news", "value", "apply")
+_INJECTION = re.compile(r"ignore previous|system prompt|you are now|publish:\s*true", re.I)
+
+_OPENINGS = {
+    "ai_news": {
+        "news": "Что произошло по учебному источнику",
+        "value": "Чем эта заметка отличается от прошлого описания",
+        "apply": "Что можно проверить по ссылке, не делая выводов сверх текста",
+    },
+    "ai_tools": {
+        "news": "Что делает учебный инструмент",
+        "value": "Кому это может пригодиться, если описание источника верно",
+        "apply": "Как смотреть карточку: только по указанной ссылке",
+    },
+    "github": {
+        "news": "Назначение учебного репозитория",
+        "value": "Практическая ценность, которую источник прямо назвал",
+        "apply": "Лицензия в карточке не подтверждена, вывод о праве использования не делается",
+    },
+    "cyber": {
+        "news": "Учебная запись каталога, не сводка по всем установкам",
+        "value": "Кого источник называет в этой записи",
+        "apply": "Защитные действия только те, что переданы в карточке",
+    },
+    "infra": {
+        "news": "Что изменилось в учебном материале по эксплуатации",
+        "value": "Где это может пригодиться и какой риск источник не закрыл",
+        "apply": "Применять только после проверки своей среды",
+    },
+    "homelab": {
+        "news": "Зачем учебный материал дома",
+        "value": "Что источник говорит об установке",
+        "apply": "Ограничения по железу не выдуманы: их нет, если источник молчит",
+    },
+    "dev": {
+        "news": "Сценарий для инженера по учебному источнику",
+        "value": "Минимальный принцип, без непроверенной команды",
+        "apply": "Команды запуска в текст не добавляются",
+    },
+    "future": {
+        "news": "Что показывает учебный материал",
+        "value": "Уровень проверки: препринт не равен рецензии",
+        "apply": "Чего источник не доказал, то не утверждается",
+    },
+}
+
+
+def build_variant(channel_id: str, angle: str, title: str, fact: str, url: str) -> dict:
+    opening = _OPENINGS.get(channel_id, _OPENINGS["dev"])[angle]
+    clean_fact = _INJECTION.sub("", fact or "").strip() or "Источник не передал проверяемого утверждения."
+    body = (
+        f"{opening}: {clean_fact} "
+        "Ограничение: текст не добавляет измерений, цен и выводов, которых нет в источнике. "
+        f"Ссылка: {url}"
+    )
+    return {
+        "angle": angle,
+        "title": title[:120],
+        "body": body[:900],
+        "prompt_version": PROMPT_VERSION,
+        "requires_review": True,
+        "uncertain_claims": True,
+    }
+
+
+def materialise_desk(session: Session, *, per_channel: int = 3) -> int:
+    """Create synthetic review posts for the strongest primary cluster of each channel."""
+    made = 0
+    channels = sorted({row.primary_channel_id for row in session.query(StoryCluster) if row.primary_channel_id})
+    for channel_id in channels:
+        ranked = (
+            session.query(RankedCandidate)
+            .join(StoryCluster, StoryCluster.id == RankedCandidate.cluster_id)
+            .filter(
+                RankedCandidate.channel_id == channel_id,
+                RankedCandidate.model_version == MODEL,
+                StoryCluster.primary_channel_id == channel_id,
+            )
+            .order_by(RankedCandidate.rank_score.desc(), RankedCandidate.id)
+            .all()
+        )
+        taken = 0
+        for candidate in ranked:
+            if taken >= per_channel:
+                break
+            cluster = session.get(StoryCluster, candidate.cluster_id)
+            story = _primary_story(session, cluster) if cluster else None
+            if story is None:
+                continue
+            if session.query(Post).filter_by(story_id=story.id, channel_id=channel_id).first():
+                taken += 1
+                continue
+            _create_post(session, story, channel_id)
+            taken += 1
+            made += 1
+    session.commit()
+    return made
+
+
+def variants_for(session: Session, post: Post) -> list[dict]:
+    story = session.get(Story, post.story_id)
+    fact = story.summary if story else post.body
+    url = (post.source_links_json or ["https://example.com/demo"])[0]
+    return [build_variant(post.channel_id, angle, post.title, fact, url) for angle in ANGLES]
+
+
+def fallback_from_invalid(channel_id: str, title: str) -> dict:
+    return {
+        "angle": "news",
+        "title": title[:120] or "Черновик без модели",
+        "body": "Локальная модель не вернула проверяемый JSON. Текст не отправлен в очередь публикации и требует редактора.",
+        "prompt_version": PROMPT_VERSION,
+        "requires_review": True,
+        "uncertain_claims": True,
+        "llm_fallback": True,
+        "channel_id": channel_id,
+    }
+
+
+def _create_post(session: Session, story: Story, channel_id: str) -> Post:
+    evidence = session.query(StoryEvidence).filter_by(story_id=story.id).all()
+    fact = evidence[0].statement if evidence else story.summary
+    url = evidence[0].evidence_url if evidence else story.canonical_url
+    news = build_variant(channel_id, "news", story.title, fact, url)
+    security = channel_id == "cyber" or story.content_kind == "advisory"
+    caption = build_caption(news["title"], news["body"], [url] if url else [], ["#demo"])
+    digest = hashlib.sha256(f"{channel_id}|1|{news['title']}|{news['body']}".encode()).hexdigest()
+    post = Post(
+        story_id=story.id,
+        channel_id=channel_id,
+        post_type="security" if security else "news",
+        title=news["title"][:200],
+        body=news["body"],
+        draft_version=1,
+        review_status="NEEDS_REVIEW",
+        final_hash=digest,
+        flags_json=["demo", "never_publish", "uncertain_claims"],
+        warnings_json=["DEMO", "NEVER_PUBLISH"],
+        source_links_json=[url] if url else [],
+        claim_ids_json=["f1"],
+        requires_review=True,
+        approvals_required=2 if security else 1,
+        caption=caption,
+        caption_hash=hashlib.sha256(caption.encode()).hexdigest(),
+        synthetic=True,
+        hashtags_json=["#demo"],
+    )
+    session.add(post)
+    session.flush()
+    for index, angle in enumerate(ANGLES, start=1):
+        variant = build_variant(channel_id, angle, story.title, fact, url)
+        session.add(
+            PostVersion(
+                post_id=post.id,
+                version=index,
+                title=variant["title"],
+                body=variant["body"],
+                channel_id=channel_id,
+                final_hash=hashlib.sha256(variant["body"].encode()).hexdigest(),
+            )
+        )
+        session.add(
+            EvidenceSnapshot(
+                post_id=post.id,
+                draft_version=index,
+                claim_id="f1",
+                claim_text=fact[:400],
+                source_url=url,
+                published_at=story.published_utc,
+                observed_at=story.discovered_utc,
+                verified_at=None,
+                verification_method="",
+                support_level="source_claim",
+                excerpt=fact[:160],
+                origin_kind="source_claim",
+            )
+        )
+    return post

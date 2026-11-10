@@ -13,6 +13,7 @@
   font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
 }
 * { box-sizing: border-box; }
+html, body { max-width: 100%; overflow-x: hidden; }
 body { margin: 0; background: var(--bg); color: var(--ink); }
 a { color: inherit; }
 .skip { position: absolute; left: -999px; }
@@ -48,7 +49,11 @@ button, .button { background: var(--accent); color: var(--accent-ink); border: 0
 button.danger { background: var(--danger); color: white; }
 .warn { color: #ffd0c8; }
 .ok { color: var(--ok); }
+.desk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.score { font-variant-numeric: tabular-nums; }
+.demo-banner { background: #5c3b16; color: #ffe7c2; padding: 8px 10px; margin-bottom: 12px; }
 @media (max-width: 900px) {
-  .review { grid-template-columns: 1fr; }
+  .review, .desk { grid-template-columns: 1fr; }
   .badge { margin-left: 0; }
+  .wrap { padding: 12px; }
 }

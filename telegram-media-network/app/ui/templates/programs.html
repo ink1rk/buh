@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Программы</h1>
+<p>Выпуски только предлагаются. Публикация не создаётся, если материала меньше минимума.</p>
+<ul>
+  {% for row in programs %}
+  <li><strong>{{ row.title }}</strong> · минимум {{ row.min_items }} · {{ row.period }}</li>
+  {% else %}
+  <li>Программы ещё не записаны. Загрузите учебный пакет на обзоре.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

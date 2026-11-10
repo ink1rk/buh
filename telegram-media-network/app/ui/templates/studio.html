@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Студия</h1>
+<p class="demo-banner">Собственные макеты 1280×720. Чужой файл без права не подставляется. Надпись DEMO — учебный знак.</p>
+<section class="grid">
+  {% for card in cards %}
+  <article class="card">
+    <h2>{{ card.channel }} · {{ card.template }}</h2>
+    <img class="preview" alt="Макет {{ card.channel }} {{ card.template }}" src="/media/{{ card.file }}">
+  </article>
+  {% endfor %}
+</section>
+{% endblock %}

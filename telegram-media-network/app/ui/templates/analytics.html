@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Аналитика</h1>
+<p class="demo-banner">Воронка посчитана по строкам этой базы на {{ report.as_of }}. Просмотры и подписчики не измерялись.</p>
+<p>{{ report.formula }}</p>
+<table>
+  <tr><th>Шаг</th><th>Значение</th></tr>
+  {% for name, value in report.stages.items() %}
+  <tr><td>{{ name }}</td><td class="score">{{ value }}</td></tr>
+  {% endfor %}
+  <tr><td>Просмотры</td><td>н/д</td></tr>
+  <tr><td>Подписчики</td><td>н/д</td></tr>
+</table>
+<p class="muted">Режим данных: {{ report.data_mode }}. Учебные графики сюда не подмешиваются.</p>
+{% endblock %}

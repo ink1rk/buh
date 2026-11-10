@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Радар</h1>
+<p class="demo-banner">Оценки объясняются осями. Один снимок — не тренд. DEMO не является новостью.</p>
+<form method="get" action="/radar">
+  <label>Канал
+    <select name="channel">
+      <option value="">все</option>
+      {% for channel in channels %}
+      <option value="{{ channel.id }}" {% if channel.id == selected %}selected{% endif %}>{{ channel.title }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Список
+    <select name="status">
+      <option value="">любой</option>
+      {% for name in lists %}
+      <option value="{{ name }}" {% if name == selected_list %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Поиск <input name="q" value="{{ query }}"></label>
+  <button type="submit">Показать</button>
+</form>
+<div class="scroll">
+<table>
+  <tr><th>Тема</th><th>Канал</th><th>Список</th><th>Счёт</th><th>Почему</th><th></th></tr>
+  {% for row in rows %}
+  <tr>
+    <td>{{ row.title }}</td>
+    <td>{{ row.channel_id }}</td>
+    <td>{{ row.list_name }}</td>
+    <td class="score">{{ row.score if row.score is not none else "н/д" }}</td>
+    <td>{{ row.explanation }}</td>
+    <td>{% if row.post_id %}<a href="/review/{{ row.post_id }}">В редакцию</a>{% else %}<span class="muted">черновика нет</span>{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6">Тем нет. Это пустая выборка, а не нулевая аудитория.</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

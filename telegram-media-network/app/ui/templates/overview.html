@@ -1,16 +1,26 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Сеть</h1>
-<p class="muted">Глобальный рубильник: {% if policy.kill_switch %}<strong>включён</strong>{% else %}выключен{% endif %}. Меняет только владелец.</p>
+<p class="demo-banner">DRY RUN. Отправка выключена. Пустая цифра — это ноль в базе, «н/д» значит, что измерения нет.</p>
+<p class="muted">Глобальный рубильник: {% if policy.kill_switch %}<strong>включён</strong>{% else %}выключен{% endif %}.</p>
+{% if user.role == "OWNER" %}
+<form method="post" action="/demo/load">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <button type="submit">Загрузить учебный пакет DEMO</button>
+</form>
+{% endif %}
 <section class="grid">
   {% for row in cards %}
   <article class="card">
-    <h2>{{ row.title }}</h2>
+    <h2><a href="/radar?channel={{ row.id }}">{{ row.title }}</a></h2>
     <p>{{ row.category }}</p>
-    <p>Сегодня в очереди: {{ row.queued }}</p>
     <p>Ждут решения: {{ row.waiting }}</p>
-    <p>Публикация канала: {% if row.publish_enabled %}разрешена{% else %}выключена{% endif %}</p>
-    <p class="muted">Источник: {{ row.health }}</p>
+    <p>В очереди слотов: {{ row.queued }}</p>
+    <p>Тем в радаре: {{ row.themes }}</p>
+    <p>Свежих тем: {{ row.fresh }}</p>
+    <p>Пустых слотов на 14 дней: {{ row.free_slots }}</p>
+    <p>Источники: {{ row.health }}</p>
+    <p><a href="/posts?channel={{ row.id }}">Открыть редакцию</a></p>
   </article>
   {% endfor %}
 </section>

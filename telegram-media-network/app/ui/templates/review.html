@@ -23,7 +23,25 @@
       <li><strong>{{ fact.claim_id }}</strong> {{ fact.statement }}<br><span class="muted">{{ fact.evidence_excerpt }} — {{ fact.evidence_url }}</span></li>
     {% endfor %}
     </ul>
+    {% if explanation %}<p>{{ explanation }}</p>{% endif %}
     {% if story.hard_block_reason %}<p class="warn">Блок: {{ story.hard_block_reason }}</p>{% endif %}
+    {% if story.is_preprint %}<p class="warn">Препринт. Это не рецензия.</p>{% endif %}
+    <h3>Версии</h3>
+    <ul>
+    {% for version in versions %}
+      <li>v{{ version.version }}: {{ version.title }}</li>
+    {% else %}
+      <li class="muted">Версий ещё нет.</li>
+    {% endfor %}
+    </ul>
+    <h3>Проверяемые фразы</h3>
+    <ul>
+    {% for snap in snapshots %}
+      <li>{{ snap.claim_text }}<br><span class="muted">{{ snap.source_url }} · проверено: {% if snap.verified_at %}{{ snap.verified_at }}{% else %}нет, статус извлечения{% endif %}</span></li>
+    {% else %}
+      <li class="muted">Снимков доказательств нет.</li>
+    {% endfor %}
+    </ul>
   </article>
   <article class="panel">
     <h2>Текст</h2>
