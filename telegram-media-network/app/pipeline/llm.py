@@ -6,7 +6,8 @@ import json
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from urllib.parse import urlsplit, urlunsplit
 
 from app.pipeline.editor import draft_post
 from app.pipeline.schema_check import schema_errors
@@ -22,6 +23,35 @@ SYSTEM_RULES = (
 
 class LLMError(RuntimeError):
     pass
+
+
+_DEFAULT_LLM_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+_API_PATHS = {"/api/chat", "/api/generate"}
+
+
+class _RefuseRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def resolve_llm_endpoint(base_url: str, api_path: str = "/api/chat", allowed_hosts: set[str] | None = None) -> str:
+    """Join a loopback host with /api/chat. Refuse any other host before a socket opens."""
+    if not base_url.startswith(("http://", "https://")):
+        raise LLMError("endpoint")
+    parts = urlsplit(base_url.strip())
+    host = (parts.hostname or "").lower()
+    allowed = {item.strip().lower() for item in (allowed_hosts or _DEFAULT_LLM_HOSTS) if item.strip()}
+    if host not in allowed:
+        raise LLMError("host_not_allowed")
+    path = parts.path.rstrip("/") or ""
+    chosen = api_path if api_path.startswith("/") else f"/{api_path}"
+    if path in _API_PATHS:
+        chosen = path
+    elif path not in {"", "/"}:
+        raise LLMError("endpoint")
+    if chosen not in _API_PATHS:
+        raise LLMError("endpoint")
+    return urlunsplit((parts.scheme, parts.netloc, chosen, "", ""))
 
 
 def _ollama_draft(body: object) -> dict | None:
@@ -49,11 +79,12 @@ class LocalLLMClient:
     base_url: str
     model: str = ""
     timeout: float = 8.0
+    api_path: str = "/api/chat"
+    allowed_hosts: set[str] = field(default_factory=lambda: set(_DEFAULT_LLM_HOSTS))
 
     def complete(self, item: SourceItemIn, channel_id: str) -> dict:
         """Speak Ollama's chat or generate API. Source text stays in the user payload."""
-        if not self.base_url.startswith(("http://", "https://")):
-            raise LLMError("endpoint")
+        endpoint = resolve_llm_endpoint(self.base_url, self.api_path, self.allowed_hosts)
         source_data = {
             "channel_id": channel_id,
             "source_external_id": item.source_external_id,
@@ -70,7 +101,6 @@ class LocalLLMClient:
             ],
         }
         user_payload = json.dumps({"source_data": source_data}, ensure_ascii=False)
-        endpoint = self.base_url.rstrip("/")
         if endpoint.endswith("/api/generate"):
             payload = {"model": self.model, "system": SYSTEM_RULES, "prompt": user_payload, "stream": False, "format": "json"}
         else:
@@ -84,15 +114,20 @@ class LocalLLMClient:
                 ],
             }
         request = urllib.request.Request(
-            self.base_url,
+            endpoint,
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json", "Accept": "application/json"},
             method="POST",
         )
         started = time.perf_counter()
+        opener = urllib.request.build_opener(_RefuseRedirect)
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+            with opener.open(request, timeout=self.timeout) as response:
                 raw = response.read(200_000)
+        except urllib.error.HTTPError as exc:
+            self.last_elapsed_ms = int((time.perf_counter() - started) * 1000)
+            self.last_error = "redirect" if exc.code in {301, 302, 303, 307, 308} else "http"
+            raise LLMError(self.last_error) from exc
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             self.last_elapsed_ms = int((time.perf_counter() - started) * 1000)
             self.last_error = "unreachable"

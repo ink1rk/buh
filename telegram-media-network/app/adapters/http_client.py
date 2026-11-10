@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Protocol
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from app.pipeline.urlsec import SSRFBlocked, assert_url_safe
 
 USER_AGENT = "TMNBot/0.1 (+https://example.invalid/tmn; editorial-research; contact=local-admin)"
 MAX_REDIRECTS = 3
 MAX_BYTES = 2_000_000
+_CONDITIONAL = {"if-none-match", "if-modified-since"}
 
 
 @dataclass
@@ -31,6 +32,7 @@ class FetchOutcome:
     body: bytes = b""
     reason: str = ""
     requests: int = 0
+    final_url: str = ""
 
 
 def header_map(headers: dict[str, str]) -> dict[str, str]:
@@ -72,6 +74,19 @@ def backoff_seconds(status: int, headers: dict[str, str], attempt: int, now: flo
     return float(min(300, 2 ** max(1, attempt)))
 
 
+def _origin(url: str) -> tuple[str, str, int] | None:
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower().rstrip(".")
+    if not parts.scheme or not host:
+        return None
+    default = 443 if parts.scheme.lower() == "https" else 80
+    return parts.scheme.lower(), host, parts.port or default
+
+
+def _without(headers: dict[str, str], names: set[str]) -> dict[str, str]:
+    return {key: value for key, value in headers.items() if key.lower() not in names}
+
+
 def safe_get(
     url: str,
     transport: Transport,
@@ -79,26 +94,45 @@ def safe_get(
     allowlist: set[str] | None = None,
     headers: dict[str, str] | None = None,
     max_redirects: int = MAX_REDIRECTS,
+    max_requests: int | None = None,
 ) -> FetchOutcome:
+    """Follow only same-origin redirects. Credentials never leave the origin that sent them."""
     current = url
-    sent = headers or conditional_headers()
-    for hop in range(max_redirects + 1):
+    sent = dict(headers or conditional_headers())
+    seen = {current}
+    made = 0
+    for _hop in range(max_redirects + 1):
+        if max_requests is not None and made >= max_requests:
+            return FetchOutcome(False, reason="budget", requests=made)
         try:
             assert_url_safe(current, resolver, allowlist)
         except SSRFBlocked as exc:
-            return FetchOutcome(False, reason=exc.reason, requests=hop)
+            return FetchOutcome(False, reason=exc.reason, requests=made)
         result = transport.request("GET", current, sent)
+        made += 1
         if len(result.body) > MAX_BYTES:
-            return FetchOutcome(False, status=result.status, reason="response_too_large", requests=hop + 1)
+            return FetchOutcome(False, status=result.status, reason="response_too_large", requests=made)
         lowered = header_map(result.headers)
-        if result.status in {301, 302, 303, 307, 308}:
-            location = lowered.get("location") or ""
-            if not location:
-                return FetchOutcome(False, status=result.status, reason="redirect_missing", requests=hop + 1)
-            current = urljoin(current, location)
-            continue
-        return FetchOutcome(True, status=result.status, headers=lowered, body=result.body, requests=hop + 1)
-    return FetchOutcome(False, reason="too_many_redirects", requests=max_redirects + 1)
+        if result.status not in {301, 302, 303, 307, 308}:
+            return FetchOutcome(True, status=result.status, headers=lowered, body=result.body, requests=made, final_url=current)
+        if max_requests is not None and made >= max_requests:
+            return FetchOutcome(False, status=result.status, reason="budget", requests=made)
+        location = lowered.get("location") or ""
+        if not location:
+            return FetchOutcome(False, status=result.status, reason="redirect_missing", requests=made)
+        nxt = urljoin(current, location)
+        try:
+            assert_url_safe(nxt, resolver, allowlist)
+        except SSRFBlocked as exc:
+            return FetchOutcome(False, status=result.status, reason=exc.reason, requests=made)
+        if _origin(nxt) != _origin(current):
+            return FetchOutcome(False, status=result.status, reason="redirect_cross_origin", requests=made)
+        if nxt in seen:
+            return FetchOutcome(False, status=result.status, reason="redirect_loop", requests=made)
+        seen.add(nxt)
+        sent = _without(sent, _CONDITIONAL)
+        current = nxt
+    return FetchOutcome(False, reason="too_many_redirects", requests=made)
 
 
 def fetch_with_backoff(fetch, sleeper, clock, max_attempts: int = 4) -> HttpResult:

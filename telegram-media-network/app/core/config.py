@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     telegram_test_chat_id: str = Field(default="", alias="TELEGRAM_TEST_CHAT_ID")
     llm_mode: str = Field(default="mock", alias="LLM_MODE")
     llm_base_url: str = Field(default="", alias="LLM_BASE_URL")
+    llm_api_path: str = Field(default="/api/chat", alias="LLM_API_PATH")
+    llm_allowed_hosts: str = Field(default="127.0.0.1,localhost,::1", alias="LLM_ALLOWED_HOSTS")
     llm_model: str = Field(default="", alias="LLM_MODEL")
     media_remote_screenshot_enabled: bool = Field(default=False, alias="MEDIA_REMOTE_SCREENSHOT_ENABLED")
     source_mode: str = Field(default="offline", alias="SOURCE_MODE")

@@ -23,7 +23,7 @@ def init_schema(engine: Engine) -> None:
     apply_schema_extras(engine)
 
 
-SCHEMA_HEAD = "0001_initial"
+SCHEMA_HEAD = "0002_endpoint_state"
 MIGRATION_LOCK = 8787002
 
 
