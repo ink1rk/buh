@@ -129,6 +129,10 @@ def bootstrap(session: Session, settings: Settings, config_dir: Path | None = No
     if session.query(CredentialRef).filter_by(service="telegram").first() is None:
         session.add(CredentialRef(service="telegram", secret_ref="env:TELEGRAM_BOT_TOKEN", created_utc=utcnow()))
         session.add(CredentialRef(service="github", secret_ref="env:GITHUB_READ_TOKEN", created_utc=utcnow()))
+    from app.product.editorial import ensure_profiles
+
+    session.flush()
+    ensure_profiles(session)
 
 
 def export_public_config(config_dir: Path) -> dict:

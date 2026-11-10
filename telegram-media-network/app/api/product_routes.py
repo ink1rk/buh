@@ -26,11 +26,16 @@ from app.core.models import (
 )
 from app.core.timeutil import ensure_utc, utcnow
 from app.media.renderer import choose_rights, render_network_card
+from app.product.commercial import forecast, media_kit, seed_commercial
 from app.product.demo_pack import build_pack
 from app.product.drafts import fallback_from_invalid, materialise_desk, variants_for
+from app.product.editorial import ensure_profiles, quality_gate
+from app.product.growth import board as growth_board
+from app.product.growth import ensure_metrics, seed_experiments, snapshot_derived
 from app.product.insights import funnel, record_manual, seed_demo_campaigns
+from app.product.planning import lock_episode
 from app.product.programs import move_episode, propose_fortnight
-from app.product.radar import bulk_list, import_observations, route_cluster
+from app.product.radar import bulk_list, import_observations, merge_into, route_cluster, split_member
 
 router = APIRouter()
 
@@ -162,12 +167,118 @@ def radar_bulk(
 def demo_load(user=Depends(require_roles("OWNER")), db: Session = Depends(get_db)) -> dict:
     moment = utcnow()
     stats = import_observations(db, build_pack(), moment)
+    ensure_profiles(db)
     posts = materialise_desk(db)
     calendar = propose_fortnight(db, moment)
     campaigns = seed_demo_campaigns(db, moment)
+    commercial = seed_commercial(db, moment)
+    ensure_metrics(db)
+    experiments = seed_experiments(db)
+    metrics = snapshot_derived(db, moment, demo=True)
     add_audit(db, actor=user.username, action="demo_load", entity="network", result="loaded")
     db.commit()
-    return _envelope({**stats, "posts": posts, "episodes": calendar["created"], "skipped": len(calendar["skipped"]), "campaigns": campaigns}, "demo")
+    return _envelope(
+        {
+            **stats,
+            "posts": posts,
+            "episodes": calendar["created"],
+            "skipped": len(calendar["skipped"]),
+            "campaigns": campaigns,
+            "commercial": commercial,
+            "horizon_days": calendar.get("horizon_days", 28),
+            "experiments": experiments,
+            "metrics": metrics,
+        },
+        "demo",
+    )
+
+
+class MergeBody(BaseModel):
+    target_id: int
+    reason: str
+
+
+class SplitBody(BaseModel):
+    member_id: int
+    reason: str
+
+
+@router.post("/api/v1/radar/clusters/{cluster_id}/merge")
+def radar_merge(
+    cluster_id: int,
+    body: MergeBody,
+    user=Depends(require_roles("EDITOR", "OWNER")),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        merge_into(db, cluster_id, body.target_id, user.username, body.reason)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.commit()
+    return _envelope({"merged": cluster_id, "into": body.target_id})
+
+
+@router.post("/api/v1/radar/clusters/{cluster_id}/split")
+def radar_split(
+    cluster_id: int,
+    body: SplitBody,
+    user=Depends(require_roles("EDITOR", "OWNER")),
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        created = split_member(db, cluster_id, body.member_id, user.username, body.reason)
+    except ValueError as extra:
+        raise HTTPException(status_code=422, detail=str(extra)) from extra
+    db.commit()
+    return _envelope({"id": created.id, "split_from": cluster_id})
+
+
+@router.get("/api/v1/posts/{post_id}/quality")
+def post_quality(post_id: int, auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
+    del auth
+    post = db.get(Post, post_id)
+    if post is None:
+        raise HTTPException(status_code=404, detail="post missing")
+    from app.core.models import Story
+
+    return _envelope(quality_gate(db, post, db.get(Story, post.story_id)))
+
+
+@router.get("/api/v1/commercial/mediakit")
+def commercial_mediakit(auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
+    del auth
+    return _envelope(media_kit(db), "demo")
+
+
+@router.get("/api/v1/commercial/forecast")
+def commercial_forecast(auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
+    del auth
+    return _envelope(forecast(db), "demo")
+
+
+@router.get("/api/v1/growth")
+def growth_metrics(auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
+    del auth
+    return _envelope(growth_board(db), "mixed")
+
+
+class LockBody(BaseModel):
+    reason: str = ""
+
+
+@router.post("/api/v1/calendar/episodes/{episode_id}/lock")
+def calendar_lock(
+    episode_id: int,
+    body: LockBody,
+    user=Depends(require_roles("EDITOR", "OWNER")),
+    db: Session = Depends(get_db),
+) -> dict:
+    del body
+    episode = db.get(Episode, episode_id)
+    if episode is None:
+        raise HTTPException(status_code=404, detail="episode missing")
+    lock_episode(db, episode, user.username)
+    return _envelope({"id": episode.id, "locked": True, "version": episode.version})
 
 
 @router.get("/api/v1/posts/{post_id}/evidence")
@@ -255,7 +366,7 @@ def render_post(
     if post is None or channel is None:
         raise HTTPException(status_code=404, detail="post missing")
     theme = channel.theme_json or {}
-    template_id = body.template_id if body.template_id in {"hero", "tool", "advisory", "digest"} else "hero"
+    template_id = body.template_id if body.template_id in {"lead", "hero", "tool", "security", "advisory", "digest", "deep-dive"} else "lead"
     card = render_network_card(
         channel_id=channel.id,
         channel_title=channel.title,

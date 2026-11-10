@@ -202,16 +202,27 @@ def render_network_card(
     digest_lines: list[str] | None = None,
     demo: bool = True,
 ) -> RenderedCard:
-    """Four house layouts. They are covers, not screenshots and not paragraphs."""
+    """Five house layouts. They are covers, not screenshots and not paragraphs."""
+    template_id = {"hero": "lead", "advisory": "security"}.get(template_id, template_id)
     background = hex_rgb(primary)
     accent_rgb = hex_rgb(accent)
     image = Image.new("RGB", (CARD_W, CARD_H), background)
     draw = ImageDraw.Draw(image)
+    if template_id == "deep-dive":
+        draw.rectangle((0, 0, 420, CARD_H), fill=_mix(background, accent_rgb))
     _motif(draw, channel_id, accent_rgb)
     brand = _font(FONT_BOLD, 28)
     small = _font(FONT_REGULAR, 22)
     draw.text((64, 36), filter_text(brand, channel_title)[:32], font=brand, fill=(255, 255, 255))
-    label = {"hero": "НОВОСТЬ", "tool": "ИНСТРУМЕНТ", "advisory": "ЗАПИСЬ", "digest": "ПОДБОРКА"}.get(template_id, "МАТЕРИАЛ")
+    label = {
+        "lead": "НОВОСТЬ",
+        "hero": "НОВОСТЬ",
+        "tool": "ИНСТРУМЕНТ",
+        "security": "ЗАПИСЬ",
+        "advisory": "ЗАПИСЬ",
+        "digest": "ПОДБОРКА",
+        "deep-dive": "РАЗБОР",
+    }.get(template_id, "МАТЕРИАЛ")
     draw.text((64, 78), label, font=small, fill=(236, 239, 244))
     if demo:
         draw.text((1040, 36), "DEMO", font=small, fill=accent_rgb)
@@ -220,7 +231,7 @@ def render_network_card(
     visible = filter_text(title_font, title).strip()
     lines = wrap_text(visible, title_font, 760 if template_id == "tool" else 1100)[:2]
     y = 150
-    if template_id == "advisory" and cve:
+    if template_id in {"advisory", "security"} and cve:
         draw.rounded_rectangle((64, 140, 640, 210), radius=8, outline=accent_rgb, width=3)
         draw.text((80, 152), filter_text(_font(FONT_BOLD, 32), cve)[:28], font=_font(FONT_BOLD, 32), fill=accent_rgb)
         y = 230
@@ -229,7 +240,7 @@ def render_network_card(
         for box in ((900, 190), (980, 280), (900, 370)):
             draw.rectangle((box[0], box[1], box[0] + 160, box[1] + 48), outline=accent_rgb, width=3)
         draw.text((900, 470), "схема, не скриншот", font=small, fill=(255, 255, 255))
-    if template_id == "hero":
+    if template_id in {"hero", "lead"}:
         draw.ellipse((980, 160, 1220, 400), outline=accent_rgb, width=8)
         draw.ellipse((1040, 220, 1160, 340), fill=accent_rgb)
     if template_id == "digest":
@@ -244,6 +255,12 @@ def render_network_card(
         payload = _save(image)
         layout = CardLayout(fits=True, lines=digest_lines or [visible], bottom=bottom, font_size=22)
         return RenderedCard(payload, layout, hashlib.sha256(payload).hexdigest(), "own_typographic_template")
+    if template_id == "deep-dive":
+        facts = (digest_lines or [subtitle or "факт из источника", "ограничение не выдумано", "ссылка обязательна"])[:3]
+        for index, item in enumerate(facts):
+            top = 430 + index * 48
+            draw.ellipse((64, top + 8, 80, top + 24), fill=accent_rgb)
+            draw.text((96, top), filter_text(small, item)[:42], font=small, fill=(255, 255, 255))
     for line in lines:
         draw.text((64, y), line, font=title_font, fill=(255, 255, 255))
         y += 58
@@ -251,7 +268,7 @@ def render_network_card(
         draw.text((64, min(y + 8, 520)), filter_text(small, subtitle)[:80], font=small, fill=(230, 234, 238))
     draw.line((64, 620, 1216, 620), fill=(255, 255, 255), width=2)
     footer = source_label or channel_title
-    if template_id == "advisory":
+    if template_id in {"advisory", "security"}:
         footer = "CVSS нет в источнике" if not source_label else source_label
     draw.text((64, 648), filter_text(small, footer)[:80], font=small, fill=(236, 239, 244))
     payload = _save(image)
@@ -298,17 +315,21 @@ def _motif(draw: ImageDraw.ImageDraw, channel_id: str, accent: tuple[int, int, i
         draw.arc((1080, -40, 1320, 200), 20, 200, fill=accent, width=10)
 
 
-NETWORK_TEMPLATES = ("hero", "tool", "advisory", "digest")
+NETWORK_TEMPLATES = ("lead", "tool", "security", "digest", "deep-dive")
 
 
 def write_studio_pack(directory: Path, channels: list) -> list[Path]:
-    """32 house covers: eight brands by four layouts. Files are local JPEGs, not fetched art."""
+    """40 house covers: eight brands by five layouts. Files are local JPEGs, not fetched art."""
     directory.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
     for channel in channels:
         theme = getattr(channel, "theme_json", None) or {}
         for template_id in NETWORK_TEMPLATES:
-            digest = [f"DEMO: пункт {index} · {channel.title}" for index in range(1, 4)] if template_id == "digest" else None
+            digest = (
+                [f"DEMO: пункт {index} · {channel.title}" for index in range(1, 4)]
+                if template_id in {"digest", "deep-dive"}
+                else None
+            )
             card = render_network_card(
                 channel_id=channel.id,
                 channel_title=channel.title,
@@ -318,7 +339,7 @@ def write_studio_pack(directory: Path, channels: list) -> list[Path]:
                 title=f"DEMO: {channel.title}",
                 subtitle="учебный макет",
                 source_label="example.com/demo",
-                cve="CVE-2026-990099" if template_id == "advisory" and channel.id == "cyber" else "",
+                cve="CVE-2026-990099" if template_id == "security" and channel.id == "cyber" else "",
                 digest_lines=digest,
                 demo=True,
             )

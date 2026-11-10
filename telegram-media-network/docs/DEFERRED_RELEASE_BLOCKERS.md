@@ -16,4 +16,6 @@
 
 ## Откат схемы
 
-`alembic downgrade` для `0004_global_product` удаляет новые таблицы и колонки `claimed_draft_version`, `claimed_caption`, `ad_campaigns.demo`. Это не безопасный откат, если в них уже есть нужные строки. Старые таблицы `0001`–`0003` downgrade не чистит.
+`alembic downgrade` для `0004_global_product` удаляет новые таблицы и колонки `claimed_draft_version`, `claimed_caption`, `ad_campaigns.demo`. Откат `0005_r9_product_foundation` удаляет паспорта, claims, метрики, CRM и новые колонки кластеров/постов/выпусков. Это не безопасный откат, если в них уже есть нужные строки. Старые таблицы `0001`–`0003` downgrade не чистит. Forward-fix: оставить `0005` и чистить строки явно.
+
+T17–T20 по-прежнему BLOCKED: Compose, restore drill, live API, local LLM, Telegram sandbox, production. R9 их не подменяет.

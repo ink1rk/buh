@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import TypedDict
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from app.core.models import Channel, Episode, RankedCandidate, Series, StoryCluster
+from app.core.models import Episode, RankedCandidate, Series, StoryCluster
 from app.core.timeutil import ensure_utc
 from app.product.radar import MODEL
 
@@ -94,63 +94,10 @@ def ensure_series(session: Session) -> None:
 
 
 def propose_fortnight(session: Session, now: datetime) -> dict:
-    """Fourteen Moscow days of proposals. Nothing is marked published."""
-    ensure_series(session)
-    session.flush()
-    start = ensure_utc(now).astimezone(MSK).date() + timedelta(days=1)
-    created = 0
-    skipped: list[dict] = []
-    conflicts: list[str] = []
-    for offset in range(14):
-        day = start + timedelta(days=offset)
-        for spec in SERIES:
-            if spec["period"] == "weekly" and day.weekday() != 0:
-                continue
-            for channel_id in spec["allowed_channels"]:
-                channel = session.get(Channel, channel_id)
-                if channel is None:
-                    skipped.append({"series": spec["id"], "channel": channel_id, "reason": "no_channel"})
-                    continue
-                picks = _picks(session, channel_id, spec["max_items"])
-                if len(picks) < spec["min_items"]:
-                    skipped.append(
-                        {
-                            "series": spec["id"],
-                            "channel": channel_id,
-                            "day": day.isoformat(),
-                            "reason": "not_enough_material",
-                            "have": len(picks),
-                            "need": spec["min_items"],
-                        }
-                    )
-                    continue
-                for slot in channel.schedule_json or []:
-                    when = _msk_slot(day, str(slot))
-                    if _quiet(when, channel.quiet_start, channel.quiet_end):
-                        skipped.append({"series": spec["id"], "channel": channel_id, "reason": "quiet_hours"})
-                        continue
-                    occupied = (
-                        session.query(Episode)
-                        .filter(Episode.channel_id == channel_id, Episode.slot_utc == when, Episode.status != "cancelled")
-                        .one_or_none()
-                    )
-                    if occupied is not None:
-                        conflicts.append(f"{channel_id} {when.isoformat()} занят выпуском {occupied.id}")
-                        continue
-                    session.add(
-                        Episode(
-                            series_id=spec["id"],
-                            channel_id=channel_id,
-                            slot_utc=when,
-                            status="proposed",
-                            item_refs=picks,
-                            reason="dry-run proposal",
-                            version=1,
-                        )
-                    )
-                    created += 1
-    session.commit()
-    return {"created": created, "skipped": skipped, "conflicts": conflicts, "published": 0}
+    """Compatibility wrapper. The live planner fills 28 Moscow days without reusing a news cluster."""
+    from app.product.planning import propose_month
+
+    return propose_month(session, now, days=28)
 
 
 def move_episode(session: Session, episode: Episode, slot_utc: datetime, expected_version: int) -> Episode:

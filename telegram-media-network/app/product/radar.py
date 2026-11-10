@@ -22,8 +22,16 @@ from app.core.models import (
     TrendSample,
 )
 from app.core.timeutil import ensure_utc, utcnow
+from app.product.intelligence import (
+    MODEL,
+    canonical_url,
+    channel_hot_count,
+    enrich_cluster,
+    member_count,
+    score_cluster,
+    source_ids_for,
+)
 
-MODEL = "radar-v2"
 _WORD = re.compile(r"[^0-9a-zа-яё]+", re.I)
 
 
@@ -34,7 +42,7 @@ def hard_key(row: dict) -> str:
         return f"arxiv:{row['arxiv']}"
     if row.get("repo") and row.get("tag"):
         return f"repo:{row['repo']}:{row['tag']}"
-    url = (row.get("url") or "").strip()
+    url = canonical_url(row.get("url") or "")
     if url:
         return "url:" + hashlib.sha256(url.encode()).hexdigest()[:24]
     return ""
@@ -89,6 +97,13 @@ def import_observations(session: Session, rows: list[dict], now: datetime | None
                 last_seen=moment,
                 updated_at=moment,
                 merge_reason=f"ключ {key}",
+                event_type="cve" if row.get("cve") else "release" if row.get("tag") else "preprint" if row.get("arxiv") else "event",
+                event_at=published,
+                dossier_json={
+                    "affected_products": row.get("product") or "",
+                    "version_scope": row.get("version_scope") or "unknown",
+                    "origin": "demo" if row.get("synthetic") else "fixture",
+                },
             )
             session.add(cluster)
             session.flush()
@@ -148,12 +163,30 @@ def rank_open_clusters(session: Session, now: datetime) -> int:
     moment = ensure_utc(now)
     count = 0
     clusters = session.query(StoryCluster).all()
+    hot_cache = {row.primary_channel_id: channel_hot_count(session, row.primary_channel_id) for row in clusters}
     for cluster in clusters:
         samples = _sample_count(session, cluster)
         story = _primary_story(session, cluster)
         anchor = story.published_utc if story is not None and story.published_utc is not None else cluster.first_seen
+        enrich_cluster(session, cluster, moment, anchor)
+        members = member_count(session, cluster)
+        source_ids = source_ids_for(session, cluster)
+        preprint = bool(story.is_preprint) if story is not None else False
+        license_state = story.license_state if story is not None else "unknown"
+        hot = hot_cache.get(cluster.primary_channel_id, 0)
         for channel_id in _channels_for(cluster):
-            dimensions, penalties, score, explanation = _score(cluster, channel_id, samples, moment, anchor)
+            dimensions, penalties, score, explanation, evidence_state, confidence = score_cluster(
+                cluster,
+                channel_id,
+                samples=samples,
+                members=members,
+                source_ids=source_ids,
+                now=moment,
+                anchor=anchor,
+                preprint=preprint,
+                license_state=license_state,
+                channel_hot=hot,
+            )
             row = (
                 session.query(RankedCandidate)
                 .filter_by(cluster_id=cluster.id, channel_id=channel_id, model_version=MODEL)
@@ -166,11 +199,12 @@ def rank_open_clusters(session: Session, now: datetime) -> int:
             row.dimensions_json = dimensions
             row.penalties_json = penalties
             row.rank_score = score
-            row.confidence = 70 if channel_id == cluster.primary_channel_id else 40
+            row.confidence = confidence
             row.explanation = explanation
-            row.status = "ranked"
+            row.status = evidence_state
             count += 1
         cluster.list_name = _list_name(cluster, moment, anchor)
+        cluster.score_version = MODEL
     return count
 
 
@@ -192,6 +226,25 @@ def route_cluster(session: Session, cluster: StoryCluster, channel_id: str, reas
     )
 
 
+def merge_into(session: Session, source_id: int, target_id: int, actor: str, reason: str) -> None:
+    from app.product.intelligence import merge_clusters
+
+    source = session.get(StoryCluster, source_id)
+    target = session.get(StoryCluster, target_id)
+    if source is None or target is None:
+        raise ValueError("cluster missing")
+    merge_clusters(session, source, target, actor, reason)
+
+
+def split_member(session: Session, cluster_id: int, member_id: int, actor: str, reason: str) -> StoryCluster:
+    from app.product.intelligence import split_cluster
+
+    cluster = session.get(StoryCluster, cluster_id)
+    if cluster is None:
+        raise ValueError("cluster missing")
+    return split_cluster(session, cluster, member_id, actor, reason)
+
+
 def bulk_list(session: Session, cluster_ids: list[int], list_name: str, reason: str, actor: str) -> int:
     if list_name not in {"hot", "review", "evergreen", "backfill", "rejected", "covered"}:
         raise ValueError("unknown list")
@@ -207,36 +260,6 @@ def bulk_list(session: Session, cluster_ids: list[int], list_name: str, reason: 
         changed += 1
     add_audit(session, actor=actor, action="bulk_list", entity="cluster", result=list_name, payload={"count": changed})
     return changed
-
-
-def _score(cluster: StoryCluster, channel_id: str, samples: int, now: datetime, anchor: datetime) -> tuple[dict, dict, int, str]:
-    age_days = max(0, (ensure_utc(now) - ensure_utc(anchor)).days)
-    primary = channel_id == cluster.primary_channel_id
-    dimensions = {
-        "relevance": 20 if primary else 8,
-        "freshness": 18 if age_days <= 3 else 6,
-        "novelty": 14 if cluster.kind != "event" or primary else 8,
-        "practicality": 12,
-        "evidence_quality": 15 if cluster.merge_reason.startswith("ключ") or "тот же" in cluster.merge_reason else 10,
-        "trend_signal": None if samples < 2 else 4,
-        "risk": 4 if cluster.kind == "cve" else 0,
-    }
-    penalties = {}
-    if samples < 2:
-        penalties["insufficient_history"] = 0
-    if age_days > 30:
-        penalties["backfill"] = 8
-    total = sum(value for value in dimensions.values() if isinstance(value, int))
-    total -= sum(penalties.values())
-    total = max(0, min(100, total))
-    trend = "неизвестен: меньше двух сопоставимых снимков" if samples < 2 else "посчитан по двум и более снимкам"
-    explanation = (
-        f"Канал {'основной' if primary else 'запасной'}: relevance {dimensions['relevance']}, "
-        f"freshness {dimensions['freshness']}, novelty {dimensions['novelty']}, "
-        f"practicality {dimensions['practicality']}, evidence {dimensions['evidence_quality']}. "
-        f"trend_signal {trend}. Риск {dimensions['risk']}."
-    )
-    return dimensions, penalties, total, explanation
 
 
 def _list_name(cluster: StoryCluster, now: datetime, anchor: datetime) -> str:

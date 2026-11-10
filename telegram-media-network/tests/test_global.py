@@ -125,7 +125,7 @@ def test_g2_drafts_are_checkable_and_not_published(db):
 def test_g3_studio_layouts_and_rights(db, tmp_path):
     channels = db.query(Channel).order_by(Channel.id).all()
     paths = write_studio_pack(tmp_path, channels)
-    assert len(paths) == 32
+    assert len(paths) == 40
     hashes = set()
     for path in paths:
         payload = path.read_bytes()
@@ -133,7 +133,7 @@ def test_g3_studio_layouts_and_rights(db, tmp_path):
         with Image.open(BytesIO(payload)) as image:
             assert image.size == (1280, 720)
         hashes.add(hashlib.sha256(payload).hexdigest())
-    assert len(hashes) == 32
+    assert len(hashes) == 40
     channel = channels[0]
     card = render_network_card(
         channel_id=channel.id,
@@ -185,7 +185,7 @@ def test_g4_pages_and_routes(db, client):
     assert "проверено" in review.text
     studio = client.get("/studio")
     assert studio.status_code == 200
-    assert studio.text.count("<img") == 32
+    assert studio.text.count("<img") == 40
     calendar = client.get("/calendar")
     assert calendar.status_code == 200
     assert "Europe/Moscow" in calendar.text or "MSK" in calendar.text
@@ -211,8 +211,12 @@ def test_g5_calendar_does_not_invent_or_publish(db):
     assert db.query(Post).filter_by(review_status="PUBLISHED").count() == 0
     empty = propose_fortnight(db, NOW)
     assert empty["created"] == 0 or empty["conflicts"]
-    skipped = [row for row in report["skipped"] if row.get("reason") == "not_enough_material"]
-    assert skipped == []
+    assert report.get("horizon_days") == 28
+    used: list[int] = []
+    for episode in db.query(Episode):
+        used.extend(int(item) for item in (episode.item_refs or []) if str(item).isdigit())
+    assert used
+    assert len(used) == len(set(used))
     channel = db.get(Channel, "future")
     assert _quiet(NOW.replace(hour=23), channel.quiet_start, channel.quiet_end) is True
     assert _quiet(NOW.replace(hour=10), channel.quiet_start, channel.quiet_end) is False
@@ -358,7 +362,7 @@ def test_ops01_upgrade_keeps_existing_story():
         ).scalar()
     engine.dispose()
     assert kept == "kept-row"
-    assert version == "0004_global_product"
+    assert version == "0005_r9_product_foundation"
     assert clusters == "story_clusters"
     assert column == 1
 

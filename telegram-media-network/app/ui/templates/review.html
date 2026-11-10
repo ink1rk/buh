@@ -60,7 +60,16 @@
       <button type="submit">Сохранить</button>
     </form>
     {% for warning in post.warnings_json %}<p class="warn">{{ warning }}</p>{% endfor %}
-    <p>Статус: {{ post.review_status }}. Подтверждений: {{ post.approver_ids_json|length }} / {{ post.approvals_required }}</p>
+    <p>Формат: {{ post.format_id }}. Статус: {{ post.review_status }}. Подтверждений: {{ post.approver_ids_json|length }} / {{ post.approvals_required }}</p>
+    {% if quality and quality.blocking %}<p class="warn">Блок QA: {{ quality.blocking|join(", ") }}</p>{% endif %}
+    <h3>Claims</h3>
+    <ul>
+    {% for claim in claims %}
+      <li>{{ claim.claim_id }} · {{ claim.status }} · {{ claim.text }}</li>
+    {% else %}
+      <li class="muted">Реестр claims пуст.</li>
+    {% endfor %}
+    </ul>
     <form method="post" action="/review/{{ post.id }}/reject">
       <input type="hidden" name="csrf_token" value="{{ csrf }}">
       <label>Причина отклонения <input name="reason" required></label>

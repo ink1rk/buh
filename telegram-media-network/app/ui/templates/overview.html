@@ -2,25 +2,35 @@
 {% block content %}
 <h1>Сеть</h1>
 <p class="demo-banner">DRY RUN. Отправка выключена. Пустая цифра — это ноль в базе, «н/д» значит, что измерения нет.</p>
-<p class="muted">Глобальный рубильник: {% if policy.kill_switch %}<strong>включён</strong>{% else %}выключен{% endif %}.</p>
+<p class="muted">Глобальный рубильник: {% if policy.kill_switch %}<strong>включён</strong>{% else %}выключен{% endif %}. Восемь редакций работают независимо: один источник не копируется на все каналы.</p>
 {% if user.role == "OWNER" %}
-<form method="post" action="/demo/load">
+<form class="toolbar" method="post" action="/demo/load">
   <input type="hidden" name="csrf_token" value="{{ csrf }}">
   <button type="submit">Загрузить учебный пакет DEMO</button>
 </form>
 {% endif %}
+<section class="kpis">
+  <div class="kpi"><b>{{ waiting_total }}</b><span>ждут редакции</span></div>
+  <div class="kpi"><b>{{ queued_total }}</b><span>запланированы, не отправлены</span></div>
+  <div class="kpi"><b>{{ collisions }}</b><span>межканальных пересечений</span></div>
+  <div class="kpi"><b>н/д</b><span>аудитория / выручка</span></div>
+</section>
 <section class="grid">
   {% for row in cards %}
-  <article class="card">
+  <article class="card desk-card">
+    <p class="pill">{{ row.category }}</p>
     <h2><a href="/radar?channel={{ row.id }}">{{ row.title }}</a></h2>
-    <p>{{ row.category }}</p>
-    <p>Ждут решения: {{ row.waiting }}</p>
-    <p>В очереди слотов: {{ row.queued }}</p>
+    <p>{{ row.promise }}</p>
+    <p class="muted">{{ row.audience }}</p>
+    <div class="meta">
+      <span class="pill">черновики {{ row.waiting }}</span>
+      <span class="pill">слоты {{ row.queued }}</span>
+      <span class="pill hot">свежие {{ row.fresh }}</span>
+    </div>
     <p>Тем в радаре: {{ row.themes }}</p>
-    <p>Свежих тем: {{ row.fresh }}</p>
-    <p>Пустых слотов на 14 дней: {{ row.free_slots }}</p>
+    <p>Пустых дней на 28 суток: {{ row.free_slots }}</p>
     <p>Источники: {{ row.health }}</p>
-    <p><a href="/posts?channel={{ row.id }}">Открыть редакцию</a></p>
+    <p><a class="button ghost" href="/posts?channel={{ row.id }}">Открыть редакцию</a></p>
   </article>
   {% endfor %}
 </section>

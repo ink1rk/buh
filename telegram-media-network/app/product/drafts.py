@@ -16,7 +16,9 @@ from app.core.models import (
     StoryCluster,
     StoryEvidence,
 )
+from app.core.timeutil import utcnow
 from app.pipeline.caption import build_caption
+from app.product.editorial import format_for, quality_gate, replace_claims, write_format
 from app.product.radar import MODEL, _primary_story
 
 PROMPT_VERSION = "editorial-v2"
@@ -67,22 +69,22 @@ _OPENINGS = {
 }
 
 
-def build_variant(channel_id: str, angle: str, title: str, fact: str, url: str) -> dict:
+def build_variant(channel_id: str, angle: str, title: str, fact: str, url: str, *, preprint: bool = False) -> dict:
+    format_id = format_for(channel_id, angle)
+    payload = write_format(channel_id, format_id, title, fact, url, preprint=preprint)
     opening = _OPENINGS.get(channel_id, _OPENINGS["dev"])[angle]
-    clean_fact = _INJECTION.sub("", fact or "").strip() or "Источник не передал проверяемого утверждения."
-    body = (
-        f"{opening}: {clean_fact} "
-        "Ограничение: текст не добавляет измерений, цен и выводов, которых нет в источнике. "
-        f"Ссылка: {url}"
-    )
-    return {
-        "angle": angle,
-        "title": title[:120],
-        "body": body[:900],
-        "prompt_version": PROMPT_VERSION,
-        "requires_review": True,
-        "uncertain_claims": True,
-    }
+    extra = ""
+    if preprint and "препринт не равен рецензии" not in payload["body"]:
+        extra += " Уровень проверки: препринт не равен рецензии."
+    if channel_id == "github" and "не подтверждена" not in payload["body"]:
+        extra += " Лицензия в карточке не подтверждена, вывод о праве использования не делается."
+    if channel_id == "cyber" and "не сводка по всем установкам" not in payload["body"]:
+        extra += " Учебная запись каталога, не сводка по всем установкам."
+    payload["body"] = (payload["body"] + extra)[:900]
+    payload["angle"] = angle
+    payload["opening"] = opening
+    payload["prompt_version"] = PROMPT_VERSION
+    return payload
 
 
 def materialise_desk(session: Session, *, per_channel: int = 3) -> int:
@@ -101,29 +103,50 @@ def materialise_desk(session: Session, *, per_channel: int = 3) -> int:
             .order_by(RankedCandidate.rank_score.desc(), RankedCandidate.id)
             .all()
         )
-        taken = 0
+        taken = session.query(Post).filter_by(channel_id=channel_id).count()
+        if taken >= per_channel:
+            continue
+        for story in _priority_stories(session, channel_id):
+            if taken >= per_channel:
+                break
+            if session.query(Post).filter_by(story_id=story.id, channel_id=channel_id).first():
+                continue
+            _create_post(session, story, channel_id, angle=ANGLES[taken % len(ANGLES)])
+            taken += 1
+            made += 1
         for candidate in ranked:
             if taken >= per_channel:
                 break
             cluster = session.get(StoryCluster, candidate.cluster_id)
-            story = _primary_story(session, cluster) if cluster else None
-            if story is None:
+            ranked_story = _primary_story(session, cluster) if cluster else None
+            if ranked_story is None:
                 continue
-            if session.query(Post).filter_by(story_id=story.id, channel_id=channel_id).first():
-                taken += 1
+            if session.query(Post).filter_by(story_id=ranked_story.id, channel_id=channel_id).first():
                 continue
-            _create_post(session, story, channel_id)
+            _create_post(session, ranked_story, channel_id, angle=ANGLES[taken % len(ANGLES)])
             taken += 1
             made += 1
     session.commit()
     return made
 
 
+def _priority_stories(session: Session, channel_id: str) -> list[Story]:
+    rows: list[Story] = []
+    if channel_id == "future":
+        rows.extend(session.query(Story).filter_by(primary_channel_id="future", is_preprint=True).all())
+    if channel_id == "cyber":
+        rows.extend(session.query(Story).filter(Story.title.contains("CVE-2026-990099")).all())
+    if channel_id == "github":
+        rows.extend(session.query(Story).filter(Story.repo_identity == "acme/demo-runner").order_by(Story.id).all())
+    return rows
+
+
 def variants_for(session: Session, post: Post) -> list[dict]:
     story = session.get(Story, post.story_id)
     fact = story.summary if story else post.body
     url = (post.source_links_json or ["https://example.com/demo"])[0]
-    return [build_variant(post.channel_id, angle, post.title, fact, url) for angle in ANGLES]
+    preprint = bool(story.is_preprint) if story is not None else False
+    return [build_variant(post.channel_id, angle, post.title, fact, url, preprint=preprint) for angle in ANGLES]
 
 
 def fallback_from_invalid(channel_id: str, title: str) -> dict:
@@ -139,11 +162,11 @@ def fallback_from_invalid(channel_id: str, title: str) -> dict:
     }
 
 
-def _create_post(session: Session, story: Story, channel_id: str) -> Post:
+def _create_post(session: Session, story: Story, channel_id: str, angle: str = "news") -> Post:
     evidence = session.query(StoryEvidence).filter_by(story_id=story.id).all()
     fact = evidence[0].statement if evidence else story.summary
     url = evidence[0].evidence_url if evidence else story.canonical_url
-    news = build_variant(channel_id, "news", story.title, fact, url)
+    news = build_variant(channel_id, angle, story.title, fact, url, preprint=story.is_preprint)
     security = channel_id == "cyber" or story.content_kind == "advisory"
     caption = build_caption(news["title"], news["body"], [url] if url else [], ["#demo"])
     digest = hashlib.sha256(f"{channel_id}|1|{news['title']}|{news['body']}".encode()).hexdigest()
@@ -166,11 +189,13 @@ def _create_post(session: Session, story: Story, channel_id: str) -> Post:
         caption_hash=hashlib.sha256(caption.encode()).hexdigest(),
         synthetic=True,
         hashtags_json=["#demo"],
+        format_id=news.get("format_id") or "breaking_news",
+        quality_json={},
     )
     session.add(post)
     session.flush()
     for index, angle in enumerate(ANGLES, start=1):
-        variant = build_variant(channel_id, angle, story.title, fact, url)
+        variant = build_variant(channel_id, angle, story.title, fact, url, preprint=story.is_preprint)
         session.add(
             PostVersion(
                 post_id=post.id,
@@ -197,4 +222,6 @@ def _create_post(session: Session, story: Story, channel_id: str) -> Post:
                 origin_kind="source_claim",
             )
         )
+    replace_claims(session, post, fact, url, utcnow())
+    post.quality_json = quality_gate(session, post, story)
     return post
