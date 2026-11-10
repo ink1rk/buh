@@ -318,6 +318,8 @@ class MediaAsset(Base):
     byte_size: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(40), default="ready")
     render_version: Mapped[str] = mapped_column(String(40), default="card-v1")
+    draft_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    content_hash: Mapped[str] = mapped_column(String(64), default="")
 
 
 class ApprovalEvent(Base):

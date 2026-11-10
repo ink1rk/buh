@@ -8,24 +8,9 @@ from xml.etree import ElementTree
 import feedparser
 
 from app.core.timeutil import ensure_utc, parse_datetime, utcnow
+from app.pipeline.spdx import classify_spdx
 from app.pipeline.types import Fact, SourceItemIn
 from app.pipeline.urlsec import canonicalize
-
-OSS_LICENSES = {
-    "MIT",
-    "Apache-2.0",
-    "BSD-2-Clause",
-    "BSD-3-Clause",
-    "GPL-2.0",
-    "GPL-3.0",
-    "LGPL-2.1",
-    "LGPL-3.0",
-    "MPL-2.0",
-    "ISC",
-    "AGPL-3.0",
-    "Unlicense",
-    "0BSD",
-}
 
 
 class FeedError(Exception):
@@ -45,6 +30,11 @@ def _fact(fid: str, statement: str, url: str, excerpt: str) -> Fact:
     return Fact(id=fid, statement=_excerpt(statement, 400), evidence_url=url, evidence_excerpt=_excerpt(excerpt))
 
 
+def _license_fields(info: dict) -> tuple[str, str | None]:
+    state, stored = classify_spdx((info or {}).get("spdx_id"))
+    return state, stored or None
+
+
 def classify_repo_age(created_at: datetime | None, now: datetime) -> bool:
     if created_at is None:
         return False
@@ -61,14 +51,7 @@ def parse_github_search(payload: dict, now: datetime | None = None) -> list[Sour
         if not html_url.startswith("https://"):
             continue
         created = parse_datetime(row.get("created_at"))
-        license_info = row.get("license") or {}
-        spdx = license_info.get("spdx_id")
-        if not spdx or spdx in {"NOASSERTION", "OTHER"}:
-            license_state, spdx_value = "unknown", None
-        elif spdx in OSS_LICENSES or spdx.startswith(("MIT", "Apache", "BSD", "GPL", "LGPL", "MPL", "ISC")):
-            license_state, spdx_value = "explicit_open_source", spdx
-        else:
-            license_state, spdx_value = "explicit_non_oss", spdx
+        license_state, spdx_value = _license_fields(row.get("license") or {})
         description = _excerpt(row.get("description") or row.get("full_name") or "repository", 160)
         full_name = row.get("full_name") or "repository"
         statement = f"Репозиторий {full_name}: {description}"
@@ -102,12 +85,7 @@ def parse_github_release(repo: dict, release: dict, now: datetime | None = None)
     tag = str(release.get("tag_name") or "untagged")
     url = str(release.get("html_url") or repo.get("html_url") or "")
     body = _excerpt(release.get("body") or release.get("name") or tag, 160)
-    license_info = (repo.get("license") or {})
-    spdx = license_info.get("spdx_id")
-    if spdx and spdx not in {"NOASSERTION", "OTHER"}:
-        license_state, spdx_value = "explicit_open_source", spdx
-    else:
-        license_state, spdx_value = "unknown", None
+    license_state, spdx_value = _license_fields(repo.get("license") or {})
     full_name = repo.get("full_name") or "repository"
     statement = f"{full_name} опубликовал релиз {tag}. {body}".strip()
     return SourceItemIn(

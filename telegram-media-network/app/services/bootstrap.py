@@ -14,6 +14,10 @@ class ConfigError(ValueError):
     pass
 
 
+# Runtime progress is not part of the YAML document and must survive a reload.
+RUNTIME_POLICY_KEYS = ("query_cursor",)
+
+
 def load_yaml(path: Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
@@ -94,7 +98,11 @@ def bootstrap(session: Session, settings: Settings, config_dir: Path | None = No
         source.poll_interval_minutes = int(raw.get("poll_minutes") or 60)
         source.enabled = bool(raw.get("enabled"))
         source.tos_note = "ToS and robots must be rechecked before a live poll."
-        source.policy_json = {key: value for key, value in raw.items() if "token" not in key and "secret" not in key}
+        previous = dict(source.policy_json or {})
+        declared = {key: value for key, value in raw.items() if "token" not in key and "secret" not in key}
+        runtime = {key: previous[key] for key in RUNTIME_POLICY_KEYS if key in previous}
+        source.policy_json = {**declared, **runtime}
+        # circuit_open, robots_blocked and tos_blocked stay as stored. YAML does not clear them.
         if source.health == "unknown":
             source.health = "offline"
 

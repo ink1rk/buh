@@ -23,7 +23,7 @@ def init_schema(engine: Engine) -> None:
     apply_schema_extras(engine)
 
 
-SCHEMA_HEAD = "0002_endpoint_state"
+SCHEMA_HEAD = "0003_r7_integrity"
 MIGRATION_LOCK = 8787002
 
 
@@ -95,6 +95,8 @@ def apply_schema_extras(engine: Engine) -> None:
         ON classifications (story_id)
         WHERE is_primary = true
         """,
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS draft_version INTEGER",
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS content_hash VARCHAR(64) DEFAULT ''",
     ]
     with engine.begin() as conn:
         for statement in statements:
