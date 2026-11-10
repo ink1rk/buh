@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Конвейер {{ run.id }}</h1>
+<p class="demo-banner">editorial_ready ≠ delivery_allowed. Доставка заблокирована политикой.</p>
+<p>Канал {{ run.channel_id }} · стадия {{ run.stage }} · пост {{ trail.post_id or "нет" }} · brief {{ trail.brief_id or "нет" }} · карточка {{ trail.asset_id or "нет" }} · слот {{ trail.episode_id or "нет" }}</p>
+<table>
+  <tr><th>Стадия</th><th>Статус</th><th>Артефакт</th><th>Пропуск</th></tr>
+  {% for step in steps %}
+  <tr>
+    <td>{{ step.stage }}</td>
+    <td>{{ step.status }}</td>
+    <td>{{ step.output_ref or "—" }}</td>
+    <td>{{ step.skipped_reason or "—" }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">Стадий нет.</td></tr>
+  {% endfor %}
+</table>
+<p><a class="button ghost" href="/autopilot">К списку</a></p>
+{% endblock %}

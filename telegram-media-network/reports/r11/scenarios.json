@@ -1,0 +1,182 @@
+{
+  "S1_normal_news": {
+    "run_id": 4,
+    "cluster_id": 4,
+    "channel_id": "github",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 4,
+    "brief_id": 4,
+    "asset_id": 4,
+    "episode_id": 4,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:4:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:repo:acme/lab-runner:v1.0",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:4:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:4",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:4:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:4:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:306",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  "S2_correction": {
+    "cluster_id": 14,
+    "cluster_key": "cve:CVE-2026-880002",
+    "title": "DEMO: конфликт сведений по CVE-2026-880002",
+    "channel_id": "cyber",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "cve",
+    "dossier_id": 14,
+    "members": [
+      {
+        "member_id": 22,
+        "story_id": 14,
+        "source_item_id": 21,
+        "relation": "member",
+        "external_id": "lab:conflict",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-24T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  "S3_cve": {
+    "cluster_id": 1,
+    "cluster_key": "cve:CVE-2026-880001",
+    "title": "DEMO: CVE-2026-880001 официальный бюллетень",
+    "channel_id": "cyber",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "cve",
+    "dossier_id": 1,
+    "members": [
+      {
+        "member_id": 1,
+        "story_id": 1,
+        "source_item_id": 1,
+        "relation": "member",
+        "external_id": "lab:cve-880001",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-12T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      },
+      {
+        "member_id": 4,
+        "story_id": 1,
+        "source_item_id": 4,
+        "relation": "member",
+        "external_id": "lab:cve-880001-rss",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-13T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "reprint"
+      },
+      {
+        "member_id": 9,
+        "story_id": 1,
+        "source_item_id": 9,
+        "relation": "member",
+        "external_id": "lab:cve-880001-scope",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-16T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      },
+      {
+        "member_id": 15,
+        "story_id": 1,
+        "source_item_id": 15,
+        "relation": "member",
+        "external_id": "lab:cve-880001-patch",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-19T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  }
+}

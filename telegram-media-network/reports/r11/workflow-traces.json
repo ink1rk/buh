@@ -1,0 +1,3950 @@
+[
+  {
+    "run_id": 1,
+    "cluster_id": 1,
+    "channel_id": "cyber",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 2,
+    "brief_id": 2,
+    "asset_id": 1,
+    "episode_id": 1,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:1:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:cve:CVE-2026-880001",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:1:score:82",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:2",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:2:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:2:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:1",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 2,
+    "cluster_id": 2,
+    "channel_id": "ai_news",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 1,
+    "brief_id": 1,
+    "asset_id": 2,
+    "episode_id": 2,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:2:members:2",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:5bcec484f7cd9aa1adef785c",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:2",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:2:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:2",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:1",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:1:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:1:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:2",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:2",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:2",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 3,
+    "cluster_id": 3,
+    "channel_id": "ai_tools",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 3,
+    "brief_id": 3,
+    "asset_id": 3,
+    "episode_id": 3,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:3:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:bbd15515b07c6afc001e4785",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:3",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:3:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:3",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:3:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:3:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:3",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:3",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:305",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 4,
+    "cluster_id": 4,
+    "channel_id": "github",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 4,
+    "brief_id": 4,
+    "asset_id": 4,
+    "episode_id": 4,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:4:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:repo:acme/lab-runner:v1.0",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:4:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:4",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:4:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:4:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:306",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 5,
+    "cluster_id": 5,
+    "channel_id": "github",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 5,
+    "brief_id": 5,
+    "asset_id": 5,
+    "episode_id": null,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:5:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:ba094a5a82d21b4ef60e1141",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:5",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:5:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:5",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:5",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:5:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:5:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:5",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "skipped",
+        "output_ref": "task:307",
+        "skipped_reason": "no_free_slot",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:308",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 6,
+    "cluster_id": 6,
+    "channel_id": "future",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 6,
+    "brief_id": 6,
+    "asset_id": 6,
+    "episode_id": 5,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:6:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:arxiv:2601.88001",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:6",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:6:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:6",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:6",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:6:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:6:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:6",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:5",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:309",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 7,
+    "cluster_id": 7,
+    "channel_id": "homelab",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 7,
+    "brief_id": 7,
+    "asset_id": 7,
+    "episode_id": 6,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:7:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:repo:acme/nas:1.4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:7",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:7:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:7",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:7",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:7:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:7:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:7",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:6",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:310",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 8,
+    "cluster_id": 8,
+    "channel_id": "homelab",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 8,
+    "brief_id": 8,
+    "asset_id": 8,
+    "episode_id": null,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:8:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:f76c1742de567ecd5fc60ab3",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:8",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:8:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:8",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:8",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:8:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:8:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:8",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "skipped",
+        "output_ref": "task:311",
+        "skipped_reason": "no_free_slot",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:312",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 9,
+    "cluster_id": 9,
+    "channel_id": "infra",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 9,
+    "brief_id": 9,
+    "asset_id": 9,
+    "episode_id": 7,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:9:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:36f7588abc598f1daaaabe84",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:9",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:9:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:9",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:9",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:9:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:9:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:9",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:7",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:313",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 10,
+    "cluster_id": 10,
+    "channel_id": "cyber",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 10,
+    "brief_id": 10,
+    "asset_id": 10,
+    "episode_id": 8,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:10:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:cve:CVE-2026-880099",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:10",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:10:score:82",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:10",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:10",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:10:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:10:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:10",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:8",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:314",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 11,
+    "cluster_id": 11,
+    "channel_id": "future",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 11,
+    "brief_id": 11,
+    "asset_id": 11,
+    "episode_id": 9,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:11:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:4c917b290a17356f9523a062",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:11",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:11:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:11",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:11",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:11:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:11:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:11",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:9",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:315",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 12,
+    "cluster_id": 12,
+    "channel_id": "github",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 12,
+    "brief_id": 12,
+    "asset_id": 12,
+    "episode_id": 10,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:12:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:repo:acme/lab-runner:v2.0",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:12",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:12:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:12",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:12",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:12:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:12:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:12",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:10",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:316",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 13,
+    "cluster_id": 13,
+    "channel_id": "future",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 13,
+    "brief_id": 13,
+    "asset_id": 13,
+    "episode_id": 11,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:13:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:5ab969d8bcb6747eaead89e7",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:13",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:13:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:13",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:13",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:13:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:13:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:13",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:11",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:317",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 14,
+    "cluster_id": 14,
+    "channel_id": "cyber",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 14,
+    "brief_id": 14,
+    "asset_id": 14,
+    "episode_id": 12,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:14:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:cve:CVE-2026-880002",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:14",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:14:score:82",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:14",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:14",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:14:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:14:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:14",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:12",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:318",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 15,
+    "cluster_id": 15,
+    "channel_id": "homelab",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 15,
+    "brief_id": 15,
+    "asset_id": 15,
+    "episode_id": 13,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:15:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:e92b3040390aeb76cf7ef1c7",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:15",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:15:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:15",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:15",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:15:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:15:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:15",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:13",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:319",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 16,
+    "cluster_id": 16,
+    "channel_id": "dev",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 17,
+    "brief_id": 17,
+    "asset_id": 16,
+    "episode_id": 14,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:16:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:arxiv:2601.88002",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:16",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:16:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:16",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:17",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:17:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:17:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:16",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:14",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:320",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 17,
+    "cluster_id": 17,
+    "channel_id": "dev",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 16,
+    "brief_id": 16,
+    "asset_id": 17,
+    "episode_id": null,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:17:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:3e60600d8a5f175372e8a498",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:17",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:17:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:17",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:16",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:16:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:16:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:17",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "skipped",
+        "output_ref": "task:321",
+        "skipped_reason": "no_free_slot",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:322",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 18,
+    "cluster_id": 18,
+    "channel_id": "ai_news",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 19,
+    "brief_id": 19,
+    "asset_id": 18,
+    "episode_id": 15,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:18:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:b04f6e8729bf5396cd1263f4",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:18",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:18:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:18",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:19",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:19:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:19:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:18",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:15",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:475",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 19,
+    "cluster_id": 19,
+    "channel_id": "ai_news",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 18,
+    "brief_id": 18,
+    "asset_id": 19,
+    "episode_id": null,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:19:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:7ead5de724b6f2aec625700a",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:19",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:19:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:19",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:18",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:18:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:18:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:19",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "skipped",
+        "output_ref": "task:476",
+        "skipped_reason": "no_free_slot",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:477",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 20,
+    "cluster_id": 20,
+    "channel_id": "dev",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 20,
+    "brief_id": 20,
+    "asset_id": 20,
+    "episode_id": 16,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:20:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:cd8cf85f6059325ab22ec0ba",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:20",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:20:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:20",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:20",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:20:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:20:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:20",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:16",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:478",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 21,
+    "cluster_id": 21,
+    "channel_id": "ai_tools",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 21,
+    "brief_id": 21,
+    "asset_id": 21,
+    "episode_id": 17,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:21:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:7878d81d48236c77de416cb1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:21",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:21:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:21",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:21",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:21:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:21:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:21",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:17",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:479",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 22,
+    "cluster_id": 22,
+    "channel_id": "infra",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 23,
+    "brief_id": 23,
+    "asset_id": 22,
+    "episode_id": 18,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:22:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:9b7122236f54fda6159f95a9",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:22",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:22:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:22",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:23",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:23:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:23:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:22",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:18",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:480",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 23,
+    "cluster_id": 23,
+    "channel_id": "cyber",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 22,
+    "brief_id": 22,
+    "asset_id": 23,
+    "episode_id": 19,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:23:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:298a9fa02c92ef70191fa579",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:23",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:23:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:23",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:22",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:22:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:22:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:23",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:19",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:481",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 24,
+    "cluster_id": 24,
+    "channel_id": "homelab",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 24,
+    "brief_id": 24,
+    "asset_id": 24,
+    "episode_id": 20,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:24:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:a7db245f5e0ea12cee318885",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:24",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:24:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:24",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:24",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:24:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:24:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:24",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:20",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:482",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 25,
+    "cluster_id": 25,
+    "channel_id": "homelab",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 25,
+    "brief_id": 25,
+    "asset_id": 25,
+    "episode_id": null,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:25:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:c89dd42de63b9b53a510c15d",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:25",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:25:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:25",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:25",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:25:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:25:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:25",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "skipped",
+        "output_ref": "task:483",
+        "skipped_reason": "no_free_slot",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:484",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 26,
+    "cluster_id": 26,
+    "channel_id": "dev",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 26,
+    "brief_id": 26,
+    "asset_id": 26,
+    "episode_id": 21,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:26:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:c1e2a6b0aa7f112599e38e88",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:26",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:26:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:26",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:26",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:26:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:26:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:26",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:21",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:485",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 27,
+    "cluster_id": 27,
+    "channel_id": "future",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 27,
+    "brief_id": 27,
+    "asset_id": 27,
+    "episode_id": 22,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:27:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:bec667edd846682e4d6dc90c",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:27",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:27:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:27",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:27",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:27:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:27:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:27",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:22",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:486",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 28,
+    "cluster_id": 28,
+    "channel_id": "future",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 29,
+    "brief_id": 29,
+    "asset_id": 28,
+    "episode_id": 23,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:28:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:66f6090be1911f97e08420a3",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:28",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:28:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:28",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:29",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:29:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:29:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:28",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:23",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:487",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 29,
+    "cluster_id": 29,
+    "channel_id": "ai_news",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 28,
+    "brief_id": 28,
+    "asset_id": 29,
+    "episode_id": 24,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:29:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:e46d20df01c84e4400ce8e96",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:29",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:29:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:29",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:28",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:28:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:28:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:29",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:24",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:488",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 30,
+    "cluster_id": 30,
+    "channel_id": "ai_news",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 30,
+    "brief_id": 30,
+    "asset_id": 30,
+    "episode_id": 25,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:30:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:cf3870d57736799d5d3290d3",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:30",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:30:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:30",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:30",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:30:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:30:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:30",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:25",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:489",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 31,
+    "cluster_id": 31,
+    "channel_id": "ai_tools",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 31,
+    "brief_id": 31,
+    "asset_id": 31,
+    "episode_id": 26,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:31:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:57bbcf5b8945b01f09227127",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:31",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:31:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:31",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:31",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:31:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:31:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:31",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:26",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:490",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 32,
+    "cluster_id": 32,
+    "channel_id": "ai_tools",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 32,
+    "brief_id": 32,
+    "asset_id": 32,
+    "episode_id": 27,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:32:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:ecc2043d3676bfe064343386",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:32",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:32:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:32",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:32",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:32:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:32:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:32",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:27",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:491",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 33,
+    "cluster_id": 33,
+    "channel_id": "github",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 33,
+    "brief_id": 33,
+    "asset_id": 33,
+    "episode_id": 28,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:33:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:3b2d08da81f5f8e612c64079",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:33",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:33:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:33",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:33",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:33:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:33:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:33",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:28",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:492",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 34,
+    "cluster_id": 34,
+    "channel_id": "github",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 35,
+    "brief_id": 35,
+    "asset_id": 34,
+    "episode_id": 29,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:34:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:c62b07e813e3ae8344085b09",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:34",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:34:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:34",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:35",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:35:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:35:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:34",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:29",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:493",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 35,
+    "cluster_id": 35,
+    "channel_id": "cyber",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 34,
+    "brief_id": 34,
+    "asset_id": 35,
+    "episode_id": 30,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:35:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:bffcd0749362c19e087084f0",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:35",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:35:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:35",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:34",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:34:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:34:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:35",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:30",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:494",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 36,
+    "cluster_id": 36,
+    "channel_id": "cyber",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 36,
+    "brief_id": 36,
+    "asset_id": 36,
+    "episode_id": 31,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:36:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:6788e1eff6ff540960c5349d",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:36",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:36:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:36",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:36",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:36:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:36:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:36",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:31",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:495",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 37,
+    "cluster_id": 37,
+    "channel_id": "dev",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 37,
+    "brief_id": 37,
+    "asset_id": 37,
+    "episode_id": 32,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:37:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:b9334e0f12b83dec198adfe9",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:37",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:37:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:37",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:37",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:37:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:37:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:37",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:32",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:496",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 38,
+    "cluster_id": 38,
+    "channel_id": "infra",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 38,
+    "brief_id": 38,
+    "asset_id": 38,
+    "episode_id": 33,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:38:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:96dff65f47f1c867c06a9de8",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:38",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:38:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:38",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:38",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:38:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:38:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:38",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:33",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:497",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 39,
+    "cluster_id": 39,
+    "channel_id": "homelab",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 39,
+    "brief_id": 39,
+    "asset_id": 39,
+    "episode_id": 34,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:39:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:c7a35865119cf9856bd1825e",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:39",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:39:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:39",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:39",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:39:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:39:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:39",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:34",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:498",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 40,
+    "cluster_id": 40,
+    "channel_id": "infra",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 40,
+    "brief_id": 40,
+    "asset_id": 40,
+    "episode_id": 35,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:40:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:c20269c6b862a3f643ab3710",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:40",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:40:score:74",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:40",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:40",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:40:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:40:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:40",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:35",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:499",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 41,
+    "cluster_id": 41,
+    "channel_id": "dev",
+    "stage": "approval_requested",
+    "status": "waiting_human",
+    "post_id": 41,
+    "brief_id": 41,
+    "asset_id": 41,
+    "episode_id": 36,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:41:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:a59358fef782eee2e369cb95",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:41",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:41:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:41",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:41",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:41:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:41:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:41",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:36",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:500",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  },
+  {
+    "run_id": 42,
+    "cluster_id": 42,
+    "channel_id": "homelab",
+    "stage": "approval_requested",
+    "status": "paused",
+    "post_id": 42,
+    "brief_id": 42,
+    "asset_id": 42,
+    "episode_id": 37,
+    "editorial_ready": true,
+    "ready_for_delivery": false,
+    "delivery_allowed": false,
+    "lab_run_id": 1,
+    "steps": [
+      {
+        "stage": "source_received",
+        "status": "done",
+        "output_ref": "cluster:42:members:1",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "normalized",
+        "status": "done",
+        "output_ref": "key:url:f50b38140fd2e96762af7a64",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "clustered",
+        "status": "done",
+        "output_ref": "cluster:42",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "ranked",
+        "status": "done",
+        "output_ref": "cluster:42:score:78",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "researched",
+        "status": "done",
+        "output_ref": "dossier:42",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "brief_ready",
+        "status": "skipped",
+        "output_ref": "brief:42",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "variants_ready",
+        "status": "skipped",
+        "output_ref": "post:42:variants:3",
+        "skipped_reason": "already_satisfied",
+        "error_class": ""
+      },
+      {
+        "stage": "fact_checked",
+        "status": "done",
+        "output_ref": "post:42:quality",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "asset_rendered",
+        "status": "done",
+        "output_ref": "asset:42",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "slot_proposed",
+        "status": "done",
+        "output_ref": "episode:37",
+        "skipped_reason": "",
+        "error_class": ""
+      },
+      {
+        "stage": "approval_requested",
+        "status": "done",
+        "output_ref": "task:501",
+        "skipped_reason": "",
+        "error_class": ""
+      }
+    ]
+  }
+]

@@ -598,6 +598,50 @@ def lab_export(auth=Depends(require_user), db: Session = Depends(get_db)) -> dic
     return _envelope(export_lab(db), "demo")
 
 
+@router.get("/api/v1/pilot/status")
+def pilot_status_api(auth=Depends(require_user)) -> dict:
+    del auth
+    from app.product.pilot import status as pilot_status
+
+    return _envelope(pilot_status(), "measured")
+
+
+@router.get("/api/v1/workflow/{run_id}/lineage")
+def workflow_lineage_api(run_id: int, auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
+    del auth
+    run = db.get(WorkflowRun, run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="run missing")
+    from app.product.workflow import lineage
+
+    return _envelope(lineage(db, run), "demo")
+
+
+@router.post("/api/v1/llm/self-test")
+def llm_self_test(user=Depends(require_roles("OWNER"))) -> dict:
+    del user
+    from app.product.llm_contract import generate
+
+    result = generate(
+        mode="local",
+        role="editor",
+        channel_id="dev",
+        format_id="breaking_news",
+        title="self-test",
+        fact="учебный факт",
+        url="https://example.com/self-test",
+    )
+    return _envelope(
+        {
+            "attempted": result.local_attempted,
+            "error": result.error or "blocked_by_policy",
+            "fallback_mode": result.fallback_mode,
+            "ok": False,
+        },
+        "measured",
+    )
+
+
 @router.get("/api/v1/autopilot")
 def autopilot(auth=Depends(require_user), db: Session = Depends(get_db)) -> dict:
     del auth

@@ -26,6 +26,7 @@ from app.core.models import (
     MediaAsset,
     Post,
     PostVersion,
+    PublishingOutbox,
     RankedCandidate,
     RateCard,
     RuntimeSetting,
@@ -38,6 +39,7 @@ from app.core.models import (
     StoryEvidence,
     User,
     WorkflowRun,
+    WorkflowStep,
 )
 from app.core.timeutil import ensure_utc, utcnow
 from app.media.renderer import STUDIO_PURPOSES, write_studio_pack_v3
@@ -146,9 +148,14 @@ def overview(request: Request):
         cards = []
         waiting_total = 0
         queued_total = 0
+        proposed_total = db.query(Episode).filter(Episode.status.in_(("proposed", "idea"))).count()
+        outbox_queued = db.query(PublishingOutbox).filter(PublishingOutbox.state.in_(("scheduled", "sending"))).count()
         for channel in db.query(Channel).order_by(Channel.id).all():
             waiting = db.query(Post).filter_by(channel_id=channel.id, review_status="NEEDS_REVIEW").count()
-            queued = db.query(Post).filter_by(channel_id=channel.id, review_status="SCHEDULED").count()
+            queued = db.query(PublishingOutbox).filter(
+                PublishingOutbox.channel_id == channel.id,
+                PublishingOutbox.state.in_(("scheduled", "sending")),
+            ).count()
             themes = db.query(StoryCluster).filter_by(primary_channel_id=channel.id).count()
             fresh = db.query(StoryCluster).filter_by(primary_channel_id=channel.id, list_name="hot").count()
             covered_days = {
@@ -173,17 +180,20 @@ def overview(request: Request):
                     "free_slots": max(0, 28 - len(covered_days)),
                     "promise": profile.promise if profile else channel.voice,
                     "audience": profile.audience if profile else channel.voice,
+                    "proposed": db.query(Episode).filter_by(channel_id=channel.id, status="proposed").count(),
                 }
             )
         collisions = sum(
             1 for ranked in db.query(RankedCandidate) if (ranked.penalties_json or {}).get("duplicate_across_network")
         )
+        fresh_events = db.query(StoryCluster).filter(StoryCluster.list_name.in_(("hot", "review"))).order_by(StoryCluster.id.desc()).limit(5).all()
+        tasks = db.query(EditorialTask).filter_by(status="open").order_by(EditorialTask.id.desc()).limit(5).all()
         return templates.TemplateResponse(
             request,
             "overview.html",
             {
                 "request": request,
-                "title": "Каналы",
+                "title": "Моя смена",
                 "nav": "overview",
                 "policy": policy,
                 "csrf": row.csrf_token,
@@ -191,7 +201,11 @@ def overview(request: Request):
                 "user": user,
                 "waiting_total": waiting_total,
                 "queued_total": queued_total,
+                "proposed_total": proposed_total,
+                "outbox_queued": outbox_queued,
                 "collisions": collisions,
+                "fresh_events": fresh_events,
+                "shift_tasks": tasks,
             },
         )
     finally:
@@ -638,6 +652,9 @@ def system(request: Request):
             f"<li>{html.escape(item.key)}: {'включён в интерфейсе' if (item.value_json or {}).get('value') else 'выключен'}</li>"
             for item in flags
         )
+        from app.product.pilot import status as pilot_status
+
+        matrix = pilot_status()
         body = (
             "<ul><li><a href=\"/api/v1/export/config.json\">Конфигурация JSON</a></li>"
             "<li><a href=\"/api/v1/export/audit.csv\">Аудит CSV</a></li>"
@@ -645,6 +662,7 @@ def system(request: Request):
             f"<ul>{flag_lines}</ul>"
             "<p>Флаги интерфейса не включают сеть и не включают отправку. Секреты в выгрузку не входят.</p>"
             "<p>Рекламный контур остаётся выключенным. Запрос на включение отклоняется.</p>"
+            f"<p>Пилот: {html.escape(matrix['active'])}. Telegram send = {matrix['telegram_send']}. Production ready = нет.</p>"
         )
         note = ""
         if user.role == "OWNER":
@@ -861,9 +879,10 @@ def quality_page(request: Request):
 def radar_merge_form(
     request: Request,
     csrf_token: str = Form(),
-    source_id: int = Form(),
-    target_id: int = Form(),
+    source_id: int = Form(default=0),
+    target_id: int = Form(default=0),
     reason: str = Form(),
+    cluster_ids: list[int] = Form(default=[]),
 ):
     opened = _review_actor(request)
     if opened is None:
@@ -872,7 +891,13 @@ def radar_merge_form(
     try:
         if csrf_token != row.csrf_token or user.role not in {"OWNER", "EDITOR"}:
             return RedirectResponse("/radar", status_code=303)
-        merge_into(db, source_id, target_id, user.username, reason)
+        selected = [item for item in cluster_ids if item]
+        if len(selected) >= 2:
+            target, *rest = selected
+            for source in rest:
+                merge_into(db, source, target, user.username, reason)
+        elif source_id and target_id:
+            merge_into(db, source_id, target_id, user.username, reason)
         db.commit()
     except ValueError:
         db.rollback()
@@ -1056,6 +1081,40 @@ def autopilot_page(request: Request):
         db.close()
 
 
+@router.get("/autopilot/{run_id}", response_class=HTMLResponse)
+def autopilot_lineage(request: Request, run_id: int):
+    db = _db(request)
+    try:
+        ctx = _context(request, db)
+        if ctx is None:
+            return RedirectResponse("/login", status_code=303)
+        user, row, policy = ctx
+        run = db.get(WorkflowRun, run_id)
+        if run is None:
+            raise HTTPException(status_code=404, detail="not found")
+        from app.product.workflow import lineage as workflow_lineage
+
+        trail = workflow_lineage(db, run)
+        steps = db.query(WorkflowStep).filter_by(run_id=run.id).order_by(WorkflowStep.id).all()
+        return templates.TemplateResponse(
+            request,
+            "lineage.html",
+            {
+                "request": request,
+                "title": f"Конвейер {run.id}",
+                "nav": "autopilot",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "run": run,
+                "trail": trail,
+                "steps": steps,
+            },
+        )
+    finally:
+        db.close()
+
+
 @router.post("/autopilot/pause")
 def autopilot_pause_form(request: Request, csrf_token: str = Form(), run_id: int = Form()):
     opened = _review_actor(request)
@@ -1195,7 +1254,7 @@ def lab_load_form(request: Request, csrf_token: str = Form()):
         if csrf_token == row.csrf_token and user.role == "OWNER":
             from app.product.lab import load_lab
 
-            load_lab(db, through_day=30, actor=user.username)
+            load_lab(db, through_day=30, actor=user.username, mode="historical-small")
     finally:
         db.close()
     return RedirectResponse("/lab", status_code=303)
@@ -1217,7 +1276,7 @@ def shift_page(request: Request):
             "shift.html",
             {
                 "request": request,
-                "title": "Утренняя смена",
+                "title": "Моя смена",
                 "nav": "overview",
                 "policy": policy,
                 "csrf": row.csrf_token,

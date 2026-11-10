@@ -89,12 +89,15 @@ def build_variant(channel_id: str, angle: str, title: str, fact: str, url: str, 
     return payload
 
 
-def materialise_desk(session: Session, *, per_channel: int = 3) -> int:
+def materialise_desk(session: Session, *, per_channel: int = 3, lab_run_id: int | None = None) -> int:
     """Create synthetic review posts for the strongest primary cluster of each channel."""
     made = 0
-    channels = sorted({row.primary_channel_id for row in session.query(StoryCluster) if row.primary_channel_id})
+    query = session.query(StoryCluster)
+    if lab_run_id is not None:
+        query = query.filter_by(lab_run_id=lab_run_id)
+    channels = sorted({row.primary_channel_id for row in query if row.primary_channel_id})
     for channel_id in channels:
-        ranked = (
+        ranked_query = (
             session.query(RankedCandidate)
             .join(StoryCluster, StoryCluster.id == RankedCandidate.cluster_id)
             .filter(
@@ -102,15 +105,22 @@ def materialise_desk(session: Session, *, per_channel: int = 3) -> int:
                 RankedCandidate.model_version == MODEL,
                 StoryCluster.primary_channel_id == channel_id,
             )
-            .order_by(RankedCandidate.rank_score.desc(), RankedCandidate.id)
-            .all()
         )
-        taken = session.query(Post).filter_by(channel_id=channel_id).count()
+        if lab_run_id is not None:
+            ranked_query = ranked_query.filter(StoryCluster.lab_run_id == lab_run_id)
+        ranked = ranked_query.order_by(RankedCandidate.rank_score.desc(), RankedCandidate.id).all()
+        posts = session.query(Post).filter_by(channel_id=channel_id)
+        if lab_run_id is not None:
+            posts = posts.filter_by(lab_run_id=lab_run_id)
+        taken = posts.count()
         if taken >= per_channel:
             continue
         for story in _priority_stories(session, channel_id):
             if taken >= per_channel:
                 break
+            owner = session.query(StoryCluster).filter_by(cluster_key=story.cluster_id).one_or_none()
+            if lab_run_id is not None and (owner is None or owner.lab_run_id != lab_run_id):
+                continue
             if session.query(Post).filter_by(story_id=story.id, channel_id=channel_id).first():
                 continue
             _create_post(session, story, channel_id, angle=ANGLES[taken % len(ANGLES)])
@@ -120,6 +130,8 @@ def materialise_desk(session: Session, *, per_channel: int = 3) -> int:
             if taken >= per_channel:
                 break
             cluster = session.get(StoryCluster, candidate.cluster_id)
+            if lab_run_id is not None and (cluster is None or cluster.lab_run_id != lab_run_id):
+                continue
             ranked_story = _primary_story(session, cluster) if cluster else None
             if ranked_story is None:
                 continue
@@ -172,6 +184,7 @@ def _create_post(session: Session, story: Story, channel_id: str, angle: str = "
     security = channel_id == "cyber" or story.content_kind == "advisory"
     caption = build_caption(news["title"], news["body"], [url] if url else [], ["#demo"])
     digest = hashlib.sha256(f"{channel_id}|1|{news['title']}|{news['body']}".encode()).hexdigest()
+    cluster = session.query(StoryCluster).filter_by(cluster_key=story.cluster_id).one_or_none()
     post = Post(
         story_id=story.id,
         channel_id=channel_id,
@@ -196,6 +209,7 @@ def _create_post(session: Session, story: Story, channel_id: str, angle: str = "
         angle_id=angle,
         text_hash=digest,
         data_mode="demo",
+        lab_run_id=cluster.lab_run_id if cluster is not None else None,
     )
     session.add(post)
     session.flush()
@@ -231,6 +245,27 @@ def _create_post(session: Session, story: Story, channel_id: str, angle: str = "
     post.quality_json = quality_gate(session, post, story)
     _store_brief(session, post, story, fact, url)
     return post
+
+
+def ensure_post_for_cluster(session: Session, cluster: StoryCluster, channel_id: str, *, angle: str = "news") -> Post | None:
+    """Bind a post to this cluster's primary story. Never steal another cluster's last post."""
+    from app.core.models import ClusterMember
+
+    member = (
+        session.query(ClusterMember)
+        .filter_by(cluster_id=cluster.id, relation="member")
+        .order_by(ClusterMember.id)
+        .first()
+    )
+    if member is None or member.story_id is None:
+        return None
+    existing = session.query(Post).filter_by(story_id=member.story_id, channel_id=channel_id).order_by(Post.id).first()
+    if existing is not None:
+        return existing
+    story = session.get(Story, member.story_id)
+    if story is None:
+        return None
+    return _create_post(session, story, channel_id, angle=angle)
 
 
 def create_angles(session: Session, post: Post, actor: str = "editor") -> list[dict]:
@@ -290,6 +325,7 @@ def _store_brief(session: Session, post: Post, story: Story, fact: str, url: str
         prompt_version=PROMPT_VERSION,
         notes="учебный brief DEMO",
         actor="desk",
+        lab_run_id=cluster.lab_run_id,
     )
     session.add(brief)
     session.flush()

@@ -1,0 +1,2023 @@
+{
+  "clusters": 42,
+  "source_items": 50,
+  "snapshots": 50,
+  "posts": 42,
+  "episodes": 37,
+  "daily_snapshots": 30,
+  "channels": {
+    "ai_news": {
+      "clusters": 5,
+      "posts": 5,
+      "episodes": 4
+    },
+    "ai_tools": {
+      "clusters": 4,
+      "posts": 4,
+      "episodes": 4
+    },
+    "github": {
+      "clusters": 5,
+      "posts": 5,
+      "episodes": 4
+    },
+    "cyber": {
+      "clusters": 6,
+      "posts": 6,
+      "episodes": 6
+    },
+    "infra": {
+      "clusters": 4,
+      "posts": 4,
+      "episodes": 4
+    },
+    "homelab": {
+      "clusters": 7,
+      "posts": 7,
+      "episodes": 5
+    },
+    "dev": {
+      "clusters": 6,
+      "posts": 6,
+      "episodes": 5
+    },
+    "future": {
+      "clusters": 5,
+      "posts": 5,
+      "episodes": 5
+    }
+  },
+  "lab_run_id": 1,
+  "mode": "historical-small",
+  "current_day": 30,
+  "telegram_send": 0,
+  "published_messages": 0,
+  "days": [
+    {
+      "day": 1,
+      "as_of": "2026-10-12T09:00:00+03:00",
+      "imported": 3,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        1,
+        2
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 302,
+      "clusters": 2,
+      "source_items": 3,
+      "snapshots": 3,
+      "posts": 2,
+      "episodes": 2,
+      "daily_snapshots": 0,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "github": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "cyber": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "infra": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "homelab": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 2,
+      "as_of": "2026-10-13T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        1,
+        3
+      ],
+      "posts_made": 1,
+      "workflows_started": 1,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 3,
+      "source_items": 5,
+      "snapshots": 5,
+      "posts": 3,
+      "episodes": 3,
+      "daily_snapshots": 1,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "cyber": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "infra": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "homelab": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 3,
+      "as_of": "2026-10-14T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        4,
+        5
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 5,
+      "source_items": 7,
+      "snapshots": 7,
+      "posts": 5,
+      "episodes": 4,
+      "daily_snapshots": 2,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "cyber": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "infra": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "homelab": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 4,
+      "as_of": "2026-10-15T09:00:00+03:00",
+      "imported": 1,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        6
+      ],
+      "posts_made": 1,
+      "workflows_started": 1,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 6,
+      "source_items": 8,
+      "snapshots": 8,
+      "posts": 6,
+      "episodes": 5,
+      "daily_snapshots": 3,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "cyber": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "infra": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "homelab": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 5,
+      "as_of": "2026-10-16T09:00:00+03:00",
+      "imported": 1,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        1
+      ],
+      "posts_made": 0,
+      "workflows_started": 0,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 6,
+      "source_items": 9,
+      "snapshots": 9,
+      "posts": 6,
+      "episodes": 5,
+      "daily_snapshots": 4,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "cyber": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "infra": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "homelab": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 6,
+      "as_of": "2026-10-17T09:00:00+03:00",
+      "imported": 3,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        7,
+        8,
+        9
+      ],
+      "posts_made": 3,
+      "workflows_started": 3,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 9,
+      "source_items": 12,
+      "snapshots": 12,
+      "posts": 9,
+      "episodes": 7,
+      "daily_snapshots": 5,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "cyber": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 7,
+      "as_of": "2026-10-18T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        10,
+        11
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 11,
+      "source_items": 14,
+      "snapshots": 14,
+      "posts": 11,
+      "episodes": 9,
+      "daily_snapshots": 6,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "cyber": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 8,
+      "as_of": "2026-10-19T09:00:00+03:00",
+      "imported": 1,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        1
+      ],
+      "posts_made": 0,
+      "workflows_started": 0,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 11,
+      "source_items": 15,
+      "snapshots": 15,
+      "posts": 11,
+      "episodes": 9,
+      "daily_snapshots": 7,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "cyber": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 9,
+      "as_of": "2026-10-20T09:00:00+03:00",
+      "imported": 1,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        3
+      ],
+      "posts_made": 0,
+      "workflows_started": 0,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 11,
+      "source_items": 16,
+      "snapshots": 16,
+      "posts": 11,
+      "episodes": 9,
+      "daily_snapshots": 8,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "cyber": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 10,
+      "as_of": "2026-10-21T09:00:00+03:00",
+      "imported": 1,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        12
+      ],
+      "posts_made": 1,
+      "workflows_started": 1,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 12,
+      "source_items": 17,
+      "snapshots": 17,
+      "posts": 12,
+      "episodes": 10,
+      "daily_snapshots": 9,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 11,
+      "as_of": "2026-10-22T09:00:00+03:00",
+      "imported": 1,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        13
+      ],
+      "posts_made": 1,
+      "workflows_started": 1,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 13,
+      "source_items": 18,
+      "snapshots": 18,
+      "posts": 13,
+      "episodes": 11,
+      "daily_snapshots": 10,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 12,
+      "as_of": "2026-10-23T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        4,
+        5
+      ],
+      "posts_made": 0,
+      "workflows_started": 0,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 13,
+      "source_items": 20,
+      "snapshots": 20,
+      "posts": 13,
+      "episodes": 11,
+      "daily_snapshots": 11,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 13,
+      "as_of": "2026-10-24T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        14,
+        15
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 15,
+      "source_items": 22,
+      "snapshots": 22,
+      "posts": 15,
+      "episodes": 13,
+      "daily_snapshots": 12,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "dev": {
+          "clusters": 0,
+          "posts": 0,
+          "episodes": 0
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 14,
+      "as_of": "2026-10-25T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        16,
+        17
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 17,
+      "source_items": 24,
+      "snapshots": 24,
+      "posts": 17,
+      "episodes": 14,
+      "daily_snapshots": 13,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "dev": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 15,
+      "as_of": "2026-10-26T09:00:00+03:00",
+      "imported": 1,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        3
+      ],
+      "posts_made": 0,
+      "workflows_started": 0,
+      "proposed_created": 0,
+      "proposed_skipped": 304,
+      "clusters": 17,
+      "source_items": 25,
+      "snapshots": 25,
+      "posts": 17,
+      "episodes": 14,
+      "daily_snapshots": 14,
+      "channels": {
+        "ai_news": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "dev": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 1
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 16,
+      "as_of": "2026-10-27T09:00:00+03:00",
+      "imported": 3,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        18,
+        19,
+        20
+      ],
+      "posts_made": 3,
+      "workflows_started": 3,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 20,
+      "source_items": 28,
+      "snapshots": 28,
+      "posts": 20,
+      "episodes": 16,
+      "daily_snapshots": 15,
+      "channels": {
+        "ai_news": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "ai_tools": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        },
+        "infra": {
+          "clusters": 1,
+          "posts": 1,
+          "episodes": 1
+        },
+        "homelab": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "dev": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 17,
+      "as_of": "2026-10-28T09:00:00+03:00",
+      "imported": 3,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        21,
+        22,
+        23
+      ],
+      "posts_made": 3,
+      "workflows_started": 3,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 23,
+      "source_items": 31,
+      "snapshots": 31,
+      "posts": 23,
+      "episodes": 19,
+      "daily_snapshots": 16,
+      "channels": {
+        "ai_news": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "ai_tools": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "dev": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 18,
+      "as_of": "2026-10-29T09:00:00+03:00",
+      "imported": 0,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [],
+      "posts_made": 0,
+      "workflows_started": 0,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 23,
+      "source_items": 31,
+      "snapshots": 31,
+      "posts": 23,
+      "episodes": 19,
+      "daily_snapshots": 17,
+      "channels": {
+        "ai_news": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "ai_tools": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "dev": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 19,
+      "as_of": "2026-10-30T09:00:00+03:00",
+      "imported": 0,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [],
+      "posts_made": 0,
+      "workflows_started": 0,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 23,
+      "source_items": 31,
+      "snapshots": 31,
+      "posts": 23,
+      "episodes": 19,
+      "daily_snapshots": 18,
+      "channels": {
+        "ai_news": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "ai_tools": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "dev": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 20,
+      "as_of": "2026-10-31T09:00:00+03:00",
+      "imported": 0,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [],
+      "posts_made": 0,
+      "workflows_started": 0,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 23,
+      "source_items": 31,
+      "snapshots": 31,
+      "posts": 23,
+      "episodes": 19,
+      "daily_snapshots": 19,
+      "channels": {
+        "ai_news": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "ai_tools": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "dev": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 21,
+      "as_of": "2026-11-01T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        24,
+        25
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 25,
+      "source_items": 33,
+      "snapshots": 33,
+      "posts": 25,
+      "episodes": 20,
+      "daily_snapshots": 20,
+      "channels": {
+        "ai_news": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "ai_tools": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 3
+        },
+        "dev": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "future": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 22,
+      "as_of": "2026-11-02T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        26,
+        27
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 27,
+      "source_items": 35,
+      "snapshots": 35,
+      "posts": 27,
+      "episodes": 22,
+      "daily_snapshots": 21,
+      "channels": {
+        "ai_news": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "ai_tools": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 3
+        },
+        "dev": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 3
+        },
+        "future": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 23,
+      "as_of": "2026-11-03T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        28,
+        29
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 29,
+      "source_items": 37,
+      "snapshots": 37,
+      "posts": 29,
+      "episodes": 24,
+      "daily_snapshots": 22,
+      "channels": {
+        "ai_news": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 3
+        },
+        "ai_tools": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 3
+        },
+        "dev": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 3
+        },
+        "future": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 5
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 24,
+      "as_of": "2026-11-04T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        30,
+        31
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 31,
+      "source_items": 39,
+      "snapshots": 39,
+      "posts": 31,
+      "episodes": 26,
+      "daily_snapshots": 23,
+      "channels": {
+        "ai_news": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "ai_tools": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        },
+        "github": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 2
+        },
+        "cyber": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 3
+        },
+        "dev": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 3
+        },
+        "future": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 5
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 25,
+      "as_of": "2026-11-05T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        32,
+        33
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 33,
+      "source_items": 41,
+      "snapshots": 41,
+      "posts": 33,
+      "episodes": 28,
+      "daily_snapshots": 24,
+      "channels": {
+        "ai_news": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "ai_tools": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "github": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 3
+        },
+        "cyber": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 3
+        },
+        "dev": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 3
+        },
+        "future": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 5
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 26,
+      "as_of": "2026-11-06T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        34,
+        35
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 35,
+      "source_items": 43,
+      "snapshots": 43,
+      "posts": 35,
+      "episodes": 30,
+      "daily_snapshots": 25,
+      "channels": {
+        "ai_news": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "ai_tools": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "github": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "cyber": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 5
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 3
+        },
+        "dev": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 3
+        },
+        "future": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 5
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 27,
+      "as_of": "2026-11-07T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        36,
+        37
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 37,
+      "source_items": 45,
+      "snapshots": 45,
+      "posts": 37,
+      "episodes": 32,
+      "daily_snapshots": 26,
+      "channels": {
+        "ai_news": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "ai_tools": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "github": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "cyber": {
+          "clusters": 6,
+          "posts": 6,
+          "episodes": 6
+        },
+        "infra": {
+          "clusters": 2,
+          "posts": 2,
+          "episodes": 2
+        },
+        "homelab": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 3
+        },
+        "dev": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "future": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 5
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 28,
+      "as_of": "2026-11-08T09:00:00+03:00",
+      "imported": 1,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        38
+      ],
+      "posts_made": 1,
+      "workflows_started": 1,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 38,
+      "source_items": 46,
+      "snapshots": 46,
+      "posts": 38,
+      "episodes": 33,
+      "daily_snapshots": 27,
+      "channels": {
+        "ai_news": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "ai_tools": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "github": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "cyber": {
+          "clusters": 6,
+          "posts": 6,
+          "episodes": 6
+        },
+        "infra": {
+          "clusters": 3,
+          "posts": 3,
+          "episodes": 3
+        },
+        "homelab": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 3
+        },
+        "dev": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "future": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 5
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 29,
+      "as_of": "2026-11-09T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        39,
+        40
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 0,
+      "clusters": 40,
+      "source_items": 48,
+      "snapshots": 48,
+      "posts": 40,
+      "episodes": 35,
+      "daily_snapshots": 28,
+      "channels": {
+        "ai_news": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "ai_tools": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "github": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "cyber": {
+          "clusters": 6,
+          "posts": 6,
+          "episodes": 6
+        },
+        "infra": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "homelab": {
+          "clusters": 6,
+          "posts": 6,
+          "episodes": 4
+        },
+        "dev": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "future": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 5
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    },
+    {
+      "day": 30,
+      "as_of": "2026-11-10T09:00:00+03:00",
+      "imported": 2,
+      "duplicates": 0,
+      "updates": 0,
+      "skipped_future": 0,
+      "cluster_ids_touched": [
+        41,
+        42
+      ],
+      "posts_made": 2,
+      "workflows_started": 2,
+      "proposed_created": 0,
+      "proposed_skipped": 303,
+      "clusters": 42,
+      "source_items": 50,
+      "snapshots": 50,
+      "posts": 42,
+      "episodes": 37,
+      "daily_snapshots": 29,
+      "channels": {
+        "ai_news": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "ai_tools": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "github": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 4
+        },
+        "cyber": {
+          "clusters": 6,
+          "posts": 6,
+          "episodes": 6
+        },
+        "infra": {
+          "clusters": 4,
+          "posts": 4,
+          "episodes": 4
+        },
+        "homelab": {
+          "clusters": 7,
+          "posts": 7,
+          "episodes": 5
+        },
+        "dev": {
+          "clusters": 6,
+          "posts": 6,
+          "episodes": 5
+        },
+        "future": {
+          "clusters": 5,
+          "posts": 5,
+          "episodes": 5
+        }
+      },
+      "published_messages": 0,
+      "telegram_send": 0
+    }
+  ]
+}

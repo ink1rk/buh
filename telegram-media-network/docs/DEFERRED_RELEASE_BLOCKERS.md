@@ -16,6 +16,6 @@
 
 ## Откат схемы
 
-`alembic downgrade` для `0004_global_product` удаляет новые таблицы и колонки `claimed_draft_version`, `claimed_caption`, `ad_campaigns.demo`. Откат `0005_r9_product_foundation` удаляет паспорта, claims, метрики, CRM и новые колонки кластеров/постов/выпусков. Откат `0006_r10_media_os` запрещён кодом (`RuntimeError`): он был бы data-destructive для досье, workflow, лаборатории и коммерческих офферов. Это не безопасный откат, если в них уже есть нужные строки. Старые таблицы `0001`–`0003` downgrade не чистит. Forward-fix: оставить `0006` и чистить строки явно.
+`alembic downgrade` для `0004_global_product` удаляет новые таблицы и колонки `claimed_draft_version`, `claimed_caption`, `ad_campaigns.demo`. Откат `0005_r9_product_foundation` удаляет паспорта, claims, метрики, CRM и новые колонки кластеров/постов/выпусков. Откат `0006_r10_media_os` и `0007_r11_editorial_pilot` запрещён кодом (`RuntimeError`): он был бы data-destructive для досье, workflow, лаборатории, дневных снимков и журнала LLM. Это не безопасный откат, если в них уже есть нужные строки. Старые таблицы `0001`–`0003` downgrade не чистит. Forward-fix: оставить `0007` и чистить строки явно через `purge_lab`.
 
-T17–T20 по-прежнему BLOCKED: Compose, restore drill, live API, local LLM, Telegram sandbox, production. R10 их не подменяет.
+T17–T20 по-прежнему BLOCKED: полный Compose на этой ВМ, restore на контейнерном томе, live API, живой Ollama, Telegram sandbox, production. R11 добавляет изолированный `scripts/r11_backup_restore.py` на отдельную Postgres-базу — это не T18 compose-volume drill.

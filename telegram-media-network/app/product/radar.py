@@ -69,7 +69,13 @@ def import_observations(session: Session, rows: list[dict], now: datetime | None
     created = 0
     duplicates = 0
     updates = 0
+    skipped_future = 0
+    cluster_ids: list[int] = []
     for row in rows:
+        available = _coerce_available(row.get("available_at"))
+        if available is not None and available > moment:
+            skipped_future += 1
+            continue
         _ensure_source(session, row["source_id"])
         digest = hashlib.sha256((row.get("body") or row["external_id"]).encode()).hexdigest()
         existing = (
@@ -118,6 +124,8 @@ def import_observations(session: Session, rows: list[dict], now: datetime | None
                 content_kind=str(row.get("content_kind") or ("cve" if row.get("cve") else "release" if row.get("tag") else "news")),
                 origin_mode=origin_mode,
                 lab_run_id=row.get("lab_run_id"),
+                available_at=available or published,
+                cassette_id=str(row.get("cassette_id") or ""),
             )
             session.add(item)
             session.flush()
@@ -239,10 +247,30 @@ def import_observations(session: Session, rows: list[dict], now: datetime | None
                         actor="radar",
                     )
                 )
+        cluster_ids.append(cluster.id)
     _mark_similar(session)
     rank_open_clusters(session, moment)
     session.commit()
-    return {"created": created, "duplicates": duplicates, "updates": updates, "observations": len(rows)}
+    return {
+        "created": created,
+        "duplicates": duplicates,
+        "updates": updates,
+        "observations": len(rows),
+        "skipped_future": skipped_future,
+        "cluster_ids": sorted(set(cluster_ids)),
+    }
+
+
+def _coerce_available(value: object) -> datetime | None:
+    if value is None or value == "":
+        return None
+    if isinstance(value, datetime):
+        return ensure_utc(value)
+    text = str(value).replace("Z", "+00:00")
+    try:
+        return ensure_utc(datetime.fromisoformat(text))
+    except ValueError:
+        return None
 
 
 def rank_open_clusters(session: Session, now: datetime) -> int:

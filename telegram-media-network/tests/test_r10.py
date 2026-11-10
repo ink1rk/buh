@@ -36,7 +36,7 @@ from tests.test_r9 import _load
 
 
 def test_r10_a01_schema_and_r9_compat(db):
-    assert SCHEMA_HEAD == "0006_r10_media_os"
+    assert SCHEMA_HEAD == "0007_r11_editorial_pilot"
     stats, posts = _load(db)
     assert stats["created"] == 162
     assert posts == 24

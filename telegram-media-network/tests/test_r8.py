@@ -486,7 +486,7 @@ def test_r8_t16_shipped_flags_and_production_refusal():
 
 
 def test_r8_t15_schema_head_is_additive():
-    assert SCHEMA_HEAD == "0006_r10_media_os"
+    assert SCHEMA_HEAD == "0007_r11_editorial_pilot"
     names = [path.name for path in (ROOT / "alembic" / "versions").glob("*.py")]
     assert any(name.startswith("0001") for name in names)
     assert any(name.startswith("0002") for name in names)

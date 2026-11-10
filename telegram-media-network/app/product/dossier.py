@@ -99,6 +99,7 @@ def build_dossier(session: Session, cluster: StoryCluster, now: datetime | None 
                 note=entity.get("note") or "",
             )
         )
+    session.flush()
     return row
 
 
