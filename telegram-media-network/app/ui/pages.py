@@ -15,7 +15,10 @@ from app.core.models import (
     Channel,
     ChannelEditorialProfile,
     ClusterMember,
+    CommercialOffer,
     EditorialClaim,
+    EditorialTask,
+    EditorialVariant,
     Episode,
     EvidenceSnapshot,
     ExpenseRecord,
@@ -34,11 +37,12 @@ from app.core.models import (
     StoryCluster,
     StoryEvidence,
     User,
+    WorkflowRun,
 )
 from app.core.timeutil import ensure_utc, utcnow
-from app.media.renderer import NETWORK_TEMPLATES, write_studio_pack
+from app.media.renderer import STUDIO_PURPOSES, write_studio_pack_v3
+from app.product.commercial import cancel_offer, create_offer, media_kit, reserve_offer, seed_commercial
 from app.product.commercial import forecast as commercial_forecast
-from app.product.commercial import media_kit, seed_commercial
 from app.product.demo_pack import build_pack
 from app.product.drafts import materialise_desk
 from app.product.editorial import ensure_profiles
@@ -278,6 +282,7 @@ def review(request: Request, post_id: int, notice: str = ""):
         versions = db.query(PostVersion).filter_by(post_id=post.id).order_by(PostVersion.version).all()
         snapshots = db.query(EvidenceSnapshot).filter_by(post_id=post.id).order_by(EvidenceSnapshot.id).all()
         claims = db.query(EditorialClaim).filter_by(post_id=post.id, draft_version=post.draft_version).all()
+        variants = db.query(EditorialVariant).filter_by(post_id=post.id).order_by(EditorialVariant.id).all()
         return templates.TemplateResponse(
             request,
             "review.html",
@@ -300,6 +305,7 @@ def review(request: Request, post_id: int, notice: str = ""):
                 "snapshots": snapshots,
                 "claims": claims,
                 "quality": post.quality_json or {},
+                "variants": variants,
             },
         )
     finally:
@@ -433,7 +439,7 @@ def calendar(request: Request, notice: str = "", days: int = 28):
         moscow = ZoneInfo("Europe/Moscow")
         horizon = 7 if days == 7 else 28
         start = utcnow().astimezone(moscow).date()
-        week_days = [start + timedelta(days=offset) for offset in range(7)]
+        grid_days = [start + timedelta(days=offset) for offset in range(horizon)]
         episodes = []
         by_key: dict[tuple[str, str], dict] = {}
         for episode in db.query(Episode).order_by(Episode.slot_utc).limit(400):
@@ -446,6 +452,7 @@ def calendar(request: Request, notice: str = "", days: int = 28):
                 "status": episode.status,
                 "version": episode.version,
                 "locked": episode.locked,
+                "program_kind": episode.program_kind,
                 "label": local.strftime("%Y-%m-%d %H:%M"),
                 "day": day_key,
             }
@@ -455,7 +462,7 @@ def calendar(request: Request, notice: str = "", days: int = 28):
         grid = []
         for channel in channels:
             cells = []
-            for day in week_days:
+            for day in grid_days:
                 found = by_key.get((channel.id, day.isoformat()))
                 cells.append({"episode": found, "reason": "" if found else "нет материала"})
             grid.append({"channel": channel.title, "cells": cells})
@@ -475,7 +482,7 @@ def calendar(request: Request, notice: str = "", days: int = 28):
                 "drop_label": drop.astimezone(moscow).strftime("%Y-%m-%d %H:%M MSK"),
                 "notice": notice,
                 "days": horizon,
-                "day_headers": [day.strftime("%d.%m") for day in week_days],
+                "day_headers": [day.strftime("%d.%m") for day in grid_days],
                 "grid": grid,
             },
         )
@@ -593,6 +600,7 @@ def commercial(request: Request):
         pipeline: dict[str, list] = {name: [] for name in ("lead", "contact", "discussion", "offer", "won", "lost")}
         for lead in leads:
             pipeline.setdefault(lead.stage, []).append(lead)
+        offers = db.query(CommercialOffer).order_by(CommercialOffer.id.desc()).all()
         return templates.TemplateResponse(
             request,
             "commercial.html",
@@ -605,6 +613,7 @@ def commercial(request: Request):
                 "user": user,
                 "campaigns": rows,
                 "leads": leads,
+                "offers": offers,
                 "pipeline": pipeline,
                 "rates": db.query(RateCard).order_by(RateCard.id).all(),
                 "expenses": db.query(ExpenseRecord).order_by(ExpenseRecord.id).all(),
@@ -690,7 +699,6 @@ def radar_page(request: Request, channel: str = "", status: str = "", q: str = "
                 item = db.get(SourceItem, member_row.source_item_id)
                 source_id = item.source_id if item is not None else ""
             trust = SOURCE_ROLES.get(source_id, ("unknown", 8, "роль не задана"))[2]
-            dims = {} if rank is None else rank.dimensions_json or {}
             rows.append(
                 {
                     "id": cluster.id,
@@ -704,7 +712,9 @@ def radar_page(request: Request, channel: str = "", status: str = "", q: str = "
                     "post_id": None if post is None else post.id,
                     "member_id": None if member_row is None else member_row.id,
                     "trust": trust,
-                    "trend": "н/д" if dims.get("trend_signal") is None else dims.get("trend_signal"),
+                    "trend": "н/д" if cluster.trend_state == "unknown" else f"{cluster.trend_state} Δ{cluster.trend_delta}",
+                    "reasons": list((rank.reasons_json or [])[:3]) if rank is not None else [],
+                    "data_mode": cluster.data_mode or "demo",
                 }
             )
         return templates.TemplateResponse(
@@ -739,11 +749,11 @@ def studio(request: Request):
         user, row, policy = ctx
         channels = db.query(Channel).order_by(Channel.id).all()
         directory = Path(request.app.state.settings.media_dir)
-        write_studio_pack(directory, channels)
+        write_studio_pack_v3(directory, channels)
         cards = [
-            {"channel": channel.title, "template": template_id, "file": f"{channel.id}-{template_id}.jpg"}
+            {"channel": channel.title, "template": purpose, "file": f"{channel.id}-{purpose}.jpg"}
             for channel in channels
-            for template_id in NETWORK_TEMPLATES
+            for purpose in STUDIO_PURPOSES
         ]
         return templates.TemplateResponse(
             request,
@@ -893,6 +903,332 @@ def radar_split_form(
     finally:
         db.close()
     return RedirectResponse("/radar", status_code=303)
+
+
+@router.post("/radar/reject")
+def radar_reject_form(request: Request, csrf_token: str = Form(), cluster_id: int = Form(), reason: str = Form(default="не подходит")):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    try:
+        if csrf_token == row.csrf_token and user.role in {"OWNER", "EDITOR"}:
+            cluster = db.get(StoryCluster, cluster_id)
+            if cluster is not None:
+                cluster.list_name = "rejected"
+                cluster.status = "rejected"
+                cluster.manual_override = True
+                cluster.merge_reason = reason[:500]
+                db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/radar", status_code=303)
+
+
+@router.get("/dossier/{cluster_id}", response_class=HTMLResponse)
+def dossier_page(request: Request, cluster_id: int):
+    db = _db(request)
+    try:
+        ctx = _context(request, db)
+        if ctx is None:
+            return RedirectResponse("/login", status_code=303)
+        user, row, policy = ctx
+        cluster = db.get(StoryCluster, cluster_id)
+        if cluster is None:
+            raise HTTPException(status_code=404, detail="not found")
+        from app.product.dossier import dossier_payload
+
+        payload = dossier_payload(db, cluster)
+        rank = (
+            db.query(RankedCandidate)
+            .filter_by(cluster_id=cluster.id, channel_id=cluster.primary_channel_id)
+            .order_by(RankedCandidate.id.desc())
+            .first()
+        )
+        member = db.query(ClusterMember).filter_by(cluster_id=cluster.id, relation="member").order_by(ClusterMember.id).first()
+        post = db.query(Post).filter_by(channel_id=cluster.primary_channel_id).order_by(Post.id.desc()).first()
+        return templates.TemplateResponse(
+            request,
+            "dossier.html",
+            {
+                "request": request,
+                "title": "Досье",
+                "nav": "radar",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "cluster": cluster,
+                "dossier": payload,
+                "rank": rank,
+                "member_id": None if member is None else member.id,
+                "post_id": None if post is None else post.id,
+            },
+        )
+    finally:
+        db.close()
+
+
+@router.get("/passport/{channel_id}", response_class=HTMLResponse)
+def passport_page(request: Request, channel_id: str):
+    db = _db(request)
+    try:
+        ctx = _context(request, db)
+        if ctx is None:
+            return RedirectResponse("/login", status_code=303)
+        user, row, policy = ctx
+        profile = db.get(ChannelEditorialProfile, channel_id)
+        channel = db.get(Channel, channel_id)
+        if channel is None:
+            raise HTTPException(status_code=404, detail="not found")
+        return templates.TemplateResponse(
+            request,
+            "passport.html",
+            {
+                "request": request,
+                "title": "Паспорт редакции",
+                "nav": "overview",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "channel": channel,
+                "profile": profile,
+            },
+        )
+    finally:
+        db.close()
+
+
+@router.post("/passport/{channel_id}")
+def passport_save(
+    request: Request,
+    channel_id: str,
+    csrf_token: str = Form(),
+    audience: str = Form(),
+    promise: str = Form(),
+    tone: str = Form(default=""),
+    frequency: str = Form(default=""),
+):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    try:
+        if csrf_token == row.csrf_token and user.role in {"OWNER", "EDITOR"}:
+            profile = db.get(ChannelEditorialProfile, channel_id)
+            if profile is not None:
+                profile.audience = audience[:500]
+                profile.promise = promise[:500]
+                profile.tone = tone[:300]
+                profile.frequency = frequency[:200]
+                profile.version = int(profile.version or 1) + 1
+                db.commit()
+    finally:
+        db.close()
+    return RedirectResponse(f"/passport/{channel_id}", status_code=303)
+
+
+@router.get("/autopilot", response_class=HTMLResponse)
+def autopilot_page(request: Request):
+    db = _db(request)
+    try:
+        ctx = _context(request, db)
+        if ctx is None:
+            return RedirectResponse("/login", status_code=303)
+        user, row, policy = ctx
+        from app.product.workflow import board as workflow_board
+
+        panel = workflow_board(db)
+        return templates.TemplateResponse(
+            request,
+            "autopilot.html",
+            {
+                "request": request,
+                "title": "Автопилот",
+                "nav": "autopilot",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "runs": panel["runs"],
+                "tasks": panel["tasks"],
+            },
+        )
+    finally:
+        db.close()
+
+
+@router.post("/autopilot/pause")
+def autopilot_pause_form(request: Request, csrf_token: str = Form(), run_id: int = Form()):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    try:
+        if csrf_token == row.csrf_token and user.role in {"OWNER", "EDITOR"}:
+            run = db.get(WorkflowRun, run_id)
+            if run is not None:
+                from app.product.workflow import pause_run
+
+                pause_run(db, run, user.username)
+                db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/autopilot", status_code=303)
+
+
+@router.post("/autopilot/resume")
+def autopilot_resume_form(request: Request, csrf_token: str = Form(), run_id: int = Form()):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    try:
+        if csrf_token == row.csrf_token and user.role in {"OWNER", "EDITOR"}:
+            run = db.get(WorkflowRun, run_id)
+            if run is not None:
+                from app.product.workflow import resume_run
+
+                resume_run(db, run, user.username)
+                db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/autopilot", status_code=303)
+
+
+@router.post("/commercial/offer")
+def commercial_offer_form(
+    request: Request,
+    csrf_token: str = Form(),
+    lead_id: int = Form(),
+    title: str = Form(),
+    package: str = Form(default="single"),
+    channel_id: str = Form(default=""),
+):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    try:
+        if csrf_token == row.csrf_token and user.role == "OWNER":
+            lead = db.get(SalesLead, lead_id)
+            if lead is not None:
+                create_offer(db, lead, title=title, package=package, channel_id=channel_id, actor=user.username)
+                db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/commercial", status_code=303)
+
+
+@router.post("/commercial/reserve")
+def commercial_reserve_form(
+    request: Request,
+    csrf_token: str = Form(),
+    offer_id: int = Form(),
+    slot_utc: str = Form(),
+):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    try:
+        if csrf_token == row.csrf_token and user.role == "OWNER":
+            offer = db.get(CommercialOffer, offer_id)
+            if offer is not None:
+                reserve_offer(db, offer, datetime.fromisoformat(slot_utc), user.username)
+                db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/commercial", status_code=303)
+
+
+@router.post("/commercial/cancel")
+def commercial_cancel_form(request: Request, csrf_token: str = Form(), offer_id: int = Form()):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    try:
+        if csrf_token == row.csrf_token and user.role == "OWNER":
+            offer = db.get(CommercialOffer, offer_id)
+            if offer is not None:
+                cancel_offer(db, offer, user.username)
+                db.commit()
+    finally:
+        db.close()
+    return RedirectResponse("/commercial", status_code=303)
+
+
+@router.get("/lab", response_class=HTMLResponse)
+def lab_page(request: Request):
+    db = _db(request)
+    try:
+        ctx = _context(request, db)
+        if ctx is None:
+            return RedirectResponse("/login", status_code=303)
+        user, row, policy = ctx
+        from app.product.lab import export_lab
+
+        report = export_lab(db)
+        return templates.TemplateResponse(
+            request,
+            "lab.html",
+            {
+                "request": request,
+                "title": "Лаборатория",
+                "nav": "lab",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "report": report,
+            },
+        )
+    finally:
+        db.close()
+
+
+@router.post("/lab/load")
+def lab_load_form(request: Request, csrf_token: str = Form()):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    try:
+        if csrf_token == row.csrf_token and user.role == "OWNER":
+            from app.product.lab import load_lab
+
+            load_lab(db, through_day=30, actor=user.username)
+    finally:
+        db.close()
+    return RedirectResponse("/lab", status_code=303)
+
+
+@router.get("/shift", response_class=HTMLResponse)
+def shift_page(request: Request):
+    db = _db(request)
+    try:
+        ctx = _context(request, db)
+        if ctx is None:
+            return RedirectResponse("/login", status_code=303)
+        user, row, policy = ctx
+        fresh = db.query(StoryCluster).filter(StoryCluster.list_name.in_(("hot", "review"))).order_by(StoryCluster.id.desc()).limit(8).all()
+        tasks = db.query(EditorialTask).filter_by(status="open").order_by(EditorialTask.id.desc()).limit(8).all()
+        empties = db.query(EditorialTask).filter(EditorialTask.reason.ilike("%слот пуст%")).limit(8).all()
+        return templates.TemplateResponse(
+            request,
+            "shift.html",
+            {
+                "request": request,
+                "title": "Утренняя смена",
+                "nav": "overview",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "fresh": fresh,
+                "tasks": tasks,
+                "empties": empties,
+            },
+        )
+    finally:
+        db.close()
 
 
 @router.post("/calendar/lock")

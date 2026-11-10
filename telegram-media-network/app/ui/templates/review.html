@@ -62,6 +62,14 @@
     {% for warning in post.warnings_json %}<p class="warn">{{ warning }}</p>{% endfor %}
     <p>Формат: {{ post.format_id }}. Статус: {{ post.review_status }}. Подтверждений: {{ post.approver_ids_json|length }} / {{ post.approvals_required }}</p>
     {% if quality and quality.blocking %}<p class="warn">Блок QA: {{ quality.blocking|join(", ") }}</p>{% endif %}
+    <h3>Варианты</h3>
+    <ul>
+    {% for variant in variants %}
+      <li><strong>{{ variant.angle_id }}</strong> {{ variant.title }}<br><span class="muted">{{ variant.body[:180] }}</span></li>
+    {% else %}
+      <li class="muted">Варианты появятся после фабрики. Три версии ниже — история правок.</li>
+    {% endfor %}
+    </ul>
     <h3>Claims</h3>
     <ul>
     {% for claim in claims %}

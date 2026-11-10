@@ -41,10 +41,19 @@
     </div>
     <h2>{{ row.title }}</h2>
     <p class="muted">{{ row.channel_id }} · счёт <span class="score">{{ row.score if row.score is not none else "н/д" }}</span> · уверенность {{ row.confidence if row.confidence is not none else "н/д" }}</p>
-    <p class="why">{{ row.explanation }}</p>
-    <p class="muted">trend_signal: {{ row.trend }}</p>
+    <p class="why">{% if row.reasons %}{{ row.reasons|join(" · ") }}{% else %}{{ row.explanation }}{% endif %}</p>
+    <p class="muted">{{ row.data_mode }} · тренд: {{ row.trend }}</p>
     <div class="actions">
+      <a class="button ghost" href="/dossier/{{ row.id }}">Досье</a>
       {% if row.post_id %}<a class="button" href="/review/{{ row.post_id }}">В редакцию</a>{% else %}<span class="muted">черновика нет</span>{% endif %}
+      {% if user.role in ["OWNER", "EDITOR"] %}
+      <form method="post" action="/radar/reject">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}">
+        <input type="hidden" name="cluster_id" value="{{ row.id }}">
+        <input type="hidden" name="reason" value="отклонено с радара">
+        <button class="ghost" type="submit">Отклонить</button>
+      </form>
+      {% endif %}
       {% if user.role in ["OWNER", "EDITOR"] and row.member_id %}
       <form method="post" action="/radar/split">
         <input type="hidden" name="csrf_token" value="{{ csrf }}">

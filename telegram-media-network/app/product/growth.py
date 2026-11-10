@@ -6,7 +6,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.core.models import ExperimentPlan, MetricDefinition, MetricObservation
+from app.core.models import Channel, ExperimentPlan, MetricDefinition, MetricObservation, MetricProvenance
 from app.core.timeutil import ensure_utc
 from app.product.insights import funnel
 
@@ -83,20 +83,57 @@ def snapshot_derived(session: Session, now: datetime, *, demo: bool = True) -> i
     }
     written = 0
     for metric_id, value in mapping.items():
-        source_type = "demo" if demo and value is not None else "unknown" if value is None else "derived"
+        source_type = "demo_simulated" if demo and value is not None else "unknown" if value is None else "db_derived"
+        if metric_id in {"views", "members", "revenue_actual"}:
+            source_type = "unknown"
+        obs = MetricObservation(
+            metric_id=metric_id,
+            channel_id="",
+            period_at=moment,
+            value=value,
+            source_type=source_type,
+            collected_at=moment,
+            evidence_ref="funnel()" if value is not None else "",
+            demo=demo,
+            unit="count",
+            interval="snapshot",
+            actor="system",
+        )
+        session.add(obs)
+        session.flush()
         session.add(
-            MetricObservation(
-                metric_id=metric_id,
-                channel_id="",
-                period_at=moment,
-                value=value,
+            MetricProvenance(
+                observation_id=obs.id,
                 source_type=source_type,
+                evidence=obs.evidence_ref,
+                actor="system",
                 collected_at=moment,
-                evidence_ref="funnel()" if value is not None else "",
-                demo=demo,
             )
         )
         written += 1
+    for channel in session.query(Channel).all():
+        local = funnel(session, channel_id=channel.id, now=moment)
+        for metric_id, value in (
+            ("ingested", local["stages"]["ingested"]),
+            ("unique", local["stages"]["unique"]),
+            ("drafted", local["stages"]["drafted"]),
+        ):
+            session.add(
+                MetricObservation(
+                    metric_id=metric_id,
+                    channel_id=channel.id,
+                    period_at=moment,
+                    value=value,
+                    source_type="demo_simulated" if demo else "db_derived",
+                    collected_at=moment,
+                    evidence_ref=f"funnel({channel.id})",
+                    demo=demo,
+                    unit="count",
+                    interval="snapshot",
+                    actor="system",
+                )
+            )
+            written += 1
     session.flush()
     return written
 

@@ -1,0 +1,105 @@
+{
+  "telegram_send": 0,
+  "second_idempotent": true,
+  "days": {
+    "day_1": {
+      "day": 1,
+      "clusters": 30,
+      "posts": 23,
+      "episodes": 7,
+      "telegram_send": 0
+    },
+    "day_15": {
+      "day": 15,
+      "clusters": 30,
+      "posts": 23,
+      "episodes": 7,
+      "telegram_send": 0
+    },
+    "day_30": {
+      "day": 30,
+      "clusters": 30,
+      "posts": 23,
+      "episodes": 7,
+      "telegram_send": 0
+    }
+  },
+  "export": {
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "telegram_send": 0,
+    "published_messages": 0,
+    "source_items": 38,
+    "snapshots": 38,
+    "clusters": 30,
+    "relations": 2,
+    "trend_samples": 2,
+    "offers": 2,
+    "workflows": 12,
+    "channels": {
+      "ai_news": {
+        "clusters": 4,
+        "posts": 3,
+        "episodes": 0
+      },
+      "ai_tools": {
+        "clusters": 3,
+        "posts": 3,
+        "episodes": 2
+      },
+      "github": {
+        "clusters": 4,
+        "posts": 3,
+        "episodes": 1
+      },
+      "cyber": {
+        "clusters": 4,
+        "posts": 3,
+        "episodes": 1
+      },
+      "infra": {
+        "clusters": 2,
+        "posts": 2,
+        "episodes": 0
+      },
+      "homelab": {
+        "clusters": 5,
+        "posts": 3,
+        "episodes": 0
+      },
+      "dev": {
+        "clusters": 4,
+        "posts": 3,
+        "episodes": 3
+      },
+      "future": {
+        "clusters": 4,
+        "posts": 3,
+        "episodes": 0
+      }
+    },
+    "report": {
+      "created": 38,
+      "duplicates": 0,
+      "updates": 0,
+      "posts": 23,
+      "episodes": 7,
+      "skipped": 297,
+      "offer_id": 1,
+      "published": 0,
+      "telegram_send": 0,
+      "through_day": 30,
+      "channels": {
+        "ai_news": 4,
+        "ai_tools": 3,
+        "github": 4,
+        "cyber": 4,
+        "infra": 2,
+        "homelab": 5,
+        "dev": 4,
+        "future": 4
+      }
+    }
+  },
+  "production_ready": false
+}

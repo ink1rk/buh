@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Паспорт: {{ channel.title }}</h1>
+<p class="muted">Настройки хранятся в базе. Значения по умолчанию можно заменить, не трогая код.</p>
+{% if profile %}
+<form method="post" action="/passport/{{ channel.id }}" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  <label>Обещание <input name="promise" value="{{ profile.promise }}" {% if user.role not in ["OWNER", "EDITOR"] %}readonly{% endif %}></label>
+  <label>Аудитория <textarea name="audience" {% if user.role not in ["OWNER", "EDITOR"] %}readonly{% endif %}>{{ profile.audience }}</textarea></label>
+  <label>Тон <input name="tone" value="{{ profile.tone }}"></label>
+  <label>Частота <input name="frequency" value="{{ profile.frequency }}"></label>
+  <p class="muted">Рубрики: {{ profile.rubrics_json|join(", ") }}. Форматы: {{ profile.formats_json|join(", ") }}.</p>
+  <p class="muted">Избегать: {{ profile.avoid_json|join(", ") }}</p>
+  {% if user.role in ["OWNER", "EDITOR"] %}<button type="submit">Сохранить паспорт</button>{% endif %}
+</form>
+{% else %}
+<p>Паспорт ещё не создан. Загрузите учебный пакет.</p>
+{% endif %}
+<p><a class="button ghost" href="/radar?channel={{ channel.id }}">Открыть радар редакции</a></p>
+{% endblock %}

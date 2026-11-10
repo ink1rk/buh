@@ -8,6 +8,7 @@
   <input type="hidden" name="csrf_token" value="{{ csrf }}">
   <button type="submit">Загрузить учебный пакет DEMO</button>
 </form>
+<p><a class="button ghost" href="/shift">Утренняя смена</a> <a class="button ghost" href="/lab">Лаборатория 30 дней</a></p>
 {% endif %}
 <section class="kpis">
   <div class="kpi"><b>{{ waiting_total }}</b><span>ждут редакции</span></div>
@@ -30,7 +31,7 @@
     <p>Тем в радаре: {{ row.themes }}</p>
     <p>Пустых дней на 28 суток: {{ row.free_slots }}</p>
     <p>Источники: {{ row.health }}</p>
-    <p><a class="button ghost" href="/posts?channel={{ row.id }}">Открыть редакцию</a></p>
+    <p><a class="button ghost" href="/posts?channel={{ row.id }}">Открыть редакцию</a> <a class="button ghost" href="/passport/{{ row.id }}">Паспорт</a></p>
   </article>
   {% endfor %}
 </section>

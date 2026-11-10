@@ -12,9 +12,11 @@ from sqlalchemy.orm import Session
 from app.core.audit import add_audit
 from app.core.models import (
     ClusterMember,
+    EventRelation,
     RankedCandidate,
     Source,
     SourceItem,
+    SourceSnapshot,
     Story,
     StoryAlias,
     StoryCluster,
@@ -26,10 +28,16 @@ from app.product.intelligence import (
     MODEL,
     canonical_url,
     channel_hot_count,
+    compute_trend,
     enrich_cluster,
+    independent_publishers,
+    items_for,
     member_count,
+    publisher_of,
+    record_score_revision,
     score_cluster,
     source_ids_for,
+    trend_samples_for,
 )
 
 _WORD = re.compile(r"[^0-9a-zа-яё]+", re.I)
@@ -38,6 +46,8 @@ _WORD = re.compile(r"[^0-9a-zа-яё]+", re.I)
 def hard_key(row: dict) -> str:
     if row.get("cve"):
         return f"cve:{row['cve']}"
+    if row.get("doi"):
+        return f"doi:{row['doi']}"
     if row.get("arxiv"):
         return f"arxiv:{row['arxiv']}"
     if row.get("repo") and row.get("tag"):
@@ -58,38 +68,81 @@ def import_observations(session: Session, rows: list[dict], now: datetime | None
     moment = ensure_utc(now or utcnow())
     created = 0
     duplicates = 0
+    updates = 0
     for row in rows:
         _ensure_source(session, row["source_id"])
+        digest = hashlib.sha256((row.get("body") or row["external_id"]).encode()).hexdigest()
         existing = (
             session.query(SourceItem)
             .filter_by(source_id=row["source_id"], external_id=row["external_id"][:300])
-            .one_or_none()
+            .order_by(SourceItem.id)
+            .first()
         )
-        if existing is not None:
+        pub_id, pub_kind, _title = publisher_of(row["source_id"])
+        if row.get("publisher_id"):
+            pub_id = str(row["publisher_id"])
+        origin_mode = str(row.get("origin_mode") or pub_kind or "demo")
+        if existing is not None and existing.raw_hash == digest:
             duplicates += 1
             continue
         published = moment - timedelta(days=int(row.get("days_old") or 0))
-        item = SourceItem(
-            source_id=row["source_id"],
-            external_id=row["external_id"][:300],
-            discovered_utc=moment,
-            published_utc=published,
-            raw_hash=hashlib.sha256(row["external_id"].encode()).hexdigest(),
-            raw_json={"demo": True, "never_publish": True, "title": row["title"]},
-            fetched_utc=moment,
+        if existing is not None and existing.raw_hash != digest:
+            session.add(
+                SourceSnapshot(
+                    source_item_id=existing.id,
+                    raw_hash=existing.raw_hash,
+                    body=dict(existing.raw_json or {}),
+                    discovered_utc=existing.discovered_utc,
+                    claimed_utc=existing.published_utc,
+                    canonical_url=canonical_url(row.get("url") or ""),
+                    origin_mode=existing.origin_mode,
+                )
+            )
+            existing.raw_hash = digest
+            existing.raw_json = {"demo": True, "never_publish": True, "title": row["title"], "body": row.get("body") or row["summary"]}
+            existing.fetched_utc = moment
+            existing.publisher_id = pub_id
+            existing.origin_mode = origin_mode
+            updates += 1
+            item = existing
+        else:
+            item = SourceItem(
+                source_id=row["source_id"],
+                external_id=row["external_id"][:300],
+                discovered_utc=moment,
+                published_utc=published,
+                raw_hash=digest,
+                raw_json={"demo": True, "never_publish": True, "title": row["title"], "body": row.get("body") or row.get("summary")},
+                fetched_utc=moment,
+                publisher_id=pub_id,
+                content_kind=str(row.get("content_kind") or ("cve" if row.get("cve") else "release" if row.get("tag") else "news")),
+                origin_mode=origin_mode,
+                lab_run_id=row.get("lab_run_id"),
+            )
+            session.add(item)
+            session.flush()
+            created += 1
+        session.add(
+            SourceSnapshot(
+                source_item_id=item.id,
+                raw_hash=digest,
+                body=dict(item.raw_json or {}),
+                discovered_utc=moment,
+                claimed_utc=published,
+                canonical_url=canonical_url(row.get("url") or ""),
+                origin_mode=origin_mode,
+            )
         )
-        session.add(item)
-        session.flush()
-        created += 1
         key = hard_key(row) or title_key(row["title"])
         cluster = session.query(StoryCluster).filter_by(cluster_key=key).one_or_none()
         story: Story | None
+        relation = "update" if updates and existing is not None else "member"
         if cluster is None:
             story = _story(session, row, published, moment, key)
             cluster = StoryCluster(
                 cluster_key=key,
                 title=row["title"][:300],
-                kind="cve" if row.get("cve") else "release" if row.get("tag") else "event",
+                kind="cve" if row.get("cve") else "release" if row.get("tag") else "evergreen" if row.get("evergreen") else "event",
                 status="open",
                 list_name="review",
                 primary_channel_id=row["channel_id"],
@@ -97,13 +150,16 @@ def import_observations(session: Session, rows: list[dict], now: datetime | None
                 last_seen=moment,
                 updated_at=moment,
                 merge_reason=f"ключ {key}",
-                event_type="cve" if row.get("cve") else "release" if row.get("tag") else "preprint" if row.get("arxiv") else "event",
+                event_type="cve" if row.get("cve") else "release" if row.get("tag") else "preprint" if row.get("arxiv") else "evergreen" if row.get("evergreen") else "event",
                 event_at=published,
                 dossier_json={
                     "affected_products": row.get("product") or "",
                     "version_scope": row.get("version_scope") or "unknown",
                     "origin": "demo" if row.get("synthetic") else "fixture",
                 },
+                data_mode="demo",
+                program_kind="evergreen" if row.get("evergreen") else "breaking",
+                lab_run_id=row.get("lab_run_id"),
             )
             session.add(cluster)
             session.flush()
@@ -120,16 +176,23 @@ def import_observations(session: Session, rows: list[dict], now: datetime | None
             story = _primary_story(session, cluster)
             cluster.last_seen = moment
             cluster.updated_at = moment
-            session.add(
-                ClusterMember(
-                    cluster_id=cluster.id,
-                    story_id=story.id if story else None,
-                    source_item_id=item.id,
-                    relation="member",
-                    reason=f"тот же ключ {key}",
-                )
+            already = (
+                session.query(ClusterMember)
+                .filter_by(cluster_id=cluster.id, source_item_id=item.id, relation="member")
+                .first()
             )
+            if already is None:
+                session.add(
+                    ClusterMember(
+                        cluster_id=cluster.id,
+                        story_id=story.id if story else None,
+                        source_item_id=item.id,
+                        relation="member",
+                        reason=f"{'обновление' if relation == 'update' else 'тот же ключ'} {key}",
+                    )
+                )
             if story is not None:
+                status = _evidence_status(session, cluster, item)
                 session.add(
                     StoryEvidence(
                         story_id=story.id,
@@ -139,24 +202,47 @@ def import_observations(session: Session, rows: list[dict], now: datetime | None
                         evidence_excerpt=row["summary"][:160],
                         evidence_url=row["url"],
                         verified_at=None,
-                        status="extracted",
+                        status=status,
                     )
                 )
+                if origin_mode == "reprint" and story.id:
+                    session.add(
+                        EventRelation(
+                            left_cluster_id=cluster.id,
+                            right_cluster_id=cluster.id,
+                            relation="reprint",
+                            reason="перепечатка того же издателя",
+                            actor="radar",
+                        )
+                    )
         if row.get("stars") is not None:
+            sample_at = published if row.get("star_at_published") else moment
             session.add(
                 TrendSample(
                     source_item_id=item.id,
-                    snapshot_utc=moment,
+                    snapshot_utc=sample_at,
                     metric_name="github_stars",
                     value=int(row["stars"]),
-                    provider="demo_fixture",
-                    completeness="single",
+                    provider=str(row.get("trend_provider") or "demo_fixture"),
+                    completeness="series" if row.get("stars_series") else "single",
                 )
             )
+        if row.get("related_key"):
+            other = session.query(StoryCluster).filter_by(cluster_key=row["related_key"]).one_or_none()
+            if other is not None and other.id != cluster.id:
+                session.add(
+                    EventRelation(
+                        left_cluster_id=cluster.id,
+                        right_cluster_id=other.id,
+                        relation="related",
+                        reason=str(row.get("related_reason") or "связанный сюжет"),
+                        actor="radar",
+                    )
+                )
     _mark_similar(session)
     rank_open_clusters(session, moment)
     session.commit()
-    return {"created": created, "duplicates": duplicates, "observations": len(rows)}
+    return {"created": created, "duplicates": duplicates, "updates": updates, "observations": len(rows)}
 
 
 def rank_open_clusters(session: Session, now: datetime) -> int:
@@ -165,15 +251,21 @@ def rank_open_clusters(session: Session, now: datetime) -> int:
     clusters = session.query(StoryCluster).all()
     hot_cache = {row.primary_channel_id: channel_hot_count(session, row.primary_channel_id) for row in clusters}
     for cluster in clusters:
-        samples = _sample_count(session, cluster)
+        trend_rows = trend_samples_for(session, cluster)
+        samples = len(trend_rows)
+        trend = compute_trend(trend_rows)
         story = _primary_story(session, cluster)
         anchor = story.published_utc if story is not None and story.published_utc is not None else cluster.first_seen
         enrich_cluster(session, cluster, moment, anchor)
         members = member_count(session, cluster)
         source_ids = source_ids_for(session, cluster)
+        source_items = items_for(session, cluster)
+        publishers = independent_publishers(source_ids, source_items)
         preprint = bool(story.is_preprint) if story is not None else False
         license_state = story.license_state if story is not None else "unknown"
         hot = hot_cache.get(cluster.primary_channel_id, 0)
+        cluster.trend_state = str(trend.get("state") or "unknown")
+        cluster.trend_delta = trend.get("delta")
         for channel_id in _channels_for(cluster):
             dimensions, penalties, score, explanation, evidence_state, confidence = score_cluster(
                 cluster,
@@ -186,6 +278,8 @@ def rank_open_clusters(session: Session, now: datetime) -> int:
                 preprint=preprint,
                 license_state=license_state,
                 channel_hot=hot,
+                trend=trend,
+                publishers=publishers,
             )
             row = (
                 session.query(RankedCandidate)
@@ -198,6 +292,9 @@ def rank_open_clusters(session: Session, now: datetime) -> int:
             row.computed_at = moment
             row.dimensions_json = dimensions
             row.penalties_json = penalties
+            row.trend_state = str(trend.get("state") or "unknown")
+            row.reasons_json = list(dimensions.get("reasons") or [])
+            record_score_revision(session, cluster, channel_id, dimensions=dimensions, total=score)
             row.rank_score = score
             row.confidence = confidence
             row.explanation = explanation
@@ -206,6 +303,17 @@ def rank_open_clusters(session: Session, now: datetime) -> int:
         cluster.list_name = _list_name(cluster, moment, anchor)
         cluster.score_version = MODEL
     return count
+
+
+def _evidence_status(session: Session, cluster: StoryCluster, item: SourceItem) -> str:
+    """A URL or reprint never becomes independently_verified by itself."""
+    del session
+    kind = item.origin_mode or publisher_of(item.source_id)[1]
+    if kind in {"reprint", "aggregator", "social_signal"}:
+        return "source_supported"
+    if kind in {"origin", "vendor"}:
+        return "source_supported"
+    return "unreviewed"
 
 
 def route_cluster(session: Session, cluster: StoryCluster, channel_id: str, reason: str, actor: str) -> None:
@@ -265,6 +373,8 @@ def bulk_list(session: Session, cluster_ids: list[int], list_name: str, reason: 
 def _list_name(cluster: StoryCluster, now: datetime, anchor: datetime) -> str:
     if cluster.manual_override and cluster.list_name in {"hot", "review", "evergreen", "backfill", "rejected", "covered"}:
         return cluster.list_name
+    if cluster.program_kind == "evergreen" or cluster.kind == "evergreen":
+        return "evergreen"
     age = (ensure_utc(now) - ensure_utc(anchor)).days
     if age > 30:
         return "backfill"
@@ -365,6 +475,7 @@ def _story(session: Session, row: dict, published: datetime, moment: datetime, k
         source_id=row["source_id"],
         synthetic=True,
         is_preprint=bool(row.get("arxiv")),
+        license_state=str(row.get("license_state") or "unknown"),
     )
     session.add(story)
     session.flush()
@@ -377,7 +488,7 @@ def _story(session: Session, row: dict, published: datetime, moment: datetime, k
             evidence_excerpt=row["summary"][:160],
             evidence_url=row["url"],
             verified_at=None,
-            status="extracted",
+            status="source_supported" if row.get("url") else "unreviewed",
         )
     )
     return story

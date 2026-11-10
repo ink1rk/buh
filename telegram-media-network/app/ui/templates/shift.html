@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Утренняя смена</h1>
+<p class="muted">Каждая строка ведёт к сюжету или задаче. Это не декоративный дашборд.</p>
+<section class="grid">
+  <article class="panel">
+    <h2>Новые события</h2>
+    <ul>
+      {% for row in fresh %}
+      <li><a href="/dossier/{{ row.id }}">{{ row.title }}</a> · {{ row.primary_channel_id }}</li>
+      {% else %}<li class="muted">Свежих сюжетов нет.</li>{% endfor %}
+    </ul>
+  </article>
+  <article class="panel">
+    <h2>Задачи</h2>
+    <ul>
+      {% for task in tasks %}
+      <li>{{ task.title }}</li>
+      {% else %}<li class="muted">Очередь задач пуста.</li>{% endfor %}
+    </ul>
+  </article>
+  <article class="panel">
+    <h2>Пустые слоты</h2>
+    <ul>
+      {% for item in empties %}
+      <li>{{ item.title }}</li>
+      {% else %}<li class="muted">Отдельных задач на пустые слоты нет.</li>{% endfor %}
+    </ul>
+    <p><a class="button ghost" href="/calendar?days=7">Календарь недели</a></p>
+  </article>
+</section>
+{% endblock %}

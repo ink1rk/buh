@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Досье сюжета</h1>
+<p class="demo-banner">{{ dossier.data_mode|upper }}. Это не новость дня и не независимое подтверждение по числу ссылок.</p>
+<p class="muted">{{ cluster.kind }} · {{ cluster.primary_channel_id }} · тренд {{ cluster.trend_state }} {% if cluster.trend_delta is not none %}Δ {{ cluster.trend_delta }}{% endif %}</p>
+<h2>{{ cluster.title }}</h2>
+<p>{{ dossier.summary }}</p>
+<section class="grid">
+  <article class="panel">
+    <h3>Почему редакции</h3>
+    {% for channel, why in dossier.why.items() %}<p><strong>{{ channel }}:</strong> {{ why }}</p>{% endfor %}
+  </article>
+  <article class="panel">
+    <h3>Чего источник не говорит</h3>
+    <ul>{% for item in dossier.unknowns %}<li>{{ item }}</li>{% else %}<li class="muted">Неизвестное не зафиксировано отдельно.</li>{% endfor %}</ul>
+  </article>
+  <article class="panel">
+    <h3>Независимые издатели</h3>
+    <p>{% if dossier.independent_publishers %}{{ dossier.independent_publishers|join(", ") }}{% else %}нет первичных подтверждений{% endif %}</p>
+    <p class="muted">Лицензия: {{ dossier.license_note }}</p>
+  </article>
+</section>
+<h3>Хронология</h3>
+<table>
+  <tr><th>Когда</th><th>Издатель</th><th>Режим</th><th>Связь</th></tr>
+  {% for row in dossier.timeline %}
+  <tr><td>{{ row.at or "н/д" }}</td><td>{{ row.publisher }}</td><td>{{ row.origin_mode }}</td><td>{{ row.reason }}</td></tr>
+  {% endfor %}
+</table>
+<h3>Утверждения</h3>
+<ul>
+  {% for row in dossier.evidence %}
+  <li>{{ row.text }}<br><span class="muted">{{ row.status }} · {{ row.url }} · проверено: {{ row.verified_at or "нет" }}</span></li>
+  {% else %}<li class="muted">Реестр пуст.</li>{% endfor %}
+</ul>
+<div class="actions toolbar">
+  {% if post_id %}<a class="button" href="/review/{{ post_id }}">В редакцию</a>{% endif %}
+  <a class="button ghost" href="/radar">К радару</a>
+  {% if user.role in ["OWNER", "EDITOR"] %}
+  <form method="post" action="/radar/reject">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <input type="hidden" name="cluster_id" value="{{ cluster.id }}">
+    <input type="hidden" name="reason" value="отклонено из досье">
+    <button class="danger" type="submit">Отклонить</button>
+  </form>
+  {% if member_id %}
+  <form method="post" action="/radar/split">
+    <input type="hidden" name="csrf_token" value="{{ csrf }}">
+    <input type="hidden" name="cluster_id" value="{{ cluster.id }}">
+    <input type="hidden" name="member_id" value="{{ member_id }}">
+    <input type="hidden" name="reason" value="самостоятельный сюжет">
+    <button class="ghost" type="submit">Разделить</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</div>
+{% if rank %}<details><summary>Аудит score</summary><pre>{{ rank.explanation }}</pre></details>{% endif %}
+{% endblock %}

@@ -7,7 +7,14 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from app.core.models import Channel, Episode, RankedCandidate, StoryCluster
+from app.core.models import (
+    Channel,
+    ChannelPlanSettings,
+    EditorialTask,
+    Episode,
+    RankedCandidate,
+    StoryCluster,
+)
 from app.core.timeutil import ensure_utc
 from app.product.programs import SERIES, _msk_slot, _quiet, ensure_series
 from app.product.radar import MODEL, _primary_story
@@ -18,11 +25,28 @@ TTL_HOURS = {
     "cve": 14 * 24,
     "release": 21 * 24,
     "preprint": 28 * 24,
+    "evergreen": 90 * 24,
 }
+
+
+def ensure_plan_settings(session: Session) -> None:
+    for channel in session.query(Channel).all():
+        row = session.get(ChannelPlanSettings, channel.id)
+        if row is None:
+            session.add(
+                ChannelPlanSettings(
+                    channel_id=channel.id,
+                    daily_cap=max(1, int(channel.daily_cap or 1)),
+                    quiet_start=channel.quiet_start or "22:00",
+                    quiet_end=channel.quiet_end or "08:00",
+                    min_gap_minutes=int(channel.min_gap_minutes or 240),
+                )
+            )
 
 
 def propose_month(session: Session, now: datetime, *, days: int = 28) -> dict:
     ensure_series(session)
+    ensure_plan_settings(session)
     session.flush()
     start = ensure_utc(now).astimezone(MSK).date() + timedelta(days=1)
     created = 0
@@ -39,15 +63,18 @@ def propose_month(session: Session, now: datetime, *, days: int = 28) -> dict:
                 if channel is None:
                     skipped.append({"series": spec["id"], "channel": channel_id, "reason": "no_channel"})
                     continue
-                cap = max(1, int(channel.daily_cap or 1))
+                settings = session.get(ChannelPlanSettings, channel_id)
+                cap = max(1, int((settings.daily_cap if settings else channel.daily_cap) or 1))
+                quiet_start = settings.quiet_start if settings else channel.quiet_start
+                quiet_end = settings.quiet_end if settings else channel.quiet_end
                 placed_today = 0
                 for slot in channel.schedule_json or []:
                     if placed_today >= cap:
                         skipped.append({"series": spec["id"], "channel": channel_id, "reason": "daily_cap", "day": day.isoformat()})
                         break
                     when = _msk_slot(day, str(slot))
-                    if _quiet(when, channel.quiet_start, channel.quiet_end):
-                        skipped.append({"series": spec["id"], "channel": channel_id, "reason": "quiet_hours"})
+                    if _quiet(when, quiet_start, quiet_end):
+                        skipped.append({"series": spec["id"], "channel": channel_id, "reason": "quiet_hours", "day": day.isoformat()})
                         continue
                     occupied = (
                         session.query(Episode)
@@ -60,18 +87,30 @@ def propose_month(session: Session, now: datetime, *, days: int = 28) -> dict:
                             continue
                         conflicts.append(f"{channel_id} {when.isoformat()} занят выпуском {occupied.id}")
                         continue
-                    picks = _fresh_picks(session, channel_id, spec["max_items"], used, now, when)
+                    picks, kind = _picks_with_kind(session, channel_id, spec["max_items"], used, now, when)
                     if len(picks) < spec["min_items"]:
+                        reason = "not_enough_material"
                         skipped.append(
                             {
                                 "series": spec["id"],
                                 "channel": channel_id,
                                 "day": day.isoformat(),
-                                "reason": "not_enough_material",
+                                "reason": reason,
                                 "have": len(picks),
                                 "need": spec["min_items"],
                             }
                         )
+                        title = f"Нужен материал на {day.isoformat()} для {channel_id}"
+                        if session.query(EditorialTask).filter_by(channel_id=channel_id, title=title).first() is None:
+                            session.add(
+                                EditorialTask(
+                                    kind="research",
+                                    channel_id=channel_id,
+                                    title=title,
+                                    status="open",
+                                    reason="слот пуст: нет свежего breaking и подходящего evergreen",
+                                )
+                            )
                         continue
                     session.add(
                         Episode(
@@ -80,11 +119,13 @@ def propose_month(session: Session, now: datetime, *, days: int = 28) -> dict:
                             slot_utc=when,
                             status="proposed",
                             item_refs=picks,
-                            reason="dry-run proposal",
+                            reason="evergreen, не выдаётся за свежую новость" if kind == "evergreen" else "dry-run proposal",
                             version=1,
                             origin="propose",
                             format_id=spec["style"],
                             locked=False,
+                            program_kind=kind,
+                            vacancy_reason="",
                         )
                     )
                     used.update(picks)
@@ -114,6 +155,21 @@ def _already_used(session: Session) -> set[int]:
 
 
 def _fresh_picks(session: Session, channel_id: str, limit: int, used: set[int], now: datetime, slot: datetime) -> list[int]:
+    picks, _kind = _picks_with_kind(session, channel_id, limit, used, now, slot, allow_evergreen=False)
+    return picks
+
+
+def _picks_with_kind(
+    session: Session,
+    channel_id: str,
+    limit: int,
+    used: set[int],
+    now: datetime,
+    slot: datetime,
+    *,
+    allow_evergreen: bool = True,
+) -> tuple[list[int], str]:
+    del now
     rows = (
         session.query(RankedCandidate)
         .join(StoryCluster, StoryCluster.id == RankedCandidate.cluster_id)
@@ -127,25 +183,37 @@ def _fresh_picks(session: Session, channel_id: str, limit: int, used: set[int], 
         .order_by(RankedCandidate.rank_score.desc(), RankedCandidate.id)
         .all()
     )
-    chosen: list[int] = []
+    breaking: list[int] = []
+    evergreen: list[int] = []
     for row in rows:
-        if row.cluster_id in used or row.cluster_id in chosen:
+        if row.cluster_id in used or row.cluster_id in breaking or row.cluster_id in evergreen:
             continue
         cluster = session.get(StoryCluster, row.cluster_id)
         if cluster is None or cluster.locked:
             continue
+        if cluster.program_kind == "evergreen" or cluster.kind == "evergreen" or cluster.list_name == "evergreen":
+            if allow_evergreen and _within_ttl(session, cluster, slot):
+                evergreen.append(row.cluster_id)
+            continue
         if not _within_ttl(session, cluster, slot):
             continue
-        chosen.append(row.cluster_id)
-        if len(chosen) >= limit:
+        breaking.append(row.cluster_id)
+        if len(breaking) >= limit:
             break
-    return chosen
+    if len(breaking) >= limit:
+        return breaking[:limit], "breaking"
+    if allow_evergreen and evergreen:
+        mixed = breaking + evergreen
+        return mixed[:limit], "evergreen" if not breaking else "breaking"
+    return breaking[:limit], "breaking"
 
 
 def _within_ttl(session: Session, cluster: StoryCluster, slot: datetime) -> bool:
     story = _primary_story(session, cluster)
     anchor = story.published_utc if story is not None and story.published_utc is not None else cluster.event_at or cluster.first_seen
     hours = (ensure_utc(slot) - ensure_utc(anchor)).total_seconds() / 3600
+    if cluster.program_kind == "evergreen" or cluster.kind == "evergreen":
+        return hours <= TTL_HOURS["evergreen"]
     limit = TTL_HOURS.get(cluster.event_type or cluster.kind, TTL_HOURS["event"])
     if cluster.kind == "cve":
         limit = TTL_HOURS["cve"]
