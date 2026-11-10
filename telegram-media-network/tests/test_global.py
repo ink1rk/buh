@@ -363,7 +363,7 @@ def test_ops01_upgrade_keeps_existing_story():
         ).scalar()
     engine.dispose()
     assert kept == "kept-row"
-    assert version == "0006_r10_media_os"
+    assert version == "0007_r11_editorial_pilot"
     assert clusters == "story_clusters"
     assert column == 1
 

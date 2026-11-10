@@ -337,7 +337,7 @@ def test_r9_a15_sponsor_still_blocked(db):
 
 
 def test_r9_a17_schema_head():
-    assert SCHEMA_HEAD == "0006_r10_media_os"
+    assert SCHEMA_HEAD == "0007_r11_editorial_pilot"
 
 
 def test_r9_a18_rerun_does_not_duplicate(db):

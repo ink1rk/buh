@@ -1,0 +1,13 @@
+{
+  "mode": "stress-30d",
+  "elapsed_seconds": 87.193,
+  "ru_maxrss_kb": 112736,
+  "lab_run_id": 1,
+  "source_items": 226,
+  "clusters": 218,
+  "posts": 135,
+  "daily_snapshots": 30,
+  "telegram_send": 0,
+  "published_messages": 0,
+  "idempotent_second": true
+}

@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="", alias="LLM_MODEL")
     media_remote_screenshot_enabled: bool = Field(default=False, alias="MEDIA_REMOTE_SCREENSHOT_ENABLED")
     source_mode: str = Field(default="offline", alias="SOURCE_MODE")
+    pilot_mode: str = Field(default="offline_replay", alias="PILOT_MODE")
     session_idle_minutes: int = 30
     session_absolute_hours: int = 8
     pilot_manual_approval: bool = True
@@ -58,3 +59,7 @@ def assert_can_boot(settings: Settings) -> None:
         raise RuntimeError("LLM_MODE must be mock, manual, or local")
     if settings.llm_mode == "local" and not settings.llm_base_url:
         raise RuntimeError("local LLM mode requires an explicitly configured endpoint")
+    if settings.pilot_mode.strip().lower() not in {"offline_replay", "a", ""}:
+        raise RuntimeError(
+            f"PILOT_MODE={settings.pilot_mode} is not activated. Only offline_replay runs in this build."
+        )

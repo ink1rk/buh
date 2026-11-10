@@ -23,7 +23,7 @@ def init_schema(engine: Engine) -> None:
     apply_schema_extras(engine)
 
 
-SCHEMA_HEAD = "0006_r10_media_os"
+SCHEMA_HEAD = "0007_r11_editorial_pilot"
 MIGRATION_LOCK = 8787002
 
 
@@ -156,6 +156,37 @@ def apply_schema_extras(engine: Engine) -> None:
         "ALTER TABLE sales_leads ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
         "ALTER TABLE rate_cards ADD COLUMN IF NOT EXISTS channels_json JSON DEFAULT '[]'::json",
         "ALTER TABLE rate_cards ADD COLUMN IF NOT EXISTS materials_count INTEGER DEFAULT 1",
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS template_version VARCHAR(40) DEFAULT 'studio-v3'",
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS ratio VARCHAR(16) DEFAULT '16:9'",
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS qa_status VARCHAR(40) DEFAULT 'pending'",
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS source_license VARCHAR(80) DEFAULT 'own_typographic_template'",
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS generator_mode VARCHAR(40) DEFAULT 'local_template'",
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS alt_text TEXT DEFAULT ''",
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS purpose VARCHAR(40) DEFAULT 'news'",
+        "ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
+        "ALTER TABLE episodes ADD COLUMN IF NOT EXISTS calendar_status VARCHAR(40) DEFAULT 'proposed'",
+        "ALTER TABLE editorial_briefs ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
+        "ALTER TABLE editorial_variants ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
+        "ALTER TABLE workflow_runs ADD COLUMN IF NOT EXISTS post_id INTEGER",
+        "ALTER TABLE workflow_runs ADD COLUMN IF NOT EXISTS brief_id INTEGER",
+        "ALTER TABLE workflow_runs ADD COLUMN IF NOT EXISTS asset_id INTEGER",
+        "ALTER TABLE workflow_runs ADD COLUMN IF NOT EXISTS episode_id INTEGER",
+        "ALTER TABLE workflow_runs ADD COLUMN IF NOT EXISTS ready_for_human BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE workflow_runs ADD COLUMN IF NOT EXISTS ready_for_delivery BOOLEAN NOT NULL DEFAULT false",
+        "ALTER TABLE workflow_runs ADD COLUMN IF NOT EXISTS lineage_json JSON DEFAULT '{}'::json",
+        "ALTER TABLE workflow_steps ADD COLUMN IF NOT EXISTS input_hash VARCHAR(64) DEFAULT ''",
+        "ALTER TABLE workflow_steps ADD COLUMN IF NOT EXISTS output_ref VARCHAR(160) DEFAULT ''",
+        "ALTER TABLE workflow_steps ADD COLUMN IF NOT EXISTS error_class VARCHAR(40) DEFAULT ''",
+        "ALTER TABLE workflow_steps ADD COLUMN IF NOT EXISTS skipped_reason TEXT DEFAULT ''",
+        "ALTER TABLE editorial_tasks ADD COLUMN IF NOT EXISTS due_at TIMESTAMPTZ",
+        "ALTER TABLE editorial_tasks ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'normal'",
+        "ALTER TABLE editorial_tasks ADD COLUMN IF NOT EXISTS lab_run_id INTEGER",
+        "ALTER TABLE editorial_tasks ADD COLUMN IF NOT EXISTS post_id INTEGER",
+        "ALTER TABLE lab_runs ADD COLUMN IF NOT EXISTS mode VARCHAR(40) DEFAULT 'historical-small'",
+        "ALTER TABLE lab_runs ADD COLUMN IF NOT EXISTS current_day INTEGER DEFAULT 0",
+        "ALTER TABLE lab_runs ADD COLUMN IF NOT EXISTS clock_json JSON DEFAULT '{}'::json",
+        "ALTER TABLE source_items ADD COLUMN IF NOT EXISTS available_at TIMESTAMPTZ",
+        "ALTER TABLE source_items ADD COLUMN IF NOT EXISTS cassette_id VARCHAR(80) DEFAULT ''",
     ]
     with engine.begin() as conn:
         for statement in statements:

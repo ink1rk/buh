@@ -1,0 +1,46 @@
+{
+  "generated_at_utc": "2026-11-10T21:14:43.245879+00:00",
+  "schema_head": "0007_r11_editorial_pilot",
+  "telegram_transport": "None",
+  "telegram_send": 0,
+  "published_messages_query_later": true,
+  "production_boot": "ENVIRONMENT=production is refused. DEV_READY does not mean PRODUCTION_APPROVED.",
+  "sandbox_pilot_boot": "PILOT_MODE=telegram_sandbox is not activated. Only offline_replay runs in this build.",
+  "live_chat_client": "live LLM transport is not activated in this build",
+  "live_collect": {
+    "ok": false,
+    "status": "blocked_by_policy",
+    "attempted": false,
+    "source_id": "cisa_kev"
+  },
+  "http_collector_public": {
+    "ok": false,
+    "status": "ssrf_blocked",
+    "attempted": false
+  },
+  "pilot_telegram_sandbox": {
+    "blocked": true,
+    "mode": "telegram_sandbox",
+    "reason": "blocked_by_policy",
+    "attempted": false,
+    "code": "D",
+    "active": false,
+    "label": "песочница Telegram",
+    "needs": [
+      "owner_approval",
+      "sandbox_bot",
+      "test_chat",
+      "kill_switch_off"
+    ]
+  },
+  "loopback_ui_connect_ex": 0,
+  "public_http_attempted": false,
+  "ollama_socket_attempted": false,
+  "probe_seconds": 0.0001,
+  "SOURCE_LIVE": "NO",
+  "LOCAL_LLM_LIVE": "NO",
+  "TELEGRAM_SEND_COUNT": 0,
+  "REAL_AUDIENCE": "UNKNOWN",
+  "REAL_REVENUE": "UNKNOWN",
+  "PRODUCTION_READY": "NO"
+}

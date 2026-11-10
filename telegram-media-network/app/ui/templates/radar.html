@@ -23,19 +23,21 @@
   <button type="submit">Показать</button>
 </form>
 {% if user.role in ["OWNER", "EDITOR"] %}
-<form class="panel filters" method="post" action="/radar/merge">
+<form class="panel filters" id="radar-merge" method="post" action="/radar/merge">
   <input type="hidden" name="csrf_token" value="{{ csrf }}">
-  <label>Объединить id <input name="source_id" required></label>
-  <label>в id <input name="target_id" required></label>
-  <label>Причина <input name="reason" required></label>
-  <button type="submit">Объединить</button>
+  <p class="muted">Отметьте сюжеты флажками. Первый станет целью, остальные вольются в него.</p>
+  <label>Причина <input name="reason" required placeholder="почему это один сюжет"></label>
+  <button type="submit">Объединить выбранные</button>
 </form>
 {% endif %}
 <section class="radar-feed">
   {% for row in rows %}
   <article class="card story-card">
     <div class="meta">
-      <span class="pill {{ row.list_name }}">{{ row.list_name }}</span>
+      {% if user.role in ["OWNER", "EDITOR"] %}
+      <label class="pill"><input type="checkbox" name="cluster_ids" value="{{ row.id }}" form="radar-merge"> выбрать</label>
+      {% endif %}
+      <span class="pill {{ row.list_name }}">{% if row.list_name == "hot" %}горячее{% elif row.list_name == "review" %}на разбор{% elif row.list_name == "rejected" %}отклонено{% else %}{{ row.list_name }}{% endif %}</span>
       <span class="pill trust">{{ row.trust }}</span>
       <span class="pill">{{ row.evidence_state }}</span>
     </div>

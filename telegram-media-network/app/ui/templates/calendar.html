@@ -18,7 +18,7 @@
     <div class="cal-label">{{ row.channel }}</div>
     {% for cell in row.cells %}
       {% if cell.episode %}
-      <div class="cal-cell proposed" draggable="true" data-episode="{{ cell.episode.id }}" data-version="{{ cell.episode.version }}">
+      <div class="cal-cell {{ cell.episode.status }}" draggable="true" data-episode="{{ cell.episode.id }}" data-version="{{ cell.episode.version }}">
         {{ cell.episode.series_id }}<br>{{ cell.episode.status }}{% if cell.episode.locked %} · lock{% endif %}
       </div>
       {% else %}

@@ -24,3 +24,5 @@
 ## Данные
 
 Тесты создают схему через `create_all`. В `compose.dev.yaml` схему меняет один сервис `migrate` (`alembic upgrade head` под advisory lock). API, collector и scheduler стартуют с `TMN_SCHEMA=check` и не выполняют DDL. Карточки лежат в общем томе `cards`, смонтированном в `/app/var/media`. Секреты в таблицу не пишутся: есть только ссылки вида `env:TELEGRAM_BOT_TOKEN`. Пароли пользователей хранятся как Argon2id. Сессия — это хэш cookie `tmn_session`, плюс отдельный CSRF-заголовок. Доказательство из источника хранится как `extracted`; `verified_at` заполняется только после отдельной проверки, которой в этом контуре нет.
+
+R11: лаборатория — это часы дня N, а не разовый импорт 30 суток. Живой Ollama не создаётся: `live_chat_client()` поднимает исключение, тесты идут через FakeOllama. `PILOT_MODE` кроме `offline_replay` останавливает boot. `0007_r11_editorial_pilot` аддитивна и не имеет безопасного `downgrade`.

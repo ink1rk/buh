@@ -144,6 +144,8 @@ class SourceItem(Base):
     content_kind: Mapped[str] = mapped_column(String(40), default="news")
     origin_mode: Mapped[str] = mapped_column(String(40), default="demo")
     lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    available_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cassette_id: Mapped[str] = mapped_column(String(80), default="")
 
 
 class Story(Base):
@@ -331,6 +333,14 @@ class MediaAsset(Base):
     render_version: Mapped[str] = mapped_column(String(40), default="card-v1")
     draft_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     content_hash: Mapped[str] = mapped_column(String(64), default="")
+    template_version: Mapped[str] = mapped_column(String(40), default="studio-v3")
+    ratio: Mapped[str] = mapped_column(String(16), default="16:9")
+    qa_status: Mapped[str] = mapped_column(String(40), default="pending")
+    source_license: Mapped[str] = mapped_column(String(80), default="own_typographic_template")
+    generator_mode: Mapped[str] = mapped_column(String(40), default="local_template")
+    alt_text: Mapped[str] = mapped_column(Text, default="")
+    purpose: Mapped[str] = mapped_column(String(40), default="news")
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class ApprovalEvent(Base):
@@ -590,6 +600,7 @@ class Episode(Base):
     program_kind: Mapped[str] = mapped_column(String(40), default="breaking")
     vacancy_reason: Mapped[str] = mapped_column(Text, default="")
     lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    calendar_status: Mapped[str] = mapped_column(String(40), default="proposed")
 
 
 class EditorialFeedback(Base):
@@ -895,6 +906,7 @@ class EditorialBrief(Base):
     notes: Mapped[str] = mapped_column(Text, default="")
     actor: Mapped[str] = mapped_column(String(80), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class EditorialVariant(Base):
@@ -915,6 +927,7 @@ class EditorialVariant(Base):
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cost: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class VisualPreset(Base):
@@ -949,6 +962,13 @@ class WorkflowRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    post_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    brief_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    asset_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    episode_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ready_for_human: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    ready_for_delivery: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    lineage_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class WorkflowStep(Base):
@@ -963,6 +983,10 @@ class WorkflowStep(Base):
     last_error: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    input_hash: Mapped[str] = mapped_column(String(64), default="")
+    output_ref: Mapped[str] = mapped_column(String(160), default="")
+    error_class: Mapped[str] = mapped_column(String(40), default="")
+    skipped_reason: Mapped[str] = mapped_column(Text, default="")
 
 
 class EditorialTask(Base):
@@ -977,6 +1001,10 @@ class EditorialTask(Base):
     assignee: Mapped[str] = mapped_column(String(80), default="")
     reason: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    priority: Mapped[str] = mapped_column(String(20), default="normal")
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    post_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class MetricProvenance(Base):
@@ -1030,6 +1058,9 @@ class LabRun(Base):
     status: Mapped[str] = mapped_column(String(40), default="ready")
     report_json: Mapped[dict] = mapped_column(JSON, default=dict)
     data_mode: Mapped[str] = mapped_column(String(20), default="demo")
+    mode: Mapped[str] = mapped_column(String(40), default="historical-small")
+    current_day: Mapped[int] = mapped_column(Integer, default=0)
+    clock_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
 
 class ChannelPlanSettings(Base):
@@ -1058,3 +1089,48 @@ class ScoreRevision(Base):
     dimensions_json: Mapped[dict] = mapped_column(JSON, default=dict)
     total: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class LabDailySnapshot(Base):
+    __tablename__ = "lab_daily_snapshots"
+    __table_args__ = (UniqueConstraint("lab_run_id", "day", name="uq_lab_daily_run_day"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    lab_run_id: Mapped[int] = mapped_column(ForeignKey("lab_runs.id"), nullable=False, index=True)
+    day: Mapped[int] = mapped_column(Integer, nullable=False)
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    stats_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    data_mode: Mapped[str] = mapped_column(String(20), default="demo")
+
+
+class LLMCallLog(Base):
+    __tablename__ = "llm_call_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    role: Mapped[str] = mapped_column(String(40), default="")
+    mode: Mapped[str] = mapped_column(String(20), default="mock")
+    model_id: Mapped[str] = mapped_column(String(80), default="")
+    prompt_version: Mapped[str] = mapped_column(String(40), default="")
+    status: Mapped[str] = mapped_column(String(40), default="ok")
+    error: Mapped[str] = mapped_column(Text, default="")
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    fallback_mode: Mapped[str] = mapped_column(String(40), default="")
+    local_attempted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    payload_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    lab_run_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class SourceCatalogEntry(Base):
+    __tablename__ = "source_catalog"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), default="")
+    kind: Mapped[str] = mapped_column(String(40), default="rss")
+    homepage: Mapped[str] = mapped_column(Text, default="")
+    collector: Mapped[str] = mapped_column(String(80), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    live_allowed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    last_status: Mapped[str] = mapped_column(String(40), default="cassette")
+    cassette_path: Mapped[str] = mapped_column(Text, default="")
+    notes: Mapped[str] = mapped_column(Text, default="")

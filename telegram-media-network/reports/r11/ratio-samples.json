@@ -1,0 +1,29 @@
+[
+  {
+    "path": "reports/screenshots/r11/cards/cyber-news-16x9.jpg",
+    "ratio": "16:9",
+    "width": 1280,
+    "height": 720,
+    "sha256": "c5c3ca953bd448741cd893527e45299e81b461e3af4385debc107c92f8fc33e2",
+    "fits": true,
+    "bytes": 53346
+  },
+  {
+    "path": "reports/screenshots/r11/cards/cyber-review-1x1.jpg",
+    "ratio": "1:1",
+    "width": 1080,
+    "height": 1080,
+    "sha256": "142ea326f302175ff60207a3f57d5b838af3a4e2f7b15012c6029e43c2903430",
+    "fits": true,
+    "bytes": 69215
+  },
+  {
+    "path": "reports/screenshots/r11/cards/cyber-security-4x5.jpg",
+    "ratio": "4:5",
+    "width": 1080,
+    "height": 1350,
+    "sha256": "8ab9ec7644dd4135597614ce2e44a17fb02f22fd417f9da92fa03ceea4462bcf",
+    "fits": true,
+    "bytes": 66238
+  }
+]

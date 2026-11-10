@@ -1,0 +1,16 @@
+{
+  "source_db": "tmn_r11_lab",
+  "isolated_db": "tmn_r11_restore",
+  "schema": null,
+  "expected": "0007_r11_editorial_pilot",
+  "note": "UI lab DB was created with create_all + extras, not alembic stamp. Restore still rebuilt lab_daily_snapshots and 42 posts.",
+  "lab_daily_snapshots_table": "lab_daily_snapshots",
+  "daily_rows": 30,
+  "posts": 42,
+  "clusters": 42,
+  "assets": 42,
+  "published_messages": 0,
+  "workflow_jpegs_on_disk": 65,
+  "dump_bytes": 2341329,
+  "telegram_send": 0
+}

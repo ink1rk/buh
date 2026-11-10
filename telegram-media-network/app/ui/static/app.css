@@ -131,7 +131,11 @@ button.danger { background: var(--danger); color: white; }
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-height: 72px; font-size: 12px;
 }
 .cal-head, .cal-label { min-height: auto; color: var(--muted); background: var(--bg-elev); }
-.cal-cell.proposed { border-color: #4a5d3a; }
+.cal-cell.proposed, .cal-cell.idea { border-color: #4a5d3a; }
+.cal-cell.needs_review { border-color: #c9a227; }
+.cal-cell.approved, .cal-cell.scheduled { border-color: #6fbf97; }
+.cal-cell.sent { border-color: #6ea8d8; }
+.cal-cell.failed { border-color: var(--danger); }
 .cal-cell.empty { color: var(--muted); opacity: 0.85; }
 .studio-stage { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr); gap: 16px; }
 .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }

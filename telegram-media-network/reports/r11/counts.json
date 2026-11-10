@@ -1,0 +1,13 @@
+{
+  "channels": 8,
+  "clusters": 42,
+  "source_items": 50,
+  "posts": 42,
+  "variants": 126,
+  "episodes": 37,
+  "workflow_runs": 42,
+  "assets": 42,
+  "published_messages": 0,
+  "telegram_send": 0,
+  "dossier_refs_patched": 0
+}

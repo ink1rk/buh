@@ -1,0 +1,1160 @@
+[
+  {
+    "cluster_id": 1,
+    "cluster_key": "cve:CVE-2026-880001",
+    "title": "DEMO: CVE-2026-880001 официальный бюллетень",
+    "channel_id": "cyber",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "cve",
+    "dossier_id": 1,
+    "members": [
+      {
+        "member_id": 1,
+        "story_id": 1,
+        "source_item_id": 1,
+        "relation": "member",
+        "external_id": "lab:cve-880001",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-12T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      },
+      {
+        "member_id": 4,
+        "story_id": 1,
+        "source_item_id": 4,
+        "relation": "member",
+        "external_id": "lab:cve-880001-rss",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-13T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "reprint"
+      },
+      {
+        "member_id": 9,
+        "story_id": 1,
+        "source_item_id": 9,
+        "relation": "member",
+        "external_id": "lab:cve-880001-scope",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-16T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      },
+      {
+        "member_id": 15,
+        "story_id": 1,
+        "source_item_id": 15,
+        "relation": "member",
+        "external_id": "lab:cve-880001-patch",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-19T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 2,
+    "cluster_key": "url:5bcec484f7cd9aa1adef785c",
+    "title": "DEMO: общий инфоповод локальной модели",
+    "channel_id": "ai_news",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 2,
+    "members": [
+      {
+        "member_id": 2,
+        "story_id": 2,
+        "source_item_id": 2,
+        "relation": "member",
+        "external_id": "lab:shared",
+        "url": null,
+        "publisher_id": "huggingface",
+        "available_at": "2026-10-12T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      },
+      {
+        "member_id": 3,
+        "story_id": 2,
+        "source_item_id": 3,
+        "relation": "member",
+        "external_id": "lab:shared-tools",
+        "url": null,
+        "publisher_id": "huggingface",
+        "available_at": "2026-10-12T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 3,
+    "cluster_key": "url:bbd15515b07c6afc001e4785",
+    "title": "DEMO: учебный инструмент дня",
+    "channel_id": "ai_tools",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 3,
+    "members": [
+      {
+        "member_id": 5,
+        "story_id": 3,
+        "source_item_id": 5,
+        "relation": "member",
+        "external_id": "lab:tool-card",
+        "url": null,
+        "publisher_id": "huggingface",
+        "available_at": "2026-10-13T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      },
+      {
+        "member_id": 16,
+        "story_id": 3,
+        "source_item_id": 16,
+        "relation": "member",
+        "external_id": "lab:tool-update",
+        "url": null,
+        "publisher_id": "huggingface",
+        "available_at": "2026-10-20T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      },
+      {
+        "member_id": 26,
+        "story_id": 3,
+        "source_item_id": 25,
+        "relation": "member",
+        "external_id": "lab:tool-limit",
+        "url": null,
+        "publisher_id": "huggingface",
+        "available_at": "2026-10-26T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 4,
+    "cluster_key": "repo:acme/lab-runner:v1.0",
+    "title": "DEMO: acme/lab-runner v1.0",
+    "channel_id": "github",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "release",
+    "dossier_id": 4,
+    "members": [
+      {
+        "member_id": 6,
+        "story_id": 4,
+        "source_item_id": 6,
+        "relation": "member",
+        "external_id": "lab:lab-runner-v1",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-10-14T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      },
+      {
+        "member_id": 18,
+        "story_id": null,
+        "source_item_id": null,
+        "relation": "merge_candidate",
+        "external_id": null,
+        "url": null,
+        "publisher_id": null,
+        "available_at": null,
+        "cassette_id": null,
+        "origin_mode": null
+      },
+      {
+        "member_id": 20,
+        "story_id": 4,
+        "source_item_id": 19,
+        "relation": "member",
+        "external_id": "lab:lab-runner-v1-lic",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-10-23T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 5,
+    "cluster_key": "url:ba094a5a82d21b4ef60e1141",
+    "title": "DEMO: lab-stars снимок A",
+    "channel_id": "github",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 5,
+    "members": [
+      {
+        "member_id": 7,
+        "story_id": 5,
+        "source_item_id": 7,
+        "relation": "member",
+        "external_id": "lab:stars-a",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-10-14T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      },
+      {
+        "member_id": 21,
+        "story_id": 5,
+        "source_item_id": 20,
+        "relation": "member",
+        "external_id": "lab:stars-b",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-10-23T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 6,
+    "cluster_key": "arxiv:2601.88001",
+    "title": "DEMO: препринт 2601.88001",
+    "channel_id": "future",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 6,
+    "members": [
+      {
+        "member_id": 8,
+        "story_id": 6,
+        "source_item_id": 8,
+        "relation": "member",
+        "external_id": "lab:preprint",
+        "url": null,
+        "publisher_id": "arxiv",
+        "available_at": "2026-10-15T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 7,
+    "cluster_key": "repo:acme/nas:1.4",
+    "title": "DEMO: релиз self-hosted NAS",
+    "channel_id": "homelab",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "release",
+    "dossier_id": 7,
+    "members": [
+      {
+        "member_id": 10,
+        "story_id": 7,
+        "source_item_id": 10,
+        "relation": "member",
+        "external_id": "lab:nas-release",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-10-17T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 8,
+    "cluster_key": "url:f76c1742de567ecd5fc60ab3",
+    "title": "DEMO: evergreen гайд self-hosted NAS",
+    "channel_id": "homelab",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "evergreen",
+    "dossier_id": 8,
+    "members": [
+      {
+        "member_id": 11,
+        "story_id": 8,
+        "source_item_id": 11,
+        "relation": "member",
+        "external_id": "lab:nas-guide",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-10-17T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 9,
+    "cluster_key": "url:36f7588abc598f1daaaabe84",
+    "title": "DEMO: заметка эксплуатации k8s",
+    "channel_id": "infra",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 9,
+    "members": [
+      {
+        "member_id": 12,
+        "story_id": 9,
+        "source_item_id": 12,
+        "relation": "member",
+        "external_id": "lab:k8s-note",
+        "url": null,
+        "publisher_id": "kubernetes",
+        "available_at": "2026-10-17T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 10,
+    "cluster_key": "cve:CVE-2026-880099",
+    "title": "DEMO: CVE-2026-880099 другой идентификатор",
+    "channel_id": "cyber",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "cve",
+    "dossier_id": 10,
+    "members": [
+      {
+        "member_id": 13,
+        "story_id": 10,
+        "source_item_id": 13,
+        "relation": "member",
+        "external_id": "lab:cve-other",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-18T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 11,
+    "cluster_key": "url:4c917b290a17356f9523a062",
+    "title": "DEMO: future дневная запись лаборатории 7",
+    "channel_id": "future",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 11,
+    "members": [
+      {
+        "member_id": 14,
+        "story_id": 11,
+        "source_item_id": 14,
+        "relation": "member",
+        "external_id": "lab:filler-7-future",
+        "url": null,
+        "publisher_id": "arxiv",
+        "available_at": "2026-10-18T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 12,
+    "cluster_key": "repo:acme/lab-runner:v2.0",
+    "title": "DEMO: acme/lab-runner v2.0",
+    "channel_id": "github",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "release",
+    "dossier_id": 12,
+    "members": [
+      {
+        "member_id": 17,
+        "story_id": 12,
+        "source_item_id": 17,
+        "relation": "member",
+        "external_id": "lab:lab-runner-v2",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-10-21T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 13,
+    "cluster_key": "url:5ab969d8bcb6747eaead89e7",
+    "title": "DEMO: независимый комментарий к 2601.88001",
+    "channel_id": "future",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 13,
+    "members": [
+      {
+        "member_id": 19,
+        "story_id": 13,
+        "source_item_id": 18,
+        "relation": "member",
+        "external_id": "lab:comment",
+        "url": null,
+        "publisher_id": "hackernews",
+        "available_at": "2026-10-22T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "aggregator"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 14,
+    "cluster_key": "cve:CVE-2026-880002",
+    "title": "DEMO: конфликт сведений по CVE-2026-880002",
+    "channel_id": "cyber",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "cve",
+    "dossier_id": 14,
+    "members": [
+      {
+        "member_id": 22,
+        "story_id": 14,
+        "source_item_id": 21,
+        "relation": "member",
+        "external_id": "lab:conflict",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-24T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 15,
+    "cluster_key": "url:e92b3040390aeb76cf7ef1c7",
+    "title": "DEMO: homelab дневная запись лаборатории 13",
+    "channel_id": "homelab",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 15,
+    "members": [
+      {
+        "member_id": 23,
+        "story_id": 15,
+        "source_item_id": 22,
+        "relation": "member",
+        "external_id": "lab:filler-13-homelab",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-10-24T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 16,
+    "cluster_key": "arxiv:2601.88002",
+    "title": "DEMO: научный препринт попал в dev",
+    "channel_id": "dev",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 16,
+    "members": [
+      {
+        "member_id": 24,
+        "story_id": 16,
+        "source_item_id": 23,
+        "relation": "member",
+        "external_id": "lab:wrong-channel",
+        "url": null,
+        "publisher_id": "arxiv",
+        "available_at": "2026-10-25T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 17,
+    "cluster_key": "url:3e60600d8a5f175372e8a498",
+    "title": "DEMO: dev дневная запись лаборатории 14",
+    "channel_id": "dev",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 17,
+    "members": [
+      {
+        "member_id": 25,
+        "story_id": 17,
+        "source_item_id": 24,
+        "relation": "member",
+        "external_id": "lab:filler-14-dev",
+        "url": null,
+        "publisher_id": "pypi",
+        "available_at": "2026-10-25T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 18,
+    "cluster_key": "url:b04f6e8729bf5396cd1263f4",
+    "title": "DEMO: источник с попыткой injection",
+    "channel_id": "ai_news",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 18,
+    "members": [
+      {
+        "member_id": 27,
+        "story_id": 18,
+        "source_item_id": 26,
+        "relation": "member",
+        "external_id": "lab:inject",
+        "url": null,
+        "publisher_id": "hackernews",
+        "available_at": "2026-10-27T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "aggregator"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 19,
+    "cluster_key": "url:7ead5de724b6f2aec625700a",
+    "title": "DEMO: ai_news дневная запись лаборатории 16",
+    "channel_id": "ai_news",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 19,
+    "members": [
+      {
+        "member_id": 28,
+        "story_id": 19,
+        "source_item_id": 27,
+        "relation": "member",
+        "external_id": "lab:filler-16-ai_news",
+        "url": null,
+        "publisher_id": "huggingface",
+        "available_at": "2026-10-27T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 20,
+    "cluster_key": "url:cd8cf85f6059325ab22ec0ba",
+    "title": "DEMO: golden workflow заметка",
+    "channel_id": "dev",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 20,
+    "members": [
+      {
+        "member_id": 29,
+        "story_id": 20,
+        "source_item_id": 28,
+        "relation": "member",
+        "external_id": "lab:golden-dev-16",
+        "url": null,
+        "publisher_id": "pypi",
+        "available_at": "2026-10-27T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 21,
+    "cluster_key": "url:7878d81d48236c77de416cb1",
+    "title": "DEMO: ai_tools дневная запись лаборатории 17",
+    "channel_id": "ai_tools",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 21,
+    "members": [
+      {
+        "member_id": 30,
+        "story_id": 21,
+        "source_item_id": 29,
+        "relation": "member",
+        "external_id": "lab:filler-17-ai_tools",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-10-28T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 22,
+    "cluster_key": "url:9b7122236f54fda6159f95a9",
+    "title": "DEMO: golden эксплуатация",
+    "channel_id": "infra",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 22,
+    "members": [
+      {
+        "member_id": 31,
+        "story_id": 22,
+        "source_item_id": 30,
+        "relation": "member",
+        "external_id": "lab:golden-infra-17",
+        "url": null,
+        "publisher_id": "kubernetes",
+        "available_at": "2026-10-28T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 23,
+    "cluster_key": "url:298a9fa02c92ef70191fa579",
+    "title": "DEMO: golden CVE дня 17",
+    "channel_id": "cyber",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 23,
+    "members": [
+      {
+        "member_id": 32,
+        "story_id": 23,
+        "source_item_id": 31,
+        "relation": "member",
+        "external_id": "lab:golden-cve-17",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-10-28T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 24,
+    "cluster_key": "url:a7db245f5e0ea12cee318885",
+    "title": "DEMO: homelab дневная запись лаборатории 21",
+    "channel_id": "homelab",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 24,
+    "members": [
+      {
+        "member_id": 33,
+        "story_id": 24,
+        "source_item_id": 32,
+        "relation": "member",
+        "external_id": "lab:filler-21-homelab",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-11-01T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 25,
+    "cluster_key": "url:c89dd42de63b9b53a510c15d",
+    "title": "DEMO: golden self-hosted",
+    "channel_id": "homelab",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 25,
+    "members": [
+      {
+        "member_id": 34,
+        "story_id": 25,
+        "source_item_id": 33,
+        "relation": "member",
+        "external_id": "lab:golden-home-21",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-11-01T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 26,
+    "cluster_key": "url:c1e2a6b0aa7f112599e38e88",
+    "title": "DEMO: dev дневная запись лаборатории 22",
+    "channel_id": "dev",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 26,
+    "members": [
+      {
+        "member_id": 35,
+        "story_id": 26,
+        "source_item_id": 34,
+        "relation": "member",
+        "external_id": "lab:filler-22-dev",
+        "url": null,
+        "publisher_id": "pypi",
+        "available_at": "2026-11-02T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 27,
+    "cluster_key": "url:bec667edd846682e4d6dc90c",
+    "title": "DEMO: golden препринт-кассета",
+    "channel_id": "future",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 27,
+    "members": [
+      {
+        "member_id": 36,
+        "story_id": 27,
+        "source_item_id": 35,
+        "relation": "member",
+        "external_id": "lab:golden-future-22",
+        "url": null,
+        "publisher_id": "arxiv",
+        "available_at": "2026-11-02T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 28,
+    "cluster_key": "url:66f6090be1911f97e08420a3",
+    "title": "DEMO: future дневная запись лаборатории 23",
+    "channel_id": "future",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 28,
+    "members": [
+      {
+        "member_id": 37,
+        "story_id": 28,
+        "source_item_id": 36,
+        "relation": "member",
+        "external_id": "lab:filler-23-future",
+        "url": null,
+        "publisher_id": "arxiv",
+        "available_at": "2026-11-03T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 29,
+    "cluster_key": "url:e46d20df01c84e4400ce8e96",
+    "title": "DEMO: golden новость кассеты",
+    "channel_id": "ai_news",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 29,
+    "members": [
+      {
+        "member_id": 38,
+        "story_id": 29,
+        "source_item_id": 37,
+        "relation": "member",
+        "external_id": "lab:golden-news-23",
+        "url": null,
+        "publisher_id": "hackernews",
+        "available_at": "2026-11-03T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "aggregator"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 30,
+    "cluster_key": "url:cf3870d57736799d5d3290d3",
+    "title": "DEMO: ai_news дневная запись лаборатории 24",
+    "channel_id": "ai_news",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 30,
+    "members": [
+      {
+        "member_id": 39,
+        "story_id": 30,
+        "source_item_id": 38,
+        "relation": "member",
+        "external_id": "lab:filler-24-ai_news",
+        "url": null,
+        "publisher_id": "huggingface",
+        "available_at": "2026-11-04T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 31,
+    "cluster_key": "url:57bbcf5b8945b01f09227127",
+    "title": "DEMO: golden инструмент кассеты",
+    "channel_id": "ai_tools",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 31,
+    "members": [
+      {
+        "member_id": 40,
+        "story_id": 31,
+        "source_item_id": 39,
+        "relation": "member",
+        "external_id": "lab:golden-tools-24",
+        "url": null,
+        "publisher_id": "huggingface",
+        "available_at": "2026-11-04T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 32,
+    "cluster_key": "url:ecc2043d3676bfe064343386",
+    "title": "DEMO: ai_tools дневная запись лаборатории 25",
+    "channel_id": "ai_tools",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 32,
+    "members": [
+      {
+        "member_id": 41,
+        "story_id": 32,
+        "source_item_id": 40,
+        "relation": "member",
+        "external_id": "lab:filler-25-ai_tools",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-11-05T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 33,
+    "cluster_key": "url:3b2d08da81f5f8e612c64079",
+    "title": "DEMO: golden репозиторий",
+    "channel_id": "github",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 33,
+    "members": [
+      {
+        "member_id": 42,
+        "story_id": 33,
+        "source_item_id": 41,
+        "relation": "member",
+        "external_id": "lab:golden-gh-25",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-11-05T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 34,
+    "cluster_key": "url:c62b07e813e3ae8344085b09",
+    "title": "DEMO: github дневная запись лаборатории 26",
+    "channel_id": "github",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 34,
+    "members": [
+      {
+        "member_id": 43,
+        "story_id": 34,
+        "source_item_id": 42,
+        "relation": "member",
+        "external_id": "lab:filler-26-github",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-11-06T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 35,
+    "cluster_key": "url:bffcd0749362c19e087084f0",
+    "title": "DEMO: golden advisory",
+    "channel_id": "cyber",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 35,
+    "members": [
+      {
+        "member_id": 44,
+        "story_id": 35,
+        "source_item_id": 43,
+        "relation": "member",
+        "external_id": "lab:golden-cyber-26",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-11-06T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 36,
+    "cluster_key": "url:6788e1eff6ff540960c5349d",
+    "title": "DEMO: cyber дневная запись лаборатории 27",
+    "channel_id": "cyber",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 36,
+    "members": [
+      {
+        "member_id": 45,
+        "story_id": 36,
+        "source_item_id": 44,
+        "relation": "member",
+        "external_id": "lab:filler-27-cyber",
+        "url": null,
+        "publisher_id": "cisa",
+        "available_at": "2026-11-07T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 37,
+    "cluster_key": "url:b9334e0f12b83dec198adfe9",
+    "title": "DEMO: golden пакет",
+    "channel_id": "dev",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 37,
+    "members": [
+      {
+        "member_id": 46,
+        "story_id": 37,
+        "source_item_id": 45,
+        "relation": "member",
+        "external_id": "lab:golden-dev-27",
+        "url": null,
+        "publisher_id": "pypi",
+        "available_at": "2026-11-07T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 38,
+    "cluster_key": "url:96dff65f47f1c867c06a9de8",
+    "title": "DEMO: infra дневная запись лаборатории 28",
+    "channel_id": "infra",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 38,
+    "members": [
+      {
+        "member_id": 47,
+        "story_id": 38,
+        "source_item_id": 46,
+        "relation": "member",
+        "external_id": "lab:filler-28-infra",
+        "url": null,
+        "publisher_id": "kubernetes",
+        "available_at": "2026-11-08T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 39,
+    "cluster_key": "url:c7a35865119cf9856bd1825e",
+    "title": "DEMO: homelab дневная запись лаборатории 29",
+    "channel_id": "homelab",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 39,
+    "members": [
+      {
+        "member_id": 48,
+        "story_id": 39,
+        "source_item_id": 47,
+        "relation": "member",
+        "external_id": "lab:filler-29-homelab",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-11-09T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 40,
+    "cluster_key": "url:c20269c6b862a3f643ab3710",
+    "title": "DEMO: golden заметка 29",
+    "channel_id": "infra",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 40,
+    "members": [
+      {
+        "member_id": 49,
+        "story_id": 40,
+        "source_item_id": 48,
+        "relation": "member",
+        "external_id": "lab:golden-infra-29",
+        "url": null,
+        "publisher_id": "kubernetes",
+        "available_at": "2026-11-09T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 41,
+    "cluster_key": "url:a59358fef782eee2e369cb95",
+    "title": "DEMO: dev дневная запись лаборатории 30",
+    "channel_id": "dev",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 41,
+    "members": [
+      {
+        "member_id": 50,
+        "story_id": 41,
+        "source_item_id": 49,
+        "relation": "member",
+        "external_id": "lab:filler-30-dev",
+        "url": null,
+        "publisher_id": "pypi",
+        "available_at": "2026-11-10T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "origin"
+      }
+    ],
+    "claims": []
+  },
+  {
+    "cluster_id": 42,
+    "cluster_key": "url:f50b38140fd2e96762af7a64",
+    "title": "DEMO: golden день 30",
+    "channel_id": "homelab",
+    "lab_run_id": 1,
+    "data_mode": "demo",
+    "kind": "event",
+    "dossier_id": 42,
+    "members": [
+      {
+        "member_id": 51,
+        "story_id": 42,
+        "source_item_id": 50,
+        "relation": "member",
+        "external_id": "lab:golden-home-30",
+        "url": null,
+        "publisher_id": "github",
+        "available_at": "2026-11-10T06:00:00+00:00",
+        "cassette_id": "historical-small",
+        "origin_mode": "vendor"
+      }
+    ],
+    "claims": []
+  }
+]

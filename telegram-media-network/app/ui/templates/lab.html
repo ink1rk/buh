@@ -1,21 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Офлайн-лаборатория 30 дней</h1>
-<p class="demo-banner">DEMO. Telegram send = {{ report.telegram_send }}. Повторная загрузка идемпотентна.</p>
+<h1>Офлайн-лаборатория</h1>
+<p class="demo-banner">DEMO. Telegram send = {{ report.telegram_send }}. Часы лаборатории идут по дням. Повторная загрузка идемпотентна.</p>
 {% if user.role == "OWNER" %}
 <form method="post" action="/lab/load">
   <input type="hidden" name="csrf_token" value="{{ csrf }}">
-  <button type="submit">Загрузить 30-дневную лабораторию</button>
+  <button type="submit">Загрузить historical-small</button>
 </form>
 {% endif %}
-<p>Прогон: {{ report.lab_run_id or "ещё не запускался" }}</p>
-<p>Сюжетов: {{ report.clusters }} · постов: {{ report.source_items }} исходных записей · снимков {{ report.snapshots }}</p>
+<p>Прогон: {{ report.lab_run_id or "ещё не запускался" }} · режим {{ report.mode or "—" }} · день {{ report.current_day or 0 }}</p>
+<p>Сюжетов: {{ report.clusters }} · исходных записей: {{ report.source_items }} · снимков источников {{ report.snapshots }} · дневных снимков {{ report.daily_snapshots or 0 }}</p>
 <table>
   <tr><th>Канал</th><th>Сюжеты</th><th>Посты</th><th>Слоты</th></tr>
   {% for channel, row in report.channels.items() %}
   <tr><td>{{ channel }}</td><td>{{ row.clusters }}</td><td>{{ row.posts }}</td><td>{{ row.episodes }}</td></tr>
   {% endfor %}
 </table>
+{% if report.days %}
+<h2>Снимки по дням</h2>
+<table>
+  <tr><th>День</th><th>Сюжеты</th><th>Записи</th><th>Посты</th><th>Будущее отсечено</th></tr>
+  {% for row in report.days %}
+  <tr>
+    <td>{{ row.day }}</td>
+    <td>{{ row.clusters }}</td>
+    <td>{{ row.source_items }}</td>
+    <td>{{ row.posts }}</td>
+    <td>{{ row.skipped_future }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
 <p class="muted">Опубликованных сообщений: {{ report.published_messages }}. Это должен быть ноль.</p>
 <p><a class="button ghost" href="/radar">Радар</a> <a class="button ghost" href="/calendar?days=28">Календарь 28</a> <a class="button ghost" href="/autopilot">Автопилот</a></p>
 {% endblock %}

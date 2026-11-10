@@ -40,6 +40,7 @@ services:
       SPONSORED_ENABLED: "false"
       LLM_MODE: mock
       SOURCE_MODE: offline
+      PILOT_MODE: offline_replay
       DATABASE_URL: postgresql+psycopg://tmn_app:${POSTGRES_PASSWORD}@db:5432/tmn
       SESSION_SECRET: ${SESSION_SECRET}
     command: ["python", "-m", "app.workers.migrate"]
@@ -63,6 +64,7 @@ services:
       SPONSORED_ENABLED: "false"
       LLM_MODE: mock
       SOURCE_MODE: offline
+      PILOT_MODE: offline_replay
       DATABASE_URL: postgresql+psycopg://tmn_app:${POSTGRES_PASSWORD}@db:5432/tmn
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       SESSION_SECRET: ${SESSION_SECRET}
@@ -101,6 +103,7 @@ services:
       SPONSORED_ENABLED: "false"
       LLM_MODE: mock
       SOURCE_MODE: offline
+      PILOT_MODE: offline_replay
       DATABASE_URL: postgresql+psycopg://tmn_app:${POSTGRES_PASSWORD}@db:5432/tmn
       SESSION_SECRET: ${SESSION_SECRET}
       TMN_ROLE: scheduler
@@ -130,6 +133,7 @@ services:
       GLOBAL_KILL_SWITCH: "true"
       SPONSORED_ENABLED: "false"
       SOURCE_MODE: offline
+      PILOT_MODE: offline_replay
       DATABASE_URL: postgresql+psycopg://tmn_app:${POSTGRES_PASSWORD}@db:5432/tmn
       SESSION_SECRET: ${SESSION_SECRET}
       TMN_ROLE: collector
