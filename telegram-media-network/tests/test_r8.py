@@ -485,8 +485,10 @@ def test_r8_t16_shipped_flags_and_production_refusal():
         assert_can_boot(settings)
 
 
-def test_r8_t15_no_new_migration():
-    assert SCHEMA_HEAD == "0003_r7_integrity"
+def test_r8_t15_schema_head_is_additive():
+    assert SCHEMA_HEAD == "0004_global_product"
     names = [path.name for path in (ROOT / "alembic" / "versions").glob("*.py")]
+    assert any(name.startswith("0001") for name in names)
+    assert any(name.startswith("0002") for name in names)
     assert any(name.startswith("0003") for name in names)
-    assert not any(name.startswith("0004") for name in names)
+    assert any(name.startswith("0004") for name in names)

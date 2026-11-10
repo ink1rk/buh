@@ -181,6 +181,153 @@ def render_card(
     )
 
 
+def choose_rights(remote: bytes | None, rights_basis: str | None, allow_remote: bool, card: RenderedCard) -> tuple[RenderedCard, str]:
+    """Unknown or forbidden remote art never replaces the house layout."""
+    if rights_basis in {None, "", "unknown", "no_reuse"}:
+        return card, "own_typographic_template"
+    return resolve_media(remote, rights_basis, allow_remote, card)
+
+
+def render_network_card(
+    *,
+    channel_id: str,
+    channel_title: str,
+    primary: str,
+    accent: str,
+    template_id: str,
+    title: str,
+    subtitle: str = "",
+    source_label: str = "",
+    cve: str = "",
+    digest_lines: list[str] | None = None,
+    demo: bool = True,
+) -> RenderedCard:
+    """Four house layouts. They are covers, not screenshots and not paragraphs."""
+    background = hex_rgb(primary)
+    accent_rgb = hex_rgb(accent)
+    image = Image.new("RGB", (CARD_W, CARD_H), background)
+    draw = ImageDraw.Draw(image)
+    _motif(draw, channel_id, accent_rgb)
+    brand = _font(FONT_BOLD, 28)
+    small = _font(FONT_REGULAR, 22)
+    draw.text((64, 36), filter_text(brand, channel_title)[:32], font=brand, fill=(255, 255, 255))
+    label = {"hero": "НОВОСТЬ", "tool": "ИНСТРУМЕНТ", "advisory": "ЗАПИСЬ", "digest": "ПОДБОРКА"}.get(template_id, "МАТЕРИАЛ")
+    draw.text((64, 78), label, font=small, fill=(236, 239, 244))
+    if demo:
+        draw.text((1040, 36), "DEMO", font=small, fill=accent_rgb)
+    draw.text((1040, 68), "СВОЙ МАКЕТ", font=_font(FONT_REGULAR, 16), fill=(220, 224, 230))
+    title_font = _font(FONT_BOLD, 46)
+    visible = filter_text(title_font, title).strip()
+    lines = wrap_text(visible, title_font, 760 if template_id == "tool" else 1100)[:2]
+    y = 150
+    if template_id == "advisory" and cve:
+        draw.rounded_rectangle((64, 140, 640, 210), radius=8, outline=accent_rgb, width=3)
+        draw.text((80, 152), filter_text(_font(FONT_BOLD, 32), cve)[:28], font=_font(FONT_BOLD, 32), fill=accent_rgb)
+        y = 230
+    if template_id == "tool":
+        draw.rectangle((860, 150, 1216, 520), fill=_mix(background, accent_rgb))
+        for box in ((900, 190), (980, 280), (900, 370)):
+            draw.rectangle((box[0], box[1], box[0] + 160, box[1] + 48), outline=accent_rgb, width=3)
+        draw.text((900, 470), "схема, не скриншот", font=small, fill=(255, 255, 255))
+    if template_id == "hero":
+        draw.ellipse((980, 160, 1220, 400), outline=accent_rgb, width=8)
+        draw.ellipse((1040, 220, 1160, 340), fill=accent_rgb)
+    if template_id == "digest":
+        y = 150
+        lines = []
+        for index, item in enumerate((digest_lines or [visible])[:5]):
+            top = 150 + index * 90
+            draw.rectangle((64, top, 1216, top + 72), outline=accent_rgb, width=2)
+            snippet = filter_text(small, item)[:70]
+            draw.text((84, top + 22), snippet, font=small, fill=(255, 255, 255))
+        bottom = 150 + min(5, len(digest_lines or [visible])) * 90
+        payload = _save(image)
+        layout = CardLayout(fits=True, lines=digest_lines or [visible], bottom=bottom, font_size=22)
+        return RenderedCard(payload, layout, hashlib.sha256(payload).hexdigest(), "own_typographic_template")
+    for line in lines:
+        draw.text((64, y), line, font=title_font, fill=(255, 255, 255))
+        y += 58
+    if subtitle:
+        draw.text((64, min(y + 8, 520)), filter_text(small, subtitle)[:80], font=small, fill=(230, 234, 238))
+    draw.line((64, 620, 1216, 620), fill=(255, 255, 255), width=2)
+    footer = source_label or channel_title
+    if template_id == "advisory":
+        footer = "CVSS нет в источнике" if not source_label else source_label
+    draw.text((64, 648), filter_text(small, footer)[:80], font=small, fill=(236, 239, 244))
+    payload = _save(image)
+    fits = bool(lines) and len(lines) <= 2
+    layout = CardLayout(fits=fits, lines=lines, bottom=y, font_size=46)
+    return RenderedCard(payload, layout, hashlib.sha256(payload).hexdigest(), "own_typographic_template")
+
+
+def _save(image: Image.Image) -> bytes:
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG", quality=85, optimize=True)
+    return buffer.getvalue()
+
+
+def _mix(base: tuple[int, int, int], accent: tuple[int, int, int]) -> tuple[int, int, int]:
+    mixed = [int(base[index] * 0.72 + accent[index] * 0.28) for index in range(3)]
+    return mixed[0], mixed[1], mixed[2]
+
+
+def _motif(draw: ImageDraw.ImageDraw, channel_id: str, accent: tuple[int, int, int]) -> None:
+    if channel_id == "ai_news":
+        draw.polygon([(0, 0), (420, 0), (300, 120), (0, 120)], fill=accent)
+    elif channel_id == "ai_tools":
+        for left in (40, 110, 180):
+            draw.rounded_rectangle((left, 18, left + 52, 70), radius=12, outline=accent, width=3)
+    elif channel_id == "github":
+        draw.line((24, 24, 24, 110), fill=accent, width=4)
+        draw.line((24, 24, 110, 24), fill=accent, width=4)
+        draw.line((1180, 24, 1256, 24), fill=accent, width=4)
+        draw.line((1256, 24, 1256, 110), fill=accent, width=4)
+    elif channel_id == "cyber":
+        for top in (16, 36, 56):
+            draw.line((0, top, 1280, top), fill=accent, width=2)
+    elif channel_id == "infra":
+        for x in range(20, 300, 28):
+            for y in range(16, 100, 28):
+                draw.ellipse((x, y, x + 8, y + 8), fill=accent)
+    elif channel_id == "homelab":
+        draw.polygon([(1080, 100), (1150, 40), (1220, 100)], outline=accent)
+        draw.rectangle((1100, 100, 1200, 140), outline=accent, width=3)
+    elif channel_id == "dev":
+        draw.rectangle((0, 0, 18, CARD_H), fill=accent)
+    else:
+        draw.arc((1080, -40, 1320, 200), 20, 200, fill=accent, width=10)
+
+
+NETWORK_TEMPLATES = ("hero", "tool", "advisory", "digest")
+
+
+def write_studio_pack(directory: Path, channels: list) -> list[Path]:
+    """32 house covers: eight brands by four layouts. Files are local JPEGs, not fetched art."""
+    directory.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    for channel in channels:
+        theme = getattr(channel, "theme_json", None) or {}
+        for template_id in NETWORK_TEMPLATES:
+            digest = [f"DEMO: пункт {index} · {channel.title}" for index in range(1, 4)] if template_id == "digest" else None
+            card = render_network_card(
+                channel_id=channel.id,
+                channel_title=channel.title,
+                primary=str(theme.get("primary") or "#1c2434"),
+                accent=str(theme.get("accent") or "#d7e2ea"),
+                template_id=template_id,
+                title=f"DEMO: {channel.title}",
+                subtitle="учебный макет",
+                source_label="example.com/demo",
+                cve="CVE-2026-990099" if template_id == "advisory" and channel.id == "cyber" else "",
+                digest_lines=digest,
+                demo=True,
+            )
+            path = directory / f"{channel.id}-{template_id}.jpg"
+            path.write_bytes(card.jpeg)
+            written.append(path)
+    return written
+
+
 def resolve_media(remote: bytes | None, rights_basis: str | None, allow_remote: bool, card: RenderedCard) -> tuple[RenderedCard, str]:
     if remote and allow_remote and rights_basis == "licensed_reuse":
         inspection = inspect_image(remote)

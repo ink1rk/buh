@@ -10,8 +10,32 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.api.deps import default_policy
-from app.core.models import Channel, MediaAsset, Post, Source, Story, StoryEvidence, User
-from app.core.timeutil import utcnow
+from app.core.models import (
+    AdCampaign,
+    Channel,
+    ClusterMember,
+    Episode,
+    EvidenceSnapshot,
+    FinanceEvent,
+    MediaAsset,
+    Post,
+    PostVersion,
+    RankedCandidate,
+    RuntimeSetting,
+    Series,
+    Source,
+    Story,
+    StoryCluster,
+    StoryEvidence,
+    User,
+)
+from app.core.timeutil import ensure_utc, utcnow
+from app.media.renderer import write_studio_pack
+from app.product.demo_pack import build_pack
+from app.product.drafts import materialise_desk
+from app.product.insights import funnel, seed_demo_campaigns
+from app.product.programs import move_episode, propose_fortnight
+from app.product.radar import import_observations
 from app.services.accounts import AuthError, load_session, login
 from app.services.dispatch import publish_preview_or_send
 from app.services.moderation import approve_post, policy_from, reject_post, save_post, schedule_post
@@ -106,14 +130,25 @@ def overview(request: Request):
         for channel in db.query(Channel).order_by(Channel.id).all():
             waiting = db.query(Post).filter_by(channel_id=channel.id, review_status="NEEDS_REVIEW").count()
             queued = db.query(Post).filter_by(channel_id=channel.id, review_status="SCHEDULED").count()
+            themes = db.query(StoryCluster).filter_by(primary_channel_id=channel.id).count()
+            fresh = db.query(StoryCluster).filter_by(primary_channel_id=channel.id, list_name="hot").count()
+            covered_days = {
+                ensure_utc(row.slot_utc).date()
+                for row in db.query(Episode).filter_by(channel_id=channel.id)
+                if row.slot_utc is not None
+            }
             cards.append(
                 {
+                    "id": channel.id,
                     "title": channel.title,
                     "category": channel.category,
                     "queued": queued,
                     "waiting": waiting,
                     "publish_enabled": channel.publish_enabled,
                     "health": "локально",
+                    "themes": themes,
+                    "fresh": fresh,
+                    "free_slots": max(0, 14 - len(covered_days)),
                 }
             )
         return templates.TemplateResponse(
@@ -196,6 +231,18 @@ def review(request: Request, post_id: int, notice: str = ""):
             .order_by(MediaAsset.id.desc())
             .first()
         )
+        cluster = db.query(StoryCluster).filter_by(cluster_key=story.cluster_id).one_or_none() if story else None
+        explanation = ""
+        if cluster is not None:
+            rank = (
+                db.query(RankedCandidate)
+                .filter_by(cluster_id=cluster.id, channel_id=post.channel_id)
+                .order_by(RankedCandidate.id.desc())
+                .first()
+            )
+            explanation = "" if rank is None else rank.explanation
+        versions = db.query(PostVersion).filter_by(post_id=post.id).order_by(PostVersion.version).all()
+        snapshots = db.query(EvidenceSnapshot).filter_by(post_id=post.id).order_by(EvidenceSnapshot.id).all()
         return templates.TemplateResponse(
             request,
             "review.html",
@@ -213,6 +260,9 @@ def review(request: Request, post_id: int, notice: str = ""):
                 "channels": db.query(Channel).order_by(Channel.title).all(),
                 "image": image.file_path if image else "",
                 "notice": notice,
+                "explanation": explanation,
+                "versions": versions,
+                "snapshots": snapshots,
             },
         )
     finally:
@@ -334,21 +384,46 @@ def _review_action(request: Request, post_id: int, csrf_token: str, confirm: str
 
 
 @router.get("/calendar", response_class=HTMLResponse)
-def calendar(request: Request):
+def calendar(request: Request, notice: str = ""):
     db = _db(request)
     try:
         ctx = _context(request, db)
         if ctx is None:
             return RedirectResponse("/login", status_code=303)
-        lines = ["<table><tr><th>Канал</th><th>Слоты MSK</th><th>Тихие часы</th></tr>"]
-        for channel in db.query(Channel).order_by(Channel.id):
-            slots = ", ".join(html.escape(str(item)) for item in (channel.schedule_json or []))
-            lines.append(
-                f"<tr><td>{html.escape(channel.title)}</td><td>{slots}</td>"
-                f"<td>{html.escape(channel.quiet_start)}–{html.escape(channel.quiet_end)}</td></tr>"
+        user, row, policy = ctx
+        from zoneinfo import ZoneInfo
+
+        moscow = ZoneInfo("Europe/Moscow")
+        episodes = []
+        for episode in db.query(Episode).order_by(Episode.slot_utc).limit(200):
+            local = ensure_utc(episode.slot_utc).astimezone(moscow)
+            episodes.append(
+                {
+                    "id": episode.id,
+                    "series_id": episode.series_id,
+                    "channel_id": episode.channel_id,
+                    "status": episode.status,
+                    "version": episode.version,
+                    "label": local.strftime("%Y-%m-%d %H:%M"),
+                }
             )
-        lines.append("</table>")
-        return _simple(request, ctx, "Календарь", "calendar", "Слоты показаны в Europe/Moscow.", "".join(lines))
+        drop = utcnow().replace(minute=0, second=0, microsecond=0)
+        return templates.TemplateResponse(
+            request,
+            "calendar.html",
+            {
+                "request": request,
+                "title": "Календарь",
+                "nav": "calendar",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "episodes": episodes,
+                "drop_slot": drop.isoformat(),
+                "drop_label": drop.astimezone(moscow).strftime("%Y-%m-%d %H:%M MSK"),
+                "notice": notice,
+            },
+        )
     finally:
         db.close()
 
@@ -382,20 +457,24 @@ def sources(request: Request):
 
 
 @router.get("/posts", response_class=HTMLResponse)
-def posts(request: Request):
+def posts(request: Request, channel: str = ""):
     db = _db(request)
     try:
         ctx = _context(request, db)
         if ctx is None:
             return RedirectResponse("/login", status_code=303)
+        query = db.query(Post).order_by(Post.id.desc())
+        if channel:
+            query = query.filter(Post.channel_id == channel)
         lines = ["<table><tr><th>Пост</th><th>Статус</th><th>Канал</th></tr>"]
-        for post in db.query(Post).order_by(Post.id.desc()).limit(100):
+        for post in query.limit(100):
             lines.append(
                 f"<tr><td><a href=\"/review/{post.id}\">{html.escape(post.title)}</a></td>"
                 f"<td>{html.escape(post.review_status)}</td><td>{html.escape(post.channel_id)}</td></tr>"
             )
         lines.append("</table>")
-        return _simple(request, ctx, "Публикации", "posts", "", "".join(lines))
+        note = "Откройте строку, чтобы увидеть источник, версии и предпросмотр."
+        return _simple(request, ctx, "Редакция", "posts", note, "".join(lines))
     finally:
         db.close()
 
@@ -407,13 +486,19 @@ def analytics(request: Request):
         ctx = _context(request, db)
         if ctx is None:
             return RedirectResponse("/login", status_code=303)
-        return _simple(
+        user, row, policy = ctx
+        return templates.TemplateResponse(
             request,
-            ctx,
-            "Статистика",
-            "analytics",
-            "Просмотры постов: н/д. Bot API не отдаёт просмотры, и цифра не выдумывается.",
-            "<p>Подписчики: н/д, пока нет отдельного разрешения на getChatMemberCount.</p>",
+            "analytics.html",
+            {
+                "request": request,
+                "title": "Аналитика",
+                "nav": "analytics",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "report": funnel(db),
+            },
         )
     finally:
         db.close()
@@ -426,13 +511,31 @@ def commercial(request: Request):
         ctx = _context(request, db)
         if ctx is None:
             return RedirectResponse("/login", status_code=303)
-        return _simple(
+        user, row, policy = ctx
+        rows = []
+        for campaign in db.query(AdCampaign).order_by(AdCampaign.id):
+            actual = db.query(FinanceEvent).filter_by(campaign_id=campaign.id, kind="actual").order_by(FinanceEvent.id.desc()).first()
+            rows.append(
+                {
+                    "advertiser": campaign.advertiser,
+                    "channel_id": campaign.channel_id,
+                    "demo": campaign.demo,
+                    "legal_status": campaign.legal_status,
+                    "actual": None if actual is None else actual.amount,
+                }
+            )
+        return templates.TemplateResponse(
             request,
-            ctx,
-            "Реклама",
-            "commercial",
-            "Контур выключен. Без legal approval пост не планируется и не публикуется.",
-            "",
+            "commercial.html",
+            {
+                "request": request,
+                "title": "Коммерция",
+                "nav": "commercial",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "campaigns": rows,
+            },
         )
     finally:
         db.close()
@@ -446,11 +549,18 @@ def system(request: Request):
         if ctx is None:
             return RedirectResponse("/login", status_code=303)
         user, _row, policy = ctx
+        flags = db.query(RuntimeSetting).filter(RuntimeSetting.key.like("FEATURE_%")).order_by(RuntimeSetting.key).all()
+        flag_lines = "".join(
+            f"<li>{html.escape(item.key)}: {'включён в интерфейсе' if (item.value_json or {}).get('value') else 'выключен'}</li>"
+            for item in flags
+        )
         body = (
             "<ul><li><a href=\"/api/v1/export/config.json\">Конфигурация JSON</a></li>"
             "<li><a href=\"/api/v1/export/audit.csv\">Аудит CSV</a></li>"
             "<li><a href=\"/api/v1/export/audit.json\">Аудит JSON</a></li></ul>"
-            "<p>Секреты в выгрузку не входят. Production не включён.</p>"
+            f"<ul>{flag_lines}</ul>"
+            "<p>Флаги интерфейса не включают сеть и не включают отправку. Секреты в выгрузку не входят.</p>"
+            "<p>Рекламный контур остаётся выключенным. Запрос на включение отклоняется.</p>"
         )
         note = ""
         if user.role == "OWNER":
@@ -459,6 +569,178 @@ def system(request: Request):
         return _simple(request, ctx, "Система", "system", note, body)
     finally:
         db.close()
+
+
+@router.get("/radar", response_class=HTMLResponse)
+def radar_page(request: Request, channel: str = "", status: str = "", q: str = ""):
+    db = _db(request)
+    try:
+        ctx = _context(request, db)
+        if ctx is None:
+            return RedirectResponse("/login", status_code=303)
+        user, row, policy = ctx
+        query = db.query(StoryCluster)
+        if channel:
+            query = query.filter(StoryCluster.primary_channel_id == channel)
+        if status:
+            query = query.filter(StoryCluster.list_name == status)
+        if q:
+            query = query.filter(StoryCluster.title.ilike(f"%{q[:80]}%"))
+        rows = []
+        for cluster in query.order_by(StoryCluster.id).limit(40):
+            rank = (
+                db.query(RankedCandidate)
+                .filter_by(cluster_id=cluster.id, channel_id=cluster.primary_channel_id)
+                .order_by(RankedCandidate.id.desc())
+                .first()
+            )
+            member = (
+                db.query(ClusterMember)
+                .filter_by(cluster_id=cluster.id, relation="member")
+                .filter(ClusterMember.story_id.is_not(None))
+                .order_by(ClusterMember.id)
+                .first()
+            )
+            post = None
+            if member is not None and member.story_id is not None:
+                post = db.query(Post).filter_by(story_id=member.story_id, channel_id=cluster.primary_channel_id).first()
+            rows.append(
+                {
+                    "title": cluster.title,
+                    "channel_id": cluster.primary_channel_id,
+                    "list_name": cluster.list_name,
+                    "score": None if rank is None else rank.rank_score,
+                    "explanation": "" if rank is None else rank.explanation,
+                    "post_id": None if post is None else post.id,
+                }
+            )
+        return templates.TemplateResponse(
+            request,
+            "radar.html",
+            {
+                "request": request,
+                "title": "Радар",
+                "nav": "radar",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "channels": db.query(Channel).order_by(Channel.title).all(),
+                "selected": channel,
+                "selected_list": status,
+                "lists": ["hot", "review", "evergreen", "backfill", "rejected", "covered"],
+                "query": q,
+                "rows": rows,
+            },
+        )
+    finally:
+        db.close()
+
+
+@router.get("/studio", response_class=HTMLResponse)
+def studio(request: Request):
+    db = _db(request)
+    try:
+        ctx = _context(request, db)
+        if ctx is None:
+            return RedirectResponse("/login", status_code=303)
+        user, row, policy = ctx
+        channels = db.query(Channel).order_by(Channel.id).all()
+        directory = Path(request.app.state.settings.media_dir)
+        write_studio_pack(directory, channels)
+        cards = [
+            {"channel": channel.title, "template": template_id, "file": f"{channel.id}-{template_id}.jpg"}
+            for channel in channels
+            for template_id in ("hero", "tool", "advisory", "digest")
+        ]
+        return templates.TemplateResponse(
+            request,
+            "studio.html",
+            {
+                "request": request,
+                "title": "Студия",
+                "nav": "studio",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "cards": cards,
+            },
+        )
+    finally:
+        db.close()
+
+
+@router.get("/programs", response_class=HTMLResponse)
+def programs(request: Request):
+    db = _db(request)
+    try:
+        ctx = _context(request, db)
+        if ctx is None:
+            return RedirectResponse("/login", status_code=303)
+        user, row, policy = ctx
+        return templates.TemplateResponse(
+            request,
+            "programs.html",
+            {
+                "request": request,
+                "title": "Программы",
+                "nav": "programs",
+                "policy": policy,
+                "csrf": row.csrf_token,
+                "user": user,
+                "programs": db.query(Series).order_by(Series.id).all(),
+            },
+        )
+    finally:
+        db.close()
+
+
+@router.post("/demo/load")
+def demo_load(request: Request, csrf_token: str = Form()):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    try:
+        if csrf_token != row.csrf_token or user.role != "OWNER":
+            return RedirectResponse("/", status_code=303)
+        moment = utcnow()
+        import_observations(db, build_pack(), moment)
+        materialise_desk(db)
+        propose_fortnight(db, moment)
+        seed_demo_campaigns(db, moment)
+    finally:
+        db.close()
+    return RedirectResponse("/radar", status_code=303)
+
+
+@router.post("/calendar/move")
+def calendar_move(
+    request: Request,
+    csrf_token: str = Form(),
+    episode_id: int = Form(),
+    slot_utc: str = Form(),
+    expected_version: int = Form(),
+):
+    opened = _review_actor(request)
+    if opened is None:
+        return RedirectResponse("/login", status_code=303)
+    db, (user, row, _policy) = opened
+    notice = "слот обновлён"
+    try:
+        if csrf_token != row.csrf_token or user.role not in {"OWNER", "EDITOR"}:
+            notice = "нет права"
+        else:
+            episode = db.get(Episode, episode_id)
+            if episode is None:
+                notice = "выпуск не найден"
+            else:
+                try:
+                    move_episode(db, episode, datetime.fromisoformat(slot_utc), expected_version)
+                except ValueError as exc:
+                    notice = str(exc)
+    finally:
+        db.close()
+    return RedirectResponse(f"/calendar?notice={notice}", status_code=303)
 
 
 @router.get("/media/{name}")

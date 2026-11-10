@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.api.product_routes import router as product_router
 from app.api.routes import router
 from app.core.config import Settings, assert_can_boot
 from app.core.db import init_schema, make_engine, make_session_factory, prepare_database
@@ -53,6 +54,7 @@ def create_app(settings: Settings | None = None, *, init_db: bool = True) -> Fas
     app.state.allowlist = set(DEFAULT_ALLOWLIST)
     app.state.fetch_url = None
     app.include_router(router)
+    app.include_router(product_router)
     app.include_router(ui_router)
     static_dir = Path(__file__).resolve().parent / "ui" / "static"
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
