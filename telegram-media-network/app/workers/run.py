@@ -3,21 +3,61 @@ from __future__ import annotations
 import os
 import time
 
+from app.adapters.live_http import PinnedHTTPTransport
 from app.core.config import Settings, assert_can_boot
 from app.core.db import make_engine, make_session_factory, prepare_database
 from app.core.security import Policy
-from app.publishing.gate import build_telegram_transport
+from app.pipeline.llm import LocalLLMClient
+from app.publishing.gate import build_telegram_transport, sandbox_chat_id
 from app.publishing.leader import LeaderLock
 from app.services.bootstrap import bootstrap
 from app.services.dispatch import scheduler_tick
 from app.workers.collect import collect_once
 
 
+def schema_mode() -> str:
+    return os.environ.get("TMN_SCHEMA", "create_all")
+
+
+def apply_schema(engine) -> None:
+    mode = schema_mode()
+    if mode == "check":
+        from app.core.db import assert_schema_head
+
+        assert_schema_head(engine)
+        return
+    prepare_database(engine, mode)
+
+
+def collect_cycle(session, settings: Settings, *, transport=None, resolver=None, now=None, force: bool = False):
+    """One collector pass. Offline never receives a transport, so it cannot open a socket."""
+    if settings.source_mode != "live":
+        chosen = None
+    elif transport is not None:
+        chosen = transport
+    else:
+        chosen = PinnedHTTPTransport(resolver=resolver)
+    client = None
+    if settings.llm_mode == "local" and settings.llm_base_url:
+        client = LocalLLMClient(settings.llm_base_url, model=settings.llm_model, timeout=8)
+    return collect_once(
+        session,
+        settings,
+        transport=chosen,
+        resolver=resolver,
+        now=now,
+        force=force,
+        render=True,
+        llm_mode=settings.llm_mode,
+        llm_client=client,
+    )
+
+
 def main() -> None:
     settings = Settings()
     assert_can_boot(settings)
     engine = make_engine(settings.database_url)
-    prepare_database(engine, os.environ.get("TMN_SCHEMA", "create_all"))
+    apply_schema(engine)
     factory = make_session_factory(engine)
     with factory() as session:
         bootstrap(session, settings)
@@ -27,7 +67,7 @@ def main() -> None:
     if role == "collector":
         while True:
             with factory() as session:
-                collect_once(session, settings)
+                collect_cycle(session, settings)
             if once:
                 return
             time.sleep(60)
@@ -54,6 +94,7 @@ def main() -> None:
                     policy=policy,
                     transport=transport,
                     media_dir=settings.media_dir,
+                    allowed_chat_id=sandbox_chat_id(settings),
                 )
             if once:
                 return

@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import secrets
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
 
+from app.core.audit import add_audit
 from app.core.models import (
     Channel,
     Classification,
@@ -28,7 +31,8 @@ from app.core.timeutil import utcnow
 from app.media.renderer import render_card
 from app.pipeline.caption import build_caption, caption_hash, safe_links, validate_caption
 from app.pipeline.dedup import cluster_id, identity_keys, repo_identity, title_similarity
-from app.pipeline.editor import draft_post, post_type_for
+from app.pipeline.editor import post_type_for
+from app.pipeline.llm import compose_draft
 from app.pipeline.rank import score_item
 from app.pipeline.route import route_item
 from app.pipeline.schema_check import schema_errors
@@ -129,7 +133,9 @@ def _write_media(post: Post, channel: Channel, directory: Path) -> MediaAsset:
     directory.mkdir(parents=True, exist_ok=True)
     filename = f"post-{post.id}-v{post.draft_version}.jpg"
     path = directory / filename
-    path.write_bytes(rendered.jpeg)
+    partial = directory / f".{filename}.partial"
+    partial.write_bytes(rendered.jpeg)
+    os.replace(partial, path)
     asset = MediaAsset(
         post_id=post.id,
         kind="card",
@@ -152,6 +158,8 @@ def ingest_source_item(
     render: bool = True,
     media_dir: Path | None = None,
     pilot: bool = True,
+    llm_mode: str = "mock",
+    llm_client=None,
 ) -> IngestResult:
     _mark_packaged_fixture(item)
     source = _ensure_source(session, item)
@@ -189,7 +197,23 @@ def ingest_source_item(
 
     decision = route_item(item)
     scored = score_item(item, decision.confidence)
-    drafted = draft_post(item, decision.primary, pilot=pilot)
+    started = time.perf_counter()
+    drafted = compose_draft(item, decision.primary, mode=llm_mode, client=llm_client)
+    if llm_mode == "local":
+        add_audit(
+            session,
+            actor="editor",
+            action="llm_draft",
+            entity="source_item",
+            entity_id=item.source_external_id[:80],
+            result="fallback" if "llm_fallback" in drafted.warnings else "draft",
+            payload={
+                "model": getattr(llm_client, "model", ""),
+                "elapsed_ms": int((time.perf_counter() - started) * 1000),
+                "source_external_id": item.source_external_id[:80],
+                "error": getattr(llm_client, "last_error", ""),
+            },
+        )
     status = "NEEDS_REVIEW"
     if drafted.blocked:
         status = "QUARANTINED"

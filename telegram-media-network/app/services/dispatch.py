@@ -100,6 +100,7 @@ def dispatch_outbox(
     now: datetime | None = None,
     crash_before_commit: bool = False,
     media_dir: Path | None = None,
+    allowed_chat_id: str = "",
 ) -> dict:
     moment = ensure_utc(now or utcnow())
     if outbox.state not in {"scheduled", "retryable_failed"}:
@@ -121,6 +122,14 @@ def dispatch_outbox(
         post.review_status = "SCHEDULED"
         session.commit()
         return {"state": outbox.state, "reason": exc.reason, "calls": 0}
+    allowed = str(allowed_chat_id or "")
+    if allowed and str(channel.chat_id or "") != allowed:
+        outbox.state = "dlq"
+        outbox.last_error = "foreign_chat"
+        post.review_status = "SCHEDULED"
+        add_audit(session, actor="publisher", action="publish", entity="outbox", entity_id=outbox.id, result="foreign_chat")
+        session.commit()
+        return {"state": "dlq", "reason": "foreign_chat", "calls": 0}
     outbox.state = "sending"
     outbox.lease_until = moment + timedelta(seconds=60)
     outbox.request_sent = False
@@ -363,6 +372,7 @@ def scheduler_tick(
     policy: Policy,
     transport=None,
     media_dir: Path | None = None,
+    allowed_chat_id: str = "",
 ) -> TickResult:
     if not leader:
         return TickResult(False, 0, 0)
@@ -409,7 +419,9 @@ def scheduler_tick(
                 continue
             target_due = chosen[0].due_utc
             target = next(row for row in due_rows if row.due_utc == target_due)
-            outcome = dispatch_outbox(session, target, transport, now=moment, media_dir=media_dir)
+            outcome = dispatch_outbox(
+                session, target, transport, now=moment, media_dir=media_dir, allowed_chat_id=allowed_chat_id
+            )
             if outcome.get("state") == "published":
                 sent += 1
     return TickResult(True, scheduled, sent)

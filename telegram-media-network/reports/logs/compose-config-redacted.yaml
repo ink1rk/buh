@@ -1,0 +1,248 @@
+name: tmn-dev
+services:
+  api:
+    build:
+      context: /agent/repos/buh/telegram-media-network
+      dockerfile: Dockerfile
+    cap_drop:
+      - ALL
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+      media-init:
+        condition: service_completed_successfully
+        required: true
+      migrate:
+        condition: service_completed_successfully
+        required: true
+    environment:
+      APP_BIND_HOST: 0.0.0.0
+      APP_BIND_PORT: "8787"
+      DATABASE_URL: postgresql+psycopg://tmn_app:[REDACTED]@db:5432/tmn
+      DRY_RUN: "true"
+      ENVIRONMENT: development
+      GLOBAL_KILL_SWITCH: "true"
+      LLM_MODE: mock
+      PUBLISH_ENABLED: "false"
+      REDIS_URL: redis://:[REDACTED]@redis:6379/0
+      SESSION_SECRET: [REDACTED]
+      SOURCE_MODE: offline
+      SPONSORED_ENABLED: "false"
+      TMN_SCHEMA: check
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health/ready', timeout=3)
+      timeout: 4s
+      interval: 5s
+      retries: 20
+    init: true
+    networks:
+      data: null
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 8787
+        published: "8787"
+        protocol: tcp
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    user: 1000:1000
+    volumes:
+      - type: volume
+        source: cards
+        target: /app/var/media
+        volume: {}
+  collector:
+    build:
+      context: /agent/repos/buh/telegram-media-network
+      dockerfile: Dockerfile
+    cap_drop:
+      - ALL
+    command:
+      - python
+      - -m
+      - app.workers.run
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+      media-init:
+        condition: service_completed_successfully
+        required: true
+      migrate:
+        condition: service_completed_successfully
+        required: true
+    environment:
+      DATABASE_URL: postgresql+psycopg://tmn_app:[REDACTED]@db:5432/tmn
+      DRY_RUN: "true"
+      ENVIRONMENT: development
+      GLOBAL_KILL_SWITCH: "true"
+      PUBLISH_ENABLED: "false"
+      SESSION_SECRET: [REDACTED]
+      SOURCE_MODE: offline
+      SPONSORED_ENABLED: "false"
+      TMN_ROLE: collector
+      TMN_SCHEMA: check
+    init: true
+    networks:
+      data: null
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    user: 1000:1000
+    volumes:
+      - type: volume
+        source: cards
+        target: /app/var/media
+        volume: {}
+  db:
+    environment:
+      POSTGRES_DB: tmn
+      POSTGRES_PASSWORD: [REDACTED]
+      POSTGRES_USER: tmn_app
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U tmn_app -d tmn
+      timeout: 3s
+      interval: 5s
+      retries: 20
+    image: postgres:16.6
+    networks:
+      data: null
+    restart: "no"
+    volumes:
+      - type: volume
+        source: pgdata
+        target: /var/lib/postgresql/data
+        volume: {}
+  media-init:
+    build:
+      context: /agent/repos/buh/telegram-media-network
+      dockerfile: Dockerfile
+    command:
+      - chown
+      - -R
+      - 1000:1000
+      - /app/var/media
+    networks:
+      default: null
+    restart: "no"
+    user: "0:0"
+    volumes:
+      - type: volume
+        source: cards
+        target: /app/var/media
+        volume: {}
+  migrate:
+    build:
+      context: /agent/repos/buh/telegram-media-network
+      dockerfile: Dockerfile
+    cap_drop:
+      - ALL
+    command:
+      - python
+      - -m
+      - app.workers.migrate
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+    environment:
+      DATABASE_URL: postgresql+psycopg://tmn_app:[REDACTED]@db:5432/tmn
+      DRY_RUN: "true"
+      ENVIRONMENT: development
+      GLOBAL_KILL_SWITCH: "true"
+      LLM_MODE: mock
+      PUBLISH_ENABLED: "false"
+      SESSION_SECRET: [REDACTED]
+      SOURCE_MODE: offline
+      SPONSORED_ENABLED: "false"
+    networks:
+      data: null
+    read_only: true
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    user: 1000:1000
+  redis:
+    command:
+      - redis-server
+      - --requirepass
+      - [REDACTED]
+      - --bind
+      - 0.0.0.0
+      - --protected-mode
+      - "yes"
+    image: redis:7.4
+    networks:
+      data: null
+    restart: "no"
+    user: 999:999
+  scheduler:
+    build:
+      context: /agent/repos/buh/telegram-media-network
+      dockerfile: Dockerfile
+    cap_drop:
+      - ALL
+    command:
+      - python
+      - -m
+      - app.workers.run
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+      media-init:
+        condition: service_completed_successfully
+        required: true
+      migrate:
+        condition: service_completed_successfully
+        required: true
+    environment:
+      DATABASE_URL: postgresql+psycopg://tmn_app:[REDACTED]@db:5432/tmn
+      DRY_RUN: "true"
+      ENVIRONMENT: development
+      GLOBAL_KILL_SWITCH: "true"
+      LLM_MODE: mock
+      PUBLISH_ENABLED: "false"
+      SESSION_SECRET: [REDACTED]
+      SOURCE_MODE: offline
+      SPONSORED_ENABLED: "false"
+      TMN_ROLE: scheduler
+      TMN_SCHEMA: check
+    init: true
+    networks:
+      data: null
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    user: 1000:1000
+    volumes:
+      - type: volume
+        source: cards
+        target: /app/var/media
+        volume: {}
+networks:
+  data:
+    name: tmn-dev_data
+  default:
+    name: tmn-dev_default
+volumes:
+  cards:
+    name: tmn-dev_cards
+  pgdata:
+    name: tmn-dev_pgdata

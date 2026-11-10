@@ -103,8 +103,12 @@ class DefaultResolver:
         return [str(info[4][0]) for info in infos]
 
 
-def assert_url_safe(url: str, resolver: DefaultResolver | Callable[[str], list[str]], allowlist: set[str] | None = None) -> str:
-    """Raise SSRFBlocked before any socket is opened by the caller."""
+def resolve_checked(
+    url: str,
+    resolver: DefaultResolver | Callable[[str], list[str]],
+    allowlist: set[str] | None = None,
+) -> tuple[str, list[str]]:
+    """Check the URL and return the addresses from this one lookup."""
     allow = DEFAULT_ALLOWLIST if allowlist is None else allowlist
     parts = urlsplit(url.strip())
     if parts.scheme.lower() != "https":
@@ -138,4 +142,10 @@ def assert_url_safe(url: str, resolver: DefaultResolver | Callable[[str], list[s
             raise SSRFBlocked("dns_failed") from exc
         if forbidden_ip(ip):
             raise SSRFBlocked("forbidden_ip")
+    return host, [str(item) for item in addresses]
+
+
+def assert_url_safe(url: str, resolver: DefaultResolver | Callable[[str], list[str]], allowlist: set[str] | None = None) -> str:
+    """Raise SSRFBlocked before any socket is opened by the caller."""
+    host, _addresses = resolve_checked(url, resolver, allowlist)
     return host

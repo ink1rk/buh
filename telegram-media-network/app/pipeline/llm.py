@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -23,6 +24,26 @@ class LLMError(RuntimeError):
     pass
 
 
+def _ollama_draft(body: object) -> dict | None:
+    """Accept Ollama /api/chat and /api/generate JSON. Ignore any other envelope."""
+    if not isinstance(body, dict):
+        return None
+    if isinstance(body.get("message"), dict):
+        content = body["message"].get("content") or ""
+        try:
+            parsed = json.loads(content)
+        except (TypeError, json.JSONDecodeError):
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    if isinstance(body.get("response"), str):
+        try:
+            parsed = json.loads(body["response"])
+        except json.JSONDecodeError:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return None
+
+
 @dataclass
 class LocalLLMClient:
     base_url: str
@@ -30,45 +51,62 @@ class LocalLLMClient:
     timeout: float = 8.0
 
     def complete(self, item: SourceItemIn, channel_id: str) -> dict:
+        """Speak Ollama's chat or generate API. Source text stays in the user payload."""
         if not self.base_url.startswith(("http://", "https://")):
             raise LLMError("endpoint")
-        payload = {
-            "model": self.model,
-            "system": SYSTEM_RULES,
-            "source_data": {
-                "channel_id": channel_id,
-                "title": item.title,
-                "text": item.untrusted_text,
-                "facts": [
-                    {
-                        "id": fact.id,
-                        "statement": fact.statement,
-                        "evidence_url": fact.evidence_url,
-                        "evidence_excerpt": fact.evidence_excerpt,
-                    }
-                    for fact in item.facts
-                ],
-            },
+        source_data = {
+            "channel_id": channel_id,
+            "source_external_id": item.source_external_id,
+            "title": item.title,
+            "text": item.untrusted_text,
+            "facts": [
+                {
+                    "id": fact.id,
+                    "statement": fact.statement,
+                    "evidence_url": fact.evidence_url,
+                    "evidence_excerpt": fact.evidence_excerpt,
+                }
+                for fact in item.facts
+            ],
         }
+        user_payload = json.dumps({"source_data": source_data}, ensure_ascii=False)
+        endpoint = self.base_url.rstrip("/")
+        if endpoint.endswith("/api/generate"):
+            payload = {"model": self.model, "system": SYSTEM_RULES, "prompt": user_payload, "stream": False, "format": "json"}
+        else:
+            payload = {
+                "model": self.model,
+                "stream": False,
+                "format": "json",
+                "messages": [
+                    {"role": "system", "content": SYSTEM_RULES},
+                    {"role": "user", "content": user_payload},
+                ],
+            }
         request = urllib.request.Request(
             self.base_url,
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json", "Accept": "application/json"},
             method="POST",
         )
+        started = time.perf_counter()
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw = response.read(200_000)
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            self.last_elapsed_ms = int((time.perf_counter() - started) * 1000)
+            self.last_error = "unreachable"
             raise LLMError("unreachable") from exc
+        self.last_elapsed_ms = int((time.perf_counter() - started) * 1000)
+        self.last_error = ""
         try:
             body = json.loads(raw.decode("utf-8"))
         except (UnicodeError, json.JSONDecodeError) as exc:
+            self.last_error = "not_json"
             raise LLMError("not_json") from exc
-        if not isinstance(body, dict):
-            raise LLMError("not_object")
-        draft = body.get("draft", body)
+        draft = _ollama_draft(body)
         if not isinstance(draft, dict):
+            self.last_error = "not_object"
             raise LLMError("not_object")
         return draft
 
@@ -87,7 +125,11 @@ def _accepted(draft: dict, channel_id: str) -> DraftResult | None:
 
 
 def compose_draft(item: SourceItemIn, channel_id: str, *, mode: str = "mock", client: LocalLLMClient | None = None) -> DraftResult:
-    """Use the local model only when it was explicitly configured. Otherwise stay on the mock editor."""
+    """mock and manual never open a socket. local uses the supplied client or falls back."""
+    if mode == "manual":
+        drafted = draft_post(item, channel_id)
+        drafted.warnings.append("manual")
+        return drafted
     if mode != "local" or client is None:
         return draft_post(item, channel_id)
     try:

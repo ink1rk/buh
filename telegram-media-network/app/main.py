@@ -28,7 +28,11 @@ def create_app(settings: Settings | None = None, *, init_db: bool = True) -> Fas
         if init_db:
             engine = make_engine(settings.database_url)
             mode = os.environ.get("TMN_SCHEMA", "create_all")
-            if mode == "migrate":
+            if mode == "check":
+                from app.core.db import assert_schema_head
+
+                assert_schema_head(engine)
+            elif mode == "migrate":
                 prepare_database(engine, "migrate")
             else:
                 init_schema(engine)
