@@ -213,8 +213,6 @@ def test_f07_thousand_items_and_fifty_posts(db):
     assert db.query(Story).count() >= 1050
     assert db.query(Post).count() == 50
     assert elapsed < 180
-    (ROOT / "reports").mkdir(exist_ok=True)
-    (ROOT / "reports" / "f07_timing.txt").write_text(f"elapsed_seconds={elapsed:.2f}\n", encoding="utf-8")
 
 
 def test_f08_pilot_report_is_unsigned(db):

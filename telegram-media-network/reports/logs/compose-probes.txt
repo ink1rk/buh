@@ -1,0 +1,36 @@
+=== CHAINS ===
+-N DOCKER-USER
+--- INTERNAL ---
+-N DOCKER-INTERNAL
+--- BRIDGE ---
+-N DOCKER-BRIDGE
+-A DOCKER-BRIDGE -o docker0 -j DOCKER
+-A DOCKER-BRIDGE -o br-4a570dbb34f3 -j DOCKER
+-A DOCKER-BRIDGE -o br-7c3ac263fc81 -j DOCKER
+--- CT ---
+-N DOCKER-CT
+-A DOCKER-CT -o docker0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A DOCKER-CT -o br-4a570dbb34f3 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A DOCKER-CT -o br-7c3ac263fc81 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+=== NFT BRIDGE ===
+=== HOST TCP ===
+host_to_db:ok
+host_to_redis:ok
+=== THROWAWAY ===
+probe throwaway
+db dns ('172.18.0.2', 5432)
+db TimeoutError timed out ms 5025
+redis dns ('172.18.0.3', 6379)
+redis TimeoutError timed out ms 5004
+172.18.0.2 dns ('172.18.0.2', 5432)
+172.18.0.2 TimeoutError timed out ms 5005
+=== API IMAGE ===
+probe api-image
+db dns ('172.18.0.2', 5432)
+db TimeoutError timed out ms 5007
+redis dns ('172.18.0.3', 6379)
+redis TimeoutError timed out ms 5005
+
+=== counter delta during one peer probe ===
+legacy FORWARD policy DROP 144 -> 147 packets
+nft DOCKER drop for br-4a570dbb34f3 stayed 0

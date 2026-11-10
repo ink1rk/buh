@@ -1,5 +1,6 @@
 # Local dry-run only. No host ports for Postgres or Redis.
 # The admin API is published on the host loopback, not on a public interface.
+# One migrate job runs before the consumers. Cards live on one shared volume.
 name: tmn-dev
 services:
   db:
@@ -22,6 +23,35 @@ services:
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--bind", "0.0.0.0", "--protected-mode", "yes"]
     networks: [data]
     restart: "no"
+  media-init:
+    build: .
+    user: "0:0"
+    command: ["chown", "-R", "1000:1000", "/app/var/media"]
+    volumes: [cards:/app/var/media]
+    restart: "no"
+  migrate:
+    build: .
+    user: "1000:1000"
+    environment:
+      ENVIRONMENT: development
+      DRY_RUN: "true"
+      PUBLISH_ENABLED: "false"
+      GLOBAL_KILL_SWITCH: "true"
+      SPONSORED_ENABLED: "false"
+      LLM_MODE: mock
+      SOURCE_MODE: offline
+      DATABASE_URL: postgresql+psycopg://tmn_app:${POSTGRES_PASSWORD}@db:5432/tmn
+      SESSION_SECRET: ${SESSION_SECRET}
+    command: ["python", "-m", "app.workers.migrate"]
+    networks: [data]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
   api:
     build: .
     user: "1000:1000"
@@ -38,20 +68,25 @@ services:
       SESSION_SECRET: ${SESSION_SECRET}
       APP_BIND_HOST: 0.0.0.0
       APP_BIND_PORT: 8787
-      TMN_SCHEMA: migrate
+      TMN_SCHEMA: check
     ports:
       - "127.0.0.1:8787:8787"
     networks: [data]
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      media-init:
+        condition: service_completed_successfully
+    volumes: [cards:/app/var/media]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health/ready', timeout=3)"]
       interval: 5s
       timeout: 4s
       retries: 20
     read_only: true
-    tmpfs: [/tmp, /app/var]
+    tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     init: true
@@ -69,14 +104,19 @@ services:
       DATABASE_URL: postgresql+psycopg://tmn_app:${POSTGRES_PASSWORD}@db:5432/tmn
       SESSION_SECRET: ${SESSION_SECRET}
       TMN_ROLE: scheduler
-      TMN_SCHEMA: migrate
+      TMN_SCHEMA: check
     command: ["python", "-m", "app.workers.run"]
     networks: [data]
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      media-init:
+        condition: service_completed_successfully
+    volumes: [cards:/app/var/media]
     read_only: true
-    tmpfs: [/tmp, /app/var]
+    tmpfs: [/tmp]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     init: true
@@ -88,16 +128,22 @@ services:
       DRY_RUN: "true"
       PUBLISH_ENABLED: "false"
       GLOBAL_KILL_SWITCH: "true"
+      SPONSORED_ENABLED: "false"
       SOURCE_MODE: offline
       DATABASE_URL: postgresql+psycopg://tmn_app:${POSTGRES_PASSWORD}@db:5432/tmn
       SESSION_SECRET: ${SESSION_SECRET}
       TMN_ROLE: collector
-      TMN_SCHEMA: migrate
+      TMN_SCHEMA: check
     command: ["python", "-m", "app.workers.run"]
     networks: [data]
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      media-init:
+        condition: service_completed_successfully
+    volumes: [cards:/app/var/media]
     read_only: true
     tmpfs: [/tmp]
     cap_drop: [ALL]
@@ -108,3 +154,4 @@ networks:
     internal: false
 volumes:
   pgdata:
+  cards:

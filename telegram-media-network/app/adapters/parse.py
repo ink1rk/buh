@@ -204,6 +204,39 @@ def parse_hf_models(payload: list[dict], now: datetime | None = None) -> list[So
     return items
 
 
+def parse_hf_spaces(payload: list[dict], now: datetime | None = None) -> list[SourceItemIn]:
+    moment = now or utcnow()
+    items: list[SourceItemIn] = []
+    for row in payload:
+        space_id = row.get("id") or row.get("modelId")
+        if not space_id:
+            continue
+        url = f"https://huggingface.co/spaces/{space_id}"
+        created = parse_datetime(row.get("createdAt") or row.get("created_at"))
+        sdk = row.get("sdk") or "space"
+        excerpt = _excerpt(f"{space_id} sdk {sdk}", 160)
+        items.append(
+            SourceItemIn(
+                source_id="huggingface",
+                source_external_id=f"hf-space:{space_id}",
+                source_url=url,
+                canonical_url=url,
+                title=str(space_id)[:400],
+                discovered_at=moment,
+                published_at=created,
+                raw_sha256=_sha(f"hf-space:{space_id}:{row.get('createdAt')}"),
+                license_state="unknown",
+                facts=[_fact("f1", f"На Hugging Face появилось пространство {space_id} ({sdk}).", url, excerpt)],
+                content_kind="repo",
+                untrusted_text=str(row.get("cardData") or ""),
+                is_new=True,
+                topics=["space"],
+                audience=0.7,
+            )
+        )
+    return items
+
+
 def parse_cisa_kev(payload: dict, now: datetime | None = None) -> list[SourceItemIn]:
     moment = now or utcnow()
     items: list[SourceItemIn] = []
@@ -217,7 +250,10 @@ def parse_cisa_kev(payload: dict, now: datetime | None = None) -> list[SourceIte
         summary = _excerpt(row.get("shortDescription") or "", 160)
         action = _excerpt(row.get("requiredAction") or "", 160)
         url = "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
-        statement = f"{cve} добавлена в каталог CISA KEV {date_added}: {vendor} {product}.".strip()
+        statement = (
+            f"Каталог CISA KEV содержит {cve} от {date_added} для {vendor} {product}. "
+            "Это запись каталога, не вывод редакции о каждом экземпляре продукта."
+        ).strip()
         facts = [_fact("f1", statement, url, summary or cve)]
         if action:
             facts.append(_fact("f2", f"Рекомендация источника: {action}", url, action))

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import os
 import subprocess
+import tarfile
 from pathlib import Path
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -46,6 +48,35 @@ def create_encrypted_backup(database_url: str, dest: Path, passphrase: str) -> d
     dest.with_suffix(dest.suffix + ".sha256").write_text(digest + "\n", encoding="utf-8")
     os.chmod(dest, 0o600)
     return {"sha256": digest, "bytes": dest.stat().st_size}
+
+
+def _media_tar(media_dir: Path) -> bytes:
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w") as archive:
+        files = sorted(path for path in media_dir.rglob("*") if path.is_file())
+        for path in files:
+            archive.add(path, arcname=path.relative_to(media_dir).as_posix())
+    return buffer.getvalue()
+
+
+def create_media_backup(media_dir: Path, dest: Path, passphrase: str) -> dict:
+    raw = _media_tar(media_dir)
+    digest = hashlib.sha256(raw).hexdigest()
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_bytes(encrypt_bytes(raw, passphrase))
+    dest.with_suffix(dest.suffix + ".sha256").write_text(digest + "\n", encoding="utf-8")
+    os.chmod(dest, 0o600)
+    return {"sha256": digest, "bytes": dest.stat().st_size}
+
+
+def restore_media_backup(source: Path, media_dir: Path, passphrase: str, expected_sha256: str) -> None:
+    raw = decrypt_bytes(source.read_bytes(), passphrase)
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != expected_sha256:
+        raise ValueError("checksum mismatch")
+    media_dir.mkdir(parents=True, exist_ok=True)
+    with tarfile.open(fileobj=io.BytesIO(raw), mode="r") as archive:
+        archive.extractall(media_dir, filter="data")
 
 
 def restore_encrypted_backup(source: Path, database_url: str, passphrase: str, expected_sha256: str) -> None:

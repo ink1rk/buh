@@ -23,4 +23,4 @@
 
 ## Данные
 
-Тесты создают схему через `create_all`. Запуск с `TMN_SCHEMA=migrate`, включая `compose.dev.yaml`, вызывает `alembic upgrade head` и не прячет изменение схемы в `create_all`. Секреты в таблицу не пишутся: есть только ссылки вида `env:TELEGRAM_BOT_TOKEN`. Пароли пользователей хранятся как Argon2id. Сессия — это хэш cookie `tmn_session`, плюс отдельный CSRF-заголовок. Доказательство из источника хранится как `extracted`; `verified_at` заполняется только после отдельной проверки, которой в этом контуре нет.
+Тесты создают схему через `create_all`. В `compose.dev.yaml` схему меняет один сервис `migrate` (`alembic upgrade head` под advisory lock). API, collector и scheduler стартуют с `TMN_SCHEMA=check` и не выполняют DDL. Карточки лежат в общем томе `cards`, смонтированном в `/app/var/media`. Секреты в таблицу не пишутся: есть только ссылки вида `env:TELEGRAM_BOT_TOKEN`. Пароли пользователей хранятся как Argon2id. Сессия — это хэш cookie `tmn_session`, плюс отдельный CSRF-заголовок. Доказательство из источника хранится как `extracted`; `verified_at` заполняется только после отдельной проверки, которой в этом контуре нет.

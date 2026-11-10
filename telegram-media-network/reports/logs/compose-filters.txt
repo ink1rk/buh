@@ -1,0 +1,69 @@
+=== LEGACY FILTER ===
+-P INPUT ACCEPT
+-P FORWARD DROP
+-P OUTPUT ACCEPT
+-N DOCKER
+-N DOCKER-BRIDGE
+-N DOCKER-CT
+-N DOCKER-FORWARD
+-N DOCKER-INTERNAL
+-N DOCKER-USER
+-A FORWARD -j DOCKER-USER
+-A FORWARD -j DOCKER-FORWARD
+-A DOCKER ! -i docker0 -o docker0 -j DROP
+-A DOCKER-BRIDGE -o docker0 -j DOCKER
+-A DOCKER-CT -o docker0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+-A DOCKER-FORWARD -j DOCKER-CT
+-A DOCKER-FORWARD -j DOCKER-INTERNAL
+-A DOCKER-FORWARD -j DOCKER-BRIDGE
+-A DOCKER-FORWARD -i docker0 -j ACCEPT
+=== LEGACY NAT (first 40) ===
+-P PREROUTING ACCEPT
+-P INPUT ACCEPT
+-P OUTPUT ACCEPT
+-P POSTROUTING ACCEPT
+-N DOCKER
+-A PREROUTING -m addrtype --dst-type LOCAL -j DOCKER
+-A OUTPUT ! -d 127.0.0.0/8 -m addrtype --dst-type LOCAL -j DOCKER
+-A POSTROUTING -s 172.17.0.0/16 ! -o docker0 -j MASQUERADE
+=== NFT FILTER FULL ===
+table ip filter {
+	chain DOCKER {
+		iifname != "docker0" oifname "docker0" counter packets 0 bytes 0 drop
+		iifname != "br-4a570dbb34f3" oifname "br-4a570dbb34f3" counter packets 0 bytes 0 drop
+		iifname != "br-7c3ac263fc81" oifname "br-7c3ac263fc81" counter packets 0 bytes 0 drop
+	}
+
+	chain DOCKER-FORWARD {
+		counter packets 17665 bytes 53335012 jump DOCKER-CT
+		counter packets 5567 bytes 402897 jump DOCKER-INTERNAL
+		counter packets 5567 bytes 402897 jump DOCKER-BRIDGE
+		iifname "docker0" counter packets 5423 bytes 394257 accept
+		iifname "br-4a570dbb34f3" counter packets 36 bytes 2160 accept
+		iifname "br-7c3ac263fc81" counter packets 0 bytes 0 accept
+	}
+
+	chain DOCKER-BRIDGE {
+		oifname "docker0" counter packets 0 bytes 0 jump DOCKER
+		oifname "br-4a570dbb34f3" counter packets 36 bytes 2160 jump DOCKER
+		oifname "br-7c3ac263fc81" counter packets 0 bytes 0 jump DOCKER
+	}
+
+	chain DOCKER-CT {
+		oifname "docker0" ct state related,established counter packets 12098 bytes 52932115 accept
+		oifname "br-4a570dbb34f3" ct state related,established counter packets 0 bytes 0 accept
+		oifname "br-7c3ac263fc81" ct state related,established counter packets 0 bytes 0 accept
+	}
+
+	chain DOCKER-INTERNAL {
+	}
+
+	chain FORWARD {
+		type filter hook forward priority filter; policy accept;
+		counter packets 17665 bytes 53335012 jump DOCKER-USER
+		counter packets 17665 bytes 53335012 jump DOCKER-FORWARD
+	}
+
+	chain DOCKER-USER {
+	}
+}

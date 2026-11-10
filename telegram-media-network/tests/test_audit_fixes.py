@@ -11,8 +11,8 @@ from app.core.config import Settings
 from app.core.models import MediaAsset, Source, SourceItem, StoryEvidence
 from app.pipeline.editor import draft_post
 from app.pipeline.llm import LocalLLMClient, compose_draft
-from app.publishing.gate import build_telegram_transport
-from app.publishing.telegram import HttpxTelegramTransport, ScriptedTransport, TgResult
+from app.publishing.gate import RestrictedChatTransport, build_telegram_transport
+from app.publishing.telegram import ScriptedTransport, TgResult
 from app.services.dispatch import dispatch_outbox
 from app.services.editorial import ingest_source_item
 from app.services.moderation import schedule_post
@@ -80,7 +80,11 @@ def _github_body() -> bytes:
 
 
 def _hn_routes() -> dict[str, bytes]:
-    routes = {"https://hacker-news.firebaseio.com/v0/topstories.json": json.dumps([11, 12, 13]).encode()}
+    routes = {
+        "https://hacker-news.firebaseio.com/v0/topstories.json": json.dumps([11, 12, 13]).encode(),
+        "https://hacker-news.firebaseio.com/v0/newstories.json": b"[]",
+        "https://hacker-news.firebaseio.com/v0/showstories.json": b"[]",
+    }
     for number in (11, 12, 13):
         routes[f"https://hacker-news.firebaseio.com/v0/item/{number}.json"] = json.dumps(
             {
@@ -136,6 +140,7 @@ def _routes() -> dict[str, bytes]:
     routes = {
         "https://api.github.com/search/": _github_body(),
         "https://huggingface.co/api/models": _hf_body(),
+        "https://huggingface.co/api/spaces": b"[]",
         "https://rss.arxiv.org/": _rss(),
         "https://www.cisa.gov/": _cisa(),
     }
@@ -260,7 +265,7 @@ def test_local_llm_accepts_valid_draft_only():
             seen["body"] = json.loads(self.rfile.read(length).decode())
             draft = draft_post(item(), "github").draft
             draft["title"] = "Локальная модель пересказала карточку"
-            payload = json.dumps({"draft": draft}).encode()
+            payload = json.dumps({"message": {"role": "assistant", "content": json.dumps(draft)}}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(payload)))
@@ -280,8 +285,11 @@ def test_local_llm_accepts_valid_draft_only():
         assert result.blocked is False
         assert result.draft["title"] == "Локальная модель пересказала карточку"
         assert result.draft["requires_review"] is True
-        assert seen["body"]["system"].startswith("Ты редактор")
-        assert "source_data" in seen["body"]
+        system = seen["body"]["messages"][0]["content"]
+        user = seen["body"]["messages"][1]["content"]
+        assert system.startswith("Ты редактор")
+        assert "A local task runner for daily operations." not in system
+        assert "A local task runner for daily operations." in user
     finally:
         server.shutdown()
 
@@ -320,7 +328,7 @@ def test_telegram_transport_stays_offline_without_every_gate(monkeypatch):
     settings.telegram_bot_token = "test-token-not-real"
     settings.telegram_test_chat_id = "-100"
     built = build_telegram_transport(settings)
-    assert isinstance(built, HttpxTelegramTransport)
+    assert isinstance(built, RestrictedChatTransport)
     settings.dry_run = True
     assert build_telegram_transport(settings) is None
 

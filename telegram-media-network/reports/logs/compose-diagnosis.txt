@@ -1,0 +1,164 @@
+captured_utc 2026-11-10T12:20:33.258993+00:00
+
+$ sudo docker version --format engine={{.Server.Version}} client={{.Client.Version}}
+engine=29.1.3 client=29.1.3
+
+exit 0
+
+$ sudo docker compose version
+Docker Compose version 2.40.3+ds1-0ubuntu1~24.04.1
+
+exit 0
+
+$ sudo docker network inspect tmn-dev_data
+[
+    {
+        "Name": "tmn-dev_data",
+        "Id": "4a570dbb34f303e15671e741e1e7246ff695fb6bd84e18cfb6000f1efa3af077",
+        "Created": "2026-11-10T12:17:34.734081194Z",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv4": true,
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.18.0.0/16",
+                    "IPRange": "",
+                    "Gateway": "172.18.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Options": {},
+        "Labels": {
+            "com.docker.compose.config-hash": "efd27df526c128689aa2b97b1f8a0b9a04c0ba162c9874a1417d25c05f8362a6",
+            "com.docker.compose.network": "data",
+            "com.docker.compose.project": "tmn-dev",
+            "com.docker.compose.version": "2.40.3"
+        },
+        "Containers": {
+            "4769c44f560d5e1052d668030a1e792a69cf82c4e13ec2bdf3832a48fe1ba06e": {
+                "Name": "tmn-dev-redis-1",
+                "EndpointID": "2e500fe220bf135492395598b28f8986b6995f9727aa55477eee1ab6cdfc2b91",
+                "MacAddress": "2a:4e:f2:c5:ec:2e",
+                "IPv4Address": "172.18.0.3/16",
+                "IPv6Address": ""
+            },
+            "c3a0feb77a54badc649e9d1af5b6d49306efea574fe82507645894a6ffdb3116": {
+                "Name": "tmn-dev-db-1",
+                "EndpointID": "f30844ec39c0cbe53760f58feb573de63e8fc3123d8723105a599473efb14fd8",
+                "MacAddress": "c2:da:84:ca:1e:4f",
+                "IPv4Address": "172.18.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Status": {
+            "IPAM": {
+                "Subnets": {
+                    "172.18.0.0/16": {
+                        "IPsInUse": 5,
+                        "DynamicIPsAvailable": 65531
+                    }
+                }
+            }
+        }
+    }
+]
+
+exit 0
+
+$ sudo docker inspect tmn-dev-db-1 --format {{json .NetworkSettings.Networks}}
+{"tmn-dev_data":{"IPAMConfig":null,"Links":null,"Aliases":["tmn-dev-db-1","db"],"DriverOpts":null,"GwPriority":0,"NetworkID":"4a570dbb34f303e15671e741e1e7246ff695fb6bd84e18cfb6000f1efa3af077","EndpointID":"f30844ec39c0cbe53760f58feb573de63e8fc3123d8723105a599473efb14fd8","Gateway":"172.18.0.1","IPAddress":"172.18.0.2","MacAddress":"c2:da:84:ca:1e:4f","IPPrefixLen":16,"IPv6Gateway":"","GlobalIPv6Address":"","GlobalIPv6PrefixLen":0,"DNSNames":["tmn-dev-db-1","db","c3a0feb77a54"]}}
+
+exit 0
+
+$ sudo docker inspect tmn-dev-redis-1 --format {{json .NetworkSettings.Networks}}
+{"tmn-dev_data":{"IPAMConfig":null,"Links":null,"Aliases":["tmn-dev-redis-1","redis"],"DriverOpts":null,"GwPriority":0,"NetworkID":"4a570dbb34f303e15671e741e1e7246ff695fb6bd84e18cfb6000f1efa3af077","EndpointID":"2e500fe220bf135492395598b28f8986b6995f9727aa55477eee1ab6cdfc2b91","Gateway":"172.18.0.1","IPAddress":"172.18.0.3","MacAddress":"2a:4e:f2:c5:ec:2e","IPPrefixLen":16,"IPv6Gateway":"","GlobalIPv6Address":"","GlobalIPv6PrefixLen":0,"DNSNames":["tmn-dev-redis-1","redis","4769c44f560d"]}}
+
+exit 0
+
+$ sysctl net.bridge.bridge-nf-call-iptables net.bridge.bridge-nf-call-ip6tables net.ipv4.ip_forward
+net.bridge.bridge-nf-call-iptables = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward = 1
+
+exit 0
+--- db local ---
+127.0.0.1:5432 - accepting connections
+local_exit:0
+db_ip:172.18.0.2
+172.18.0.2:5432 - accepting connections
+bridge_exit:0
+tcp_local:ok
+tcp_bridge:ok
+--- route ---
+Iface	Destination	Gateway 	Flags	RefCnt	Use	Metric	Mask		MTU	Window	IRTT                                                       
+eth0	00000000	010012AC	0003	0	0	0	00000000	0	0	0                                                                               
+eth0	000012AC	00000000	0001	0	0	0	0000FFFF	0	0	0                                                                               
+--- addr ---
+Main:
+  +-- 0.0.0.0/0 3 0 5
+     |-- 0.0.0.0
+        /0 universe UNICAST
+     +-- 127.0.0.0/8 2 0 2
+        +-- 127.0.0.0/31 1 0 0
+           |-- 127.0.0.0
+              /8 host LOCAL
+           |-- 127.0.0.1
+              /32 host LOCAL
+        |-- 127.255.255.255
+           /32 link BROADCAST
+     +-- 172.18.0.0/16 2 0 2
+        +-- 172.18.0.0/30 2 0 2
+           |-- 172.18.0.0
+              /16 link UNICAST
+           |-- 172.18.0.2
+              /32 host LOCAL
+        |-- 172.18.255.255
+           /32 link BROADCAST
+Local:
+  +-- 0.0.0.0/0 3 0 5
+     |-- 0.0.0.0
+        /0 universe UNICAST
+     +-- 127.0.0.0/8 2 0 2
+        +-- 127.0.0.0/31 1 0 0
+           |-- 127.0.0.0
+              /8 host LOCAL
+           |-- 127.0.0.1
+              /32 host LOCAL
+        |-- 127.255.255.255
+           /32 link BROADCAST
+     +-- 172.18.0.0/16 2 0 2
+        +-- 172.18.0.0/30 2 0 2
+           |-- 172.18.0.0
+              /16 link UNICAST
+           |-- 172.18.0.2
+              /32 host LOCAL
+        |-- 172.18.255.255
+           /32 link BROADCAST
+--- throwaway ---
+--- api image ---
+--- read-only filter snapshot ---
+-N DOCKER-FORWARD
+-A DOCKER-FORWARD -j DOCKER-CT
+-A DOCKER-FORWARD -j DOCKER-INTERNAL
+-A DOCKER-FORWARD -j DOCKER-BRIDGE
+-A DOCKER-FORWARD -i docker0 -j ACCEPT
+-A DOCKER-FORWARD -i br-4a570dbb34f3 -j ACCEPT
+-A DOCKER-FORWARD -i br-7c3ac263fc81 -j ACCEPT
+table ip filter {
+	chain FORWARD {
+		type filter hook forward priority filter; policy accept;
+		counter packets 17640 bytes 53333512 jump DOCKER-USER
+		counter packets 17640 bytes 53333512 jump DOCKER-FORWARD
+	}
+}
