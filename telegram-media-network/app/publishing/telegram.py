@@ -36,7 +36,14 @@ class ScriptedTransport:
         self.calls: list[dict] = []
 
     def send_photo(self, payload: dict) -> TgResult:
-        self.calls.append({"chat_id": payload.get("chat_id"), "caption_hash": payload.get("caption_hash")})
+        self.calls.append(
+            {
+                "chat_id": payload.get("chat_id"),
+                "caption_hash": payload.get("caption_hash"),
+                "photo": payload.get("photo"),
+                "photo_sha256": payload.get("photo_sha256"),
+            }
+        )
         event = self.script.pop(0)
         if isinstance(event, Exception):
             raise event

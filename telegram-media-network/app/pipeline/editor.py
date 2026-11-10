@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 
 from app.pipeline.rank import LICENSE_CLAIM_RE
@@ -131,8 +132,17 @@ def _title(item: SourceItemIn) -> str:
     return title[:100]
 
 
+_LEADS = (
+    "Суть по первоисточнику:",
+    "Что можно проверить по ссылке:",
+    "Редакция оставляет только подтверждаемое:",
+    "Практический смысл материала:",
+)
+
+
 def _body(item: SourceItemIn, facts: list[Fact], channel_id: str) -> str:
     fact_text = " ".join(fact.statement.strip().rstrip(".") + "." for fact in facts)
+    lead = _LEADS[int(hashlib.sha256(item.source_external_id.encode()).hexdigest(), 16) % len(_LEADS)]
     limits: list[str] = []
     if item.is_preprint:
         limits.append("Это препринт: текст не выдаёт результат за рецензированный или доказанный вывод.")
@@ -147,11 +157,7 @@ def _body(item: SourceItemIn, facts: list[Fact], channel_id: str) -> str:
     if not limits:
         limits.append("В текст вошли только утверждения, для которых есть переданные доказательства.")
     audience = CHANNEL_AUDIENCE.get(channel_id, CHANNEL_AUDIENCE["dev"])
-    body = (
-        f"{fact_text} Кому полезно: {audience} "
-        f"Почему это заметка, а не перепечатка: редакция пересказывает проверяемые сведения и даёт ссылку. "
-        f"Ограничения: {' '.join(limits)}"
-    )
+    body = f"{lead} {fact_text} Кому полезно: {audience} Ограничения: {' '.join(limits)}"
     body = TOKEN_RE.sub("", body)
     body = re.sub(r"\s+", " ", body).strip()
     return body[:900]

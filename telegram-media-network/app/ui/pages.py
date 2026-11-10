@@ -346,13 +346,23 @@ def sources(request: Request):
         ctx = _context(request, db)
         if ctx is None:
             return RedirectResponse("/login", status_code=303)
-        lines = ["<table><tr><th>Источник</th><th>Состояние</th><th>Включён</th></tr>"]
+        lines = [
+            '<div class="scroll"><table><tr><th>Источник</th><th>Состояние</th><th>Включён</th><th>Интервал</th><th>Ошибки подряд</th><th>Последняя ошибка</th></tr>'
+        ]
         for source in db.query(Source).order_by(Source.id):
             lines.append(
-                f"<tr><td>{html.escape(source.id)}</td><td>{html.escape(source.health)}</td><td>{'да' if source.enabled else 'нет'}</td></tr>"
+                "<tr>"
+                f"<td>{html.escape(source.id)}</td>"
+                f"<td>{html.escape(source.health)}</td>"
+                f"<td>{'да' if source.enabled else 'нет'}</td>"
+                f"<td>{source.poll_interval_minutes} мин</td>"
+                f"<td>{source.consecutive_failures}</td>"
+                f"<td>{html.escape(source.last_error or '—')}</td>"
+                "</tr>"
             )
-        lines.append("</table>")
-        return _simple(request, ctx, "Источники", "sources", "Живой опрос выключен в offline-режиме.", "".join(lines))
+        lines.append("</table></div>")
+        note = "Живой опрос выключен, пока SOURCE_MODE не равен live. Состояние offline не означает, что источник проверен."
+        return _simple(request, ctx, "Источники", "sources", note, "".join(lines))
     finally:
         db.close()
 

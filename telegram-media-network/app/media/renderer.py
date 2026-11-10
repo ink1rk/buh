@@ -121,6 +121,7 @@ def render_card(
     kicker: str,
     footer: str,
     cve: str = "",
+    source_label: str = "",
 ) -> RenderedCard:
     background = hex_rgb(primary)
     accent_rgb = hex_rgb(accent)
@@ -133,6 +134,7 @@ def render_card(
     probe = _font(FONT_BOLD, 48)
     visible_title = filter_text(probe, title).strip()
     draw.text((64, 42), filter_text(brand_font, channel_title)[:40], font=brand_font, fill=accent_rgb)
+    draw.text((980, 46), filter_text(small_font, "СВОЙ МАКЕТ"), font=small_font, fill=accent_rgb)
     kicker_text = kicker
     if template == "security":
         kicker_text = "ОБНОВЛЕНИЕ / УЯЗВИМОСТЬ"
@@ -158,7 +160,8 @@ def render_card(
         y += font_size + 10
     footer_font = _font(FONT_REGULAR, 26)
     draw.line((64, 620, 1216, 620), fill=(255, 255, 255), width=2)
-    footer_text = filter_text(footer_font, footer)[:80]
+    footer_source = f"{footer} · {source_label}" if source_label else footer
+    footer_text = filter_text(footer_font, footer_source)[:80]
     if template == "security":
         footer_text = filter_text(footer_font, "CVSS не добавляется, если его нет в источнике")
     draw.text((64, 648), footer_text, font=footer_font, fill=(236, 239, 244))

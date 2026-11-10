@@ -30,6 +30,8 @@ nav a[aria-current="page"] { color: var(--ink); border-bottom: 2px solid var(--a
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 .card, .panel { background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 14px; }
 .muted { color: var(--muted); }
+.scroll { overflow-x: auto; }
+.scroll table { min-width: 720px; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .review { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }

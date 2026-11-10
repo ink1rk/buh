@@ -5,6 +5,7 @@ import json
 import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from sqlalchemy.orm import Session
 
@@ -108,6 +109,12 @@ def _write_media(post: Post, channel: Channel, directory: Path) -> MediaAsset:
     for token in post.title.split():
         if token.startswith("CVE-"):
             cve = token.strip(":,.")
+    source_label = ""
+    for link in post.source_links_json or []:
+        host = urlsplit(str(link)).hostname or ""
+        if host:
+            source_label = host
+            break
     rendered = render_card(
         channel_title=channel.title,
         primary=primary,
@@ -117,6 +124,7 @@ def _write_media(post: Post, channel: Channel, directory: Path) -> MediaAsset:
         kicker=template.upper(),
         footer=channel.title,
         cve=cve,
+        source_label=source_label,
     )
     directory.mkdir(parents=True, exist_ok=True)
     filename = f"post-{post.id}-v{post.draft_version}.jpg"
@@ -223,8 +231,8 @@ def ingest_source_item(
                     statement=fact.statement[:400],
                     evidence_excerpt=fact.evidence_excerpt[:160],
                     evidence_url=fact.evidence_url,
-                    verified_at=utcnow() if not drafted.blocked else None,
-                    status="recorded",
+                    verified_at=None,
+                    status="extracted",
                 )
             )
     session.add(
